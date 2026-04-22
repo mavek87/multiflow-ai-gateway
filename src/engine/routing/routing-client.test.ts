@@ -1,0 +1,82 @@
+import { describe, test, expect } from 'bun:test';
+import { RoutingAIClient } from './routing-client';
+import { MetricsStore } from '@/engine/observability/metrics';
+import { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
+import { UCB1Selector } from '@/engine/selection/selector';
+import { ModelEndpointClient } from '@/engine/client/model-client';
+
+const model = (name: string) => ({
+  url: 'http://fake/v1/chat/completions',
+  model: name,
+  priority: 0,
+  aiProviderId: 'provider-1',
+  aiProviderModelId: 'model-1',
+});
+
+function createRoutingClient(models: any[], systemPrompt: string) {
+  const metrics = new MetricsStore();
+  const circuitBreaker = new CircuitBreaker();
+  const selector = new UCB1Selector();
+  const clients = new Map();
+  const aiProviderIds = new Map();
+  
+  for (const m of models) {
+    clients.set(m.model, new ModelEndpointClient(m, systemPrompt, 10000, 60000, false));
+    aiProviderIds.set(m.model, m.aiProviderId ?? '');
+  }
+  
+  return new RoutingAIClient(clients, metrics, circuitBreaker, selector, aiProviderIds);
+}
+
+function mockFetchOk(sseBody = 'data: [DONE]\n\n') {
+  // @ts-ignore
+  globalThis.fetch = async () => new Response(sseBody, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+}
+
+function mockFetchFail(status = 500) {
+  // @ts-ignore
+  globalThis.fetch = async () => new Response('', { status });
+}
+
+describe('RoutingAIClient — openStream()', () => {
+  test('returns body and model info on success', async () => {
+    mockFetchOk();
+    const client = createRoutingClient([model('m1')], 'system');
+    const result = await client.openStream([{ role: 'user', content: 'hi' }]);
+    expect(result).not.toBeNull();
+    expect(result!.model).toBe('m1');
+    expect(result!.body).toBeDefined();
+  });
+
+  test('returns null when all providers fail', async () => {
+    mockFetchFail(500);
+    const client = createRoutingClient([model('m1'), model('m2')], 'system');
+    const result = await client.openStream([{ role: 'user', content: 'hi' }]);
+    expect(result).toBeNull();
+  });
+
+  test('falls back to second provider if first returns HTTP error', async () => {
+    let calls = 0;
+    // @ts-ignore
+    globalThis.fetch = async () => {
+      calls++;
+      if (calls === 1) return new Response('', { status: 500 });
+      return new Response('data: [DONE]\n\n', { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    };
+    const m1 = { ...model('m1'), priority: 0 };
+    const m2 = { ...model('m2'), priority: 1 };
+    const client = createRoutingClient([m1, m2], 'system');
+    const result = await client.openStream([{ role: 'user', content: 'hi' }]);
+    expect(result).not.toBeNull();
+    expect(result!.model).toBe('m2');
+    expect(calls).toBe(2);
+  });
+
+  test('returns aiProvider from model config', async () => {
+    mockFetchOk();
+    const config = { ...model('m1'), aiProviderId: 'groq-id' };
+    const client = createRoutingClient([config], 'system');
+    const result = await client.openStream([{ role: 'user', content: 'hi' }]);
+    expect(result!.aiProvider).toBe('groq-id');
+  });
+});
