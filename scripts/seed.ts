@@ -1,7 +1,6 @@
-import { getDb } from '@/db/database';
+import { db } from '@/db/database';
 import { TenantStore } from '@/tenant/tenant-store';
 
-const db = await getDb();
 const store = new TenantStore(db);
 
 // --- Providers ---

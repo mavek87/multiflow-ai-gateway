@@ -1,6 +1,6 @@
 import { Elysia } from 'elysia';
 import { swagger } from '@elysiajs/swagger';
-import { getDb } from '@/db/database';
+import { db } from '@/db/database';
 import { TenantStore } from '@/tenant/tenant-store';
 import { adminRoutePlugin } from '@/routes/admin';
 import { chatRoutePlugin } from '@/routes/chat';
@@ -9,7 +9,6 @@ import { createLogger } from '@/utils/logger';
 
 const log = createLogger('SERVER');
 
-const db = await getDb();
 const store = new TenantStore(db);
 
 new Elysia()
