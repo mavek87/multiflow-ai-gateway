@@ -44,4 +44,3 @@ new Elysia()
   .listen(config.port);
 
 log.info(`multiflow-ai-gateway listening on port ${config.port}`);
-.port}`);
