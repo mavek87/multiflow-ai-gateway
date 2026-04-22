@@ -1,11 +1,11 @@
-# AGENTS.md / CLAUDE.md - Multiflow AI Gateway
+# AGENTS.md - Multiflow AI Gateway
 
 This file provides guidance to AI agents when working with this repository.
 
 ## General Agent Rules
 
-- Never use the symbol — when you write text.
-- Always use English when writing into files.
+- **Always** use **English** when **writing into files**.
+- Never use the symbol — when you write into files.
 - Always be honest and objective. Fake complacency would harm the user. In such cases, state opposing views and provide reasoning.
 - If in doubt, ask questions to clarify unclear points. Acting in a state of indecision or doubt would harm the user.
 
