@@ -25,10 +25,12 @@ describe('ChatService', () => {
     const service = new ChatService(makeFactory(mockClient));
 
     const result = await service.handleChatRequest(fakeTenant, { messages: [{ role: 'user', content: 'Hello' }] }, fakeConfigs);
-    expect(result.isStream).toBe(false);
-    if (!result.isStream) {
-      expect(result.model).toBe('gpt-4o');
-      expect(result.payload.choices[0]!.message.content).toBe('Mocked reply');
+    expect(result.isOk()).toBe(true);
+    const value = result._unsafeUnwrap();
+    expect(value.isStream).toBe(false);
+    if (!value.isStream) {
+      expect(value.model).toBe('gpt-4o');
+      expect(value.payload.choices[0]!.message.content).toBe('Mocked reply');
     }
   });
 
@@ -41,24 +43,23 @@ describe('ChatService', () => {
     const service = new ChatService(makeFactory(mockClient));
 
     const result = await service.handleChatRequest(fakeTenant, { messages: [{ role: 'user', content: 'Hello' }], stream: true }, fakeConfigs);
-    expect(result.isStream).toBe(true);
-    if (result.isStream) {
-      expect(result.payload).toBe(fakeBody);
+    expect(result.isOk()).toBe(true);
+    const value = result._unsafeUnwrap();
+    expect(value.isStream).toBe(true);
+    if (value.isStream) {
+      expect(value.payload).toBe(fakeBody);
     }
   });
 
-  test('throws AiUnavailableError if stream returns null', async () => {
+  test('returns ai_unavailable error if stream returns null', async () => {
     const mockClient: AIClient = {
       chat: async () => ({ model: 'gpt-4o', content: '', aiProvider: 'openai', aiProviderUrl: 'https://api.openai.com' }),
       callStream: async () => null,
     };
     const service = new ChatService(makeFactory(mockClient));
 
-    try {
-      await service.handleChatRequest(fakeTenant, { messages: [{ role: 'user', content: 'Hello' }], stream: true }, fakeConfigs);
-      expect(true).toBe(false);
-    } catch (err: any) {
-      expect(err.message).toBe('AI service unavailable');
-    }
+    const result = await service.handleChatRequest(fakeTenant, { messages: [{ role: 'user', content: 'Hello' }], stream: true }, fakeConfigs);
+    expect(result.isErr()).toBe(true);
+    expect(result._unsafeUnwrapErr()).toEqual({ code: 'ai_unavailable' });
   });
 });
