@@ -1,32 +1,22 @@
-import {Elysia, t} from 'elysia';
+import {Elysia} from 'elysia';
 import type {TenantStore} from '@/tenant/tenant-store';
-import {badRequestResponse, unprocessableResponse, internalErrorResponse} from '@/utils/http';
-import {ChatService} from '@/services/chat.service';
+import {badRequestResponse, internalErrorResponse, unprocessableResponse} from '@/utils/http';
+import {ChatService, AiUnavailableError} from '@/services/chat.service';
 import {RoutingAIClientFactory} from '@/engine/routing/routing-client-factory';
+import {ModelConfigResolver} from '@/engine/selection/model-config-resolver';
 import {tenantAuthPlugin} from '@/auth/middleware';
-
-const MessageSchema = t.Object({
-    role: t.Union([t.Literal('system'), t.Literal('user'), t.Literal('assistant'), t.Literal('tool')]),
-    content: t.String(),
-});
-
-const ChatRequestSchema = t.Object({
-    model: t.Optional(t.String()),
-    messages: t.Array(MessageSchema, {minItems: 1, error: 'messages array is required and must not be empty'}),
-    system: t.Optional(t.String()),
-    stream: t.Optional(t.Boolean()),
-});
+import {ChatRequestSchema} from '@/schemas/openai.schema';
 
 export function chatRoutePlugin(tenantStore: TenantStore) {
     const routingAIClientFactory = new RoutingAIClientFactory();
-    const chatService = new ChatService(tenantStore, routingAIClientFactory);
+    const chatService = new ChatService(routingAIClientFactory);
+    const modelConfigResolver = new ModelConfigResolver(tenantStore);
 
     return new Elysia()
         .use(tenantAuthPlugin(tenantStore))
-        // This guard applies the security requirement for Swagger UI / OpenAPI docs
-        .guard({detail: {security: [{GatewayApiKey: []}]}})
+        .guard({detail: {security: [{GatewayApiKey: []}]}}) // This guard applies the security requirement for Swagger UI / OpenAPI docs
         .post('/v1/chat/completions', async ({body, tenant}) => {
-            const modelConfResult = chatService.resolveModelConfigs({
+            const modelConfResult = modelConfigResolver.resolve({
                 tenantId: tenant!.id,
                 requestedModel: body.model,
                 forceAiProviderId: tenant!.forceAiProviderId
@@ -37,11 +27,10 @@ export function chatRoutePlugin(tenantStore: TenantStore) {
             }
 
             try {
-                const result = await chatService.handleChatRequest(tenant!, body as any, modelConfResult.configs);
-                
+                const result = await chatService.handleChatRequest(tenant!, body, modelConfResult.configs);
+
                 if (result.isStream) {
-                    return new Response(result.streamBody, {
-                        status: 200,
+                    return new Response(result.payload, {
                         headers: {
                             'Content-Type': 'text/event-stream',
                             'Cache-Control': 'no-cache',
@@ -51,12 +40,12 @@ export function chatRoutePlugin(tenantStore: TenantStore) {
                         },
                     });
                 } else {
-                    return Response.json(result.data, {
-                        headers: {'X-AI-Provider': result.aiProvider},
+                    return Response.json(result.payload, {
+                        headers: {'X-Model': result.model, 'X-AI-Provider': result.aiProvider},
                     });
                 }
-            } catch (err: any) {
-                if (err.message === 'AI service unavailable') {
+            } catch (err) {
+                if (err instanceof AiUnavailableError) {
                     return new Response('data: {"error":"AI service unavailable"}\n\ndata: [DONE]\n\n', {
                         status: 503,
                         headers: {'Content-Type': 'text/event-stream'},

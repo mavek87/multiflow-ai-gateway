@@ -1,9 +1,5 @@
-export type AIChatMessage = {
-  role: 'system' | 'user' | 'assistant' | 'tool';
-  content: string;
-  tool_calls?: ToolCall[];
-  tool_call_id?: string;
-};
+import type {AIChatMessage, ToolCall} from '@/schemas/openai.schema';
+export type {AIChatMessage, ToolCall};
 
 export interface AIBaseResponse {
   model: string;
@@ -18,14 +14,6 @@ export interface AIChatStreamResponse extends AIBaseResponse {
   body: ReadableStream<Uint8Array>;
 }
 
-export type ToolCall = {
-  id: string;
-  type: 'function';
-  function: {
-    name: string;
-    arguments: Record<string, unknown>;
-  };
-};
 
 export type ModelConfig = {
   url: string;
