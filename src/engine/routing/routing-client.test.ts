@@ -3,7 +3,7 @@ import { RoutingAIClient } from './routing-client';
 import { MetricsStore } from '@/engine/observability/metrics';
 import { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
 import { UCB1Selector } from '@/engine/selection/selector';
-import { ModelEndpointClient } from '@/engine/client/model-client';
+import { HttpProviderClient } from '@/engine/client/http-provider-client';
 
 const model = (name: string) => ({
   url: 'http://fake/v1/chat/completions',
@@ -21,7 +21,7 @@ function createRoutingClient(models: any[], systemPrompt: string) {
   const aiProviderIds = new Map();
   
   for (const m of models) {
-    clients.set(m.model, new ModelEndpointClient(m, systemPrompt, 10000, 60000, false));
+    clients.set(m.model, new HttpProviderClient(m, systemPrompt, 10000, 60000, false));
     aiProviderIds.set(m.model, { name: m.aiProviderId ?? '', baseUrl: m.aiProviderBaseUrl ?? '' });
   }
   

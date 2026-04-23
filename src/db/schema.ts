@@ -110,7 +110,7 @@ export const gatewayApiKeys = sqliteTable('gateway_api_keys', {
  * └───────────┴─────────┴──────────────────────────────────────────────────────────────────────────────┘
  *
  * NOTE: the routing layer uses a single OpenAI-compatible HTTP client for all providers
- * (ModelEndpointClient). The "type" field is stored but not yet read by the engine --
+ * (HttpProviderClient). The "type" field is stored but not yet read by the engine --
  * every provider is treated as OpenAI-compatible until a second adapter is introduced.
  *
  * Example rows:

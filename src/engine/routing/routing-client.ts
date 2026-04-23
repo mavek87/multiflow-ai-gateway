@@ -2,13 +2,20 @@
  * RoutingAIClient — adaptive multi-model router.
  */
 
-import type { AIClient, AIChatMessage, AIChatResponse, AIChatStreamResponse, ToolContext, ToolDefinition, ToolDispatcher } from '@/engine/types';
-import type { CallResult } from '@/engine/client/model-client';
-import type { ModelSelector } from '@/engine/selection/types';
-import { ModelEndpointClient } from '@/engine/client/model-client';
-import { MetricsStore } from '@/engine/observability/metrics';
-import { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
-import { createLogger } from '@/utils/logger';
+import type {
+  AIChatMessage,
+  AIChatResponse,
+  AIChatStreamResponse,
+  AIClient,
+  ToolContext,
+  ToolDefinition,
+  ToolDispatcher
+} from '@/engine/types';
+import {HttpProviderClient} from '@/engine/client/http-provider-client';
+import type {ModelSelector} from '@/engine/selection/types';
+import {MetricsStore} from '@/engine/observability/metrics';
+import {CircuitBreaker} from '@/engine/resilience/circuit-breaker';
+import {createLogger} from '@/utils/logger';
 
 const log = createLogger('ROUTING');
 const MAX_ATTEMPTS_CAP = 10;
@@ -16,7 +23,7 @@ const UNAVAILABLE_RESPONSE = 'AI service unavailable. Try again later.';
 
 export class RoutingAIClient implements AIClient {
   constructor(
-    private readonly clients: Map<string, ModelEndpointClient>,
+    private readonly clients: Map<string, HttpProviderClient>,
     private readonly metrics: MetricsStore,
     private readonly circuitBreaker: CircuitBreaker,
     private readonly selector: ModelSelector,
@@ -63,7 +70,7 @@ export class RoutingAIClient implements AIClient {
   }
 
   private async executeWithRetry(
-    operation: (modelId: string, client: ModelEndpointClient) => Promise<any>,
+    operation: (modelId: string, client: HttpProviderClient) => Promise<any>,
     isStream = false
   ): Promise<any> {
     const attemptedModels = new Set<string>();

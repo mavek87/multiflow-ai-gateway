@@ -1,10 +1,10 @@
 import { RoutingAIClient } from './routing-client';
-import { AuditedAIClient } from '../client/audited-ai-client';
+import { AuditedAIClient } from '../decorator/audited-ai-client';
 import type { ModelConfig, AIClient } from '../types';
 import { MetricsStore } from '../observability/metrics';
 import { CircuitBreaker } from '../resilience/circuit-breaker';
 import { UCB1Selector } from '../selection/selector';
-import { ModelEndpointClient } from '../client/model-client';
+import { HttpProviderClient } from '../client/http-provider-client';
 
 export class RoutingAIClientFactory {
     private readonly metrics = new MetricsStore();
@@ -14,11 +14,11 @@ export class RoutingAIClientFactory {
     public create(modelConfigs: ModelConfig[], systemPrompt: string): AIClient {
         const sortedModelConfigs = [...modelConfigs].sort((confA, confB) => (confA.priority ?? 0) - (confB.priority ?? 0));
         
-        const clients = new Map<string, ModelEndpointClient>();
+        const clients = new Map<string, HttpProviderClient>();
         const aiProviderIds = new Map<string, { name: string; baseUrl: string }>();
 
         for (const modelConfig of sortedModelConfigs) {
-            clients.set(modelConfig.model, new ModelEndpointClient(modelConfig, systemPrompt, 10000, 60000, false));
+            clients.set(modelConfig.model, new HttpProviderClient(modelConfig, systemPrompt, 10000, 60000, false));
             aiProviderIds.set(modelConfig.model, {
                 name: modelConfig.aiProviderName ?? modelConfig.aiProviderId ?? '',
                 baseUrl: modelConfig.aiProviderBaseUrl ?? '',

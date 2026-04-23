@@ -86,17 +86,20 @@ Chat Route (routes/chat.ts)
 Tenant Provider Configs (decrypt API keys from SQLite via Drizzle)
   |
   v
-RoutingAIClient
-  |-- UCB1Selector     (picks best model based on EMA metrics)
-  |-- CircuitBreaker   (skips models in OPEN state)
-  |-- ModelEndpointClient (HTTP call to OpenAI-compatible endpoint)
-  |-- MetricsStore     (updates latency/success EMA after each call)
+AuditedAIClient (decorator: audit logging)
+  |
+  v
+RoutingAIClient (implements AIClient: routing + retry)
+  |-- UCB1Selector       (picks best model based on EMA metrics)
+  |-- CircuitBreaker     (skips models in OPEN state)
+  |-- HttpProviderClient (low-level HTTP to OpenAI-compatible endpoint)
+  |-- MetricsStore       (updates latency/success EMA after each call)
   |
   v
 OpenAI-compatible response
   |
   v
-Audit Log (async, JSON lines)
+Audit Log (JSON lines)
 ```
 
 ### Database
@@ -651,7 +654,7 @@ When a chat request arrives the gateway:
 3. Passes the candidate list to `RoutingAIClient`, which:
    - Skips models whose circuit breaker is in OPEN state.
    - Uses the **UCB1 selector** to rank the remaining models.
-   - Calls the top-ranked model via `ModelEndpointClient`.
+   - Calls the top-ranked model via `HttpProviderClient`.
    - On failure, marks the failure in the circuit breaker and retries with the next best model (up to 3 attempts total).
    - On success, updates the EMA metrics for that model.
 
@@ -717,8 +720,9 @@ src/
   db/                       # SQLite connection, Drizzle setup, schema
   tenant/                   # Tenant/provider CRUD and types
   engine/
-    client/                 # OpenAI-compatible HTTP client
-    routing/                # Multi-model router with fallback
+    client/                 # HttpProviderClient: low-level HTTP to OpenAI-compatible providers
+    decorator/              # AuditedAIClient: decorator adding audit logging to any AIClient
+    routing/                # RoutingAIClient: multi-model router with UCB1 + fallback
     selection/              # UCB1 model selector + types
     resilience/             # Circuit breaker
     observability/          # EMA metrics store
