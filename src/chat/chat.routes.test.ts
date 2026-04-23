@@ -7,6 +7,8 @@ import { TenantStore } from '@/tenant/tenant.store';
 import { chatRoutePlugin } from './chat.routes';
 import { Elysia } from 'elysia';
 
+import { ProviderStore } from '@/provider/provider.store';
+
 beforeAll(() => {
   process.env['ENCRYPTION_KEY'] = 'c'.repeat(64);
 });
@@ -17,11 +19,12 @@ function makeApp() {
   const db = drizzle(sqlite, { schema });
   migrate(db, { migrationsFolder: './drizzle' });
   const store = new TenantStore(db);
+  const providerStore = new ProviderStore(db);
   
   const { tenant, rawApiKey } = store.createTenant('TestCorp');
   
-  const provider = store.createProvider({ name: 'OpenAI', type: 'openai', baseUrl: 'https://api.openai.com/v1' })._unsafeUnwrap();
-  const providerModel = store.createProviderModel({ aiProviderId: provider.id, modelName: 'gpt-4o' })._unsafeUnwrap();
+  const provider = providerStore.createProvider({ name: 'OpenAI', type: 'openai', baseUrl: 'https://api.openai.com/v1' })._unsafeUnwrap();
+  const providerModel = providerStore.createProviderModel({ aiProviderId: provider.id, modelName: 'gpt-4o' })._unsafeUnwrap();
   
   store.assignAiProviderKey(tenant.id, { aiProviderId: provider.id, apiKey: 'sk-fake-key' });
   store.assignAiModelPriority(tenant.id, { aiProviderModelId: providerModel.id, priority: 10 });

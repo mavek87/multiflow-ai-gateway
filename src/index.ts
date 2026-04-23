@@ -2,6 +2,7 @@ import { Elysia } from 'elysia';
 import { swagger } from '@elysiajs/swagger';
 import { db } from '@/db/database';
 import { TenantStore } from '@/tenant/tenant.store';
+import { ProviderStore } from '@/provider/provider.store';
 import { adminRoutePlugin } from '@/admin/admin.routes';
 import { chatRoutePlugin } from '@/chat/chat.routes';
 import { config } from '@/config/config';
@@ -9,7 +10,8 @@ import { createLogger } from '@/utils/logger';
 
 const log = createLogger('SERVER');
 
-const store = new TenantStore(db);
+const tenantStore = new TenantStore(db);
+const providerStore = new ProviderStore(db);
 
 new Elysia()
   .use(swagger({
@@ -38,8 +40,8 @@ new Elysia()
     },
   }))
   .get('/health', () => ({ status: 'ok', timestamp: new Date().toISOString() }))
-  .use(adminRoutePlugin(store))
-  .use(chatRoutePlugin(store))
+  .use(adminRoutePlugin(tenantStore, providerStore))
+  .use(chatRoutePlugin(tenantStore))
   .listen(config.port);
 
 log.info(`multiflow-ai-gateway listening on port ${config.port}`);

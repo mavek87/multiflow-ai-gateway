@@ -1,9 +1,10 @@
 import { Elysia, t } from 'elysia';
 import type { TenantStore } from '@/tenant/tenant.store';
+import type { ProviderStore } from '@/provider/provider.store';
 import { badRequestResponse, notFoundResponse, createdResponse, conflictResponse } from '@/utils/http';
 import { checkMasterKey } from '@/auth/auth.middleware';
 
-export function adminRoutePlugin(store: TenantStore) {
+export function adminRoutePlugin(tenantStore: TenantStore, providerStore: ProviderStore) {
   return new Elysia({ prefix: '/admin' })
     .guard({
       beforeHandle: ({ headers }) => checkMasterKey(headers as Record<string, string | undefined>),
@@ -11,25 +12,25 @@ export function adminRoutePlugin(store: TenantStore) {
     })
 
     // --- Tenants ---
-    .get('/tenants', () => store.listTenants(), {
+    .get('/tenants', () => tenantStore.listTenants(), {
       detail: { summary: 'List all tenants', tags: ['Admin'] },
     })
     .post('/tenants', async ({ body }) => {
       const name = body.name?.trim();
       if (!name) return badRequestResponse('name is required');
-      const { tenant, rawApiKey } = store.createTenant(name);
+      const { tenant, rawApiKey } = tenantStore.createTenant(name);
       return createdResponse({ tenantId: tenant.id, name: tenant.name, apiKey: rawApiKey });
     }, {
       body: t.Object({ name: t.String({ minLength: 1 }) }),
       detail: { summary: 'Create a tenant', description: 'Creates a tenant and returns a gateway API key. The key is shown once only.', tags: ['Admin'] },
     })
     .patch('/tenants/:id', ({ params, body }) => {
-      const tenant = store.getTenantById(params.id);
+      const tenant = tenantStore.getTenantById(params.id);
       if (!tenant) return notFoundResponse('Tenant not found');
       if (body.forceAiProviderId !== undefined && body.forceAiProviderId !== null) {
-        if (!store.getProviderById(body.forceAiProviderId)) return notFoundResponse('Provider not found');
+        if (!providerStore.getProviderById(body.forceAiProviderId)) return notFoundResponse('Provider not found');
       }
-      return store.updateTenant(params.id, { forceAiProviderId: body.forceAiProviderId });
+      return tenantStore.updateTenant(params.id, { forceAiProviderId: body.forceAiProviderId });
     }, {
       body: t.Object({
         forceAiProviderId: t.Union([t.String({ minLength: 1 }), t.Null()]),
@@ -37,23 +38,23 @@ export function adminRoutePlugin(store: TenantStore) {
       detail: { summary: 'Update tenant settings. Set forceAiProviderId to restrict routing to a single provider (null to remove the lock).', tags: ['Admin'] },
     })
     .get('/tenants/:id', ({ params }) => {
-      const tenant = store.getTenantById(params.id);
+      const tenant = tenantStore.getTenantById(params.id);
       if (!tenant) return notFoundResponse('Tenant not found');
       return Response.json({
         ...tenant,
-        credentials: store.listTenantAiProviderKeys(tenant.id),
-        modelConfigs: store.listTenantAiModelPriorities(tenant.id),
+        credentials: tenantStore.listTenantAiProviderKeys(tenant.id),
+        modelConfigs: tenantStore.listTenantAiModelPriorities(tenant.id),
       });
     }, {
       detail: { summary: 'Get tenant details', tags: ['Admin'] },
     })
 
     // --- Global providers ---
-    .get('/providers', () => store.listProviders(), {
+    .get('/providers', () => providerStore.listProviders(), {
       detail: { summary: 'List all global providers', tags: ['Admin'] },
     })
     .post('/providers', ({ body }) => {
-      const result = store.createProvider({ name: body.name, type: body.type, baseUrl: body.baseUrl });
+      const result = providerStore.createProvider({ name: body.name, type: body.type, baseUrl: body.baseUrl });
       if (result.isErr()) return conflictResponse('Provider already exists');
       return createdResponse(result.value);
     }, {
@@ -74,14 +75,14 @@ export function adminRoutePlugin(store: TenantStore) {
 
     // --- Provider models ---
     .get('/providers/:providerId/models', ({ params }) => {
-      if (!store.getProviderById(params.providerId)) return notFoundResponse('Provider not found');
-      return store.listProviderModels(params.providerId);
+      if (!providerStore.getProviderById(params.providerId)) return notFoundResponse('Provider not found');
+      return providerStore.listProviderModels(params.providerId);
     }, {
       detail: { summary: 'List models for a provider', tags: ['Admin'] },
     })
     .post('/providers/:providerId/models', ({ params, body }) => {
-      if (!store.getProviderById(params.providerId)) return notFoundResponse('Provider not found');
-      const result = store.createProviderModel({ aiProviderId: params.providerId, modelName: body.modelName });
+      if (!providerStore.getProviderById(params.providerId)) return notFoundResponse('Provider not found');
+      const result = providerStore.createProviderModel({ aiProviderId: params.providerId, modelName: body.modelName });
       if (result.isErr()) return conflictResponse('Model already exists for this provider');
       return createdResponse(result.value);
     }, {
@@ -99,15 +100,15 @@ export function adminRoutePlugin(store: TenantStore) {
 
     // --- Tenant AI provider keys ---
     .get('/tenants/:id/credentials', ({ params }) => {
-      if (!store.getTenantById(params.id)) return notFoundResponse('Tenant not found');
-      return store.listTenantAiProviderKeys(params.id);
+      if (!tenantStore.getTenantById(params.id)) return notFoundResponse('Tenant not found');
+      return tenantStore.listTenantAiProviderKeys(params.id);
     }, {
       detail: { summary: 'List tenant AI provider keys (raw keys are never returned)', tags: ['Admin'] },
     })
     .post('/tenants/:id/credentials', ({ params, body }) => {
-      if (!store.getTenantById(params.id)) return notFoundResponse('Tenant not found');
-      if (!store.getProviderById(body.aiProviderId)) return notFoundResponse('Provider not found');
-      const credential = store.assignAiProviderKey(params.id, {
+      if (!tenantStore.getTenantById(params.id)) return notFoundResponse('Tenant not found');
+      if (!providerStore.getProviderById(body.aiProviderId)) return notFoundResponse('Provider not found');
+      const credential = tenantStore.assignAiProviderKey(params.id, {
         aiProviderId: body.aiProviderId,
         apiKey: body.apiKey,
       });
@@ -123,16 +124,16 @@ export function adminRoutePlugin(store: TenantStore) {
 
     // --- Tenant AI model priorities ---
     .get('/tenants/:id/models', ({ params }) => {
-      if (!store.getTenantById(params.id)) return notFoundResponse('Tenant not found');
-      return store.listTenantAiModelPriorities(params.id);
+      if (!tenantStore.getTenantById(params.id)) return notFoundResponse('Tenant not found');
+      return tenantStore.listTenantAiModelPriorities(params.id);
     }, {
       detail: { summary: 'List AI model priorities for tenant', tags: ['Admin'] },
     })
     .post('/tenants/:id/models', ({ params, body }) => {
-      if (!store.getTenantById(params.id)) return notFoundResponse('Tenant not found');
-      const model = store.getProviderModelById(body.aiProviderModelId);
+      if (!tenantStore.getTenantById(params.id)) return notFoundResponse('Tenant not found');
+      const model = providerStore.getProviderModelById(body.aiProviderModelId);
       if (!model) return notFoundResponse('Provider model not found');
-      const cfg = store.assignAiModelPriority(params.id, {
+      const cfg = tenantStore.assignAiModelPriority(params.id, {
         aiProviderModelId: body.aiProviderModelId,
         priority: body.priority ?? 0,
       });

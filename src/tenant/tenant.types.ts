@@ -1,4 +1,4 @@
-import type { ModelConfig } from '@/engine/types';
+import type { AiProvider, AiProviderModel } from '@/provider/provider.types';
 
 export type TenantModelConfigError =
     | { code: 'no_providers' }
@@ -23,22 +23,6 @@ export type GatewayApiKey = {
   keyHash: string;
   createdAt: number;
   lastUsedAt: number | null;
-};
-
-export type AiProvider = {
-  id: string;
-  name: string;
-  type: string;
-  baseUrl: string;
-  createdAt: number;
-};
-
-export type AiProviderModel = {
-  id: string;
-  aiProviderId: string;
-  modelName: string;
-  enabled: boolean;
-  createdAt: number;
 };
 
 export type TenantAiProviderKey = {
@@ -72,17 +56,6 @@ export type DecryptedModelConfig = {
   apiKeyPlain: string | null;
 };
 
-export type CreateProviderInput = {
-  name: string;
-  type: string;
-  baseUrl: string;
-};
-
-export type CreateProviderModelInput = {
-  aiProviderId: string;
-  modelName: string;
-};
-
 export type AssignAiProviderKeyInput = {
   aiProviderId: string;
   apiKey?: string;
@@ -96,3 +69,7 @@ export type AssignAiModelPriorityInput = {
 export type UpdateTenantInput = {
   forceAiProviderId?: string | null;
 };
+
+// Re-export provider types for backward compatibility if needed, 
+// though it's better to import from @/provider/provider.types
+export type { AiProvider, AiProviderModel };

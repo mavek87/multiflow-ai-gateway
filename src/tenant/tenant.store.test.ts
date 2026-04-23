@@ -4,6 +4,7 @@ import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { migrate } from 'drizzle-orm/bun-sqlite/migrator';
 import * as schema from '@/db/schema';
 import { TenantStore } from './tenant.store';
+import { ProviderStore } from '@/provider/provider.store';
 
 beforeAll(() => {
   process.env['ENCRYPTION_KEY'] = 'b'.repeat(64);
@@ -19,9 +20,12 @@ function makeDb() {
 
 describe('TenantStore', () => {
   let store: TenantStore;
+  let providerStore: ProviderStore;
 
   beforeEach(() => {
-    store = new TenantStore(makeDb());
+    const db = makeDb();
+    store = new TenantStore(db);
+    providerStore = new ProviderStore(db);
   });
 
   test('createTenant returns tenant and raw API key', () => {
@@ -42,23 +46,10 @@ describe('TenantStore', () => {
     expect(store.getTenantByApiKey('gw_wrongkey')).toBeNull();
   });
 
-  test('createProvider and listProviders', () => {
-    const p = store.createProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' })._unsafeUnwrap();
-    expect(p.name).toBe('Groq');
-    expect(store.listProviders()).toHaveLength(1);
-  });
-
-  test('createProviderModel and listProviderModels', () => {
-    const p = store.createProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' })._unsafeUnwrap();
-    const m = store.createProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' })._unsafeUnwrap();
-    expect(m.modelName).toBe('llama3-70b');
-    expect(store.listProviderModels(p.id)).toHaveLength(1);
-  });
-
   test('getDecryptedModelConfigs returns joined config with decrypted key', () => {
     const { tenant } = store.createTenant('Acme');
-    const p = store.createProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' })._unsafeUnwrap();
-    const m = store.createProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' })._unsafeUnwrap();
+    const p = providerStore.createProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' })._unsafeUnwrap();
+    const m = providerStore.createProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' })._unsafeUnwrap();
     store.assignAiProviderKey(tenant.id, { aiProviderId: p.id, apiKey: 'sk-groq-secret' });
     store.assignAiModelPriority(tenant.id, { aiProviderModelId: m.id, priority: 0 });
 
@@ -71,8 +62,8 @@ describe('TenantStore', () => {
 
   test('getDecryptedModelConfigs returns null apiKeyPlain for keyless provider', () => {
     const { tenant } = store.createTenant('Acme');
-    const p = store.createProvider({ name: 'Ollama', type: 'ollama', baseUrl: 'http://localhost:11434/v1' })._unsafeUnwrap();
-    const m = store.createProviderModel({ aiProviderId: p.id, modelName: 'qwen3-6' })._unsafeUnwrap();
+    const p = providerStore.createProvider({ name: 'Ollama', type: 'ollama', baseUrl: 'http://localhost:11434/v1' })._unsafeUnwrap();
+    const m = providerStore.createProviderModel({ aiProviderId: p.id, modelName: 'qwen3-6' })._unsafeUnwrap();
     store.assignAiProviderKey(tenant.id, { aiProviderId: p.id });
     store.assignAiModelPriority(tenant.id, { aiProviderModelId: m.id, priority: 0 });
 
@@ -82,9 +73,9 @@ describe('TenantStore', () => {
 
   test('getDecryptedModelConfigs orders by priority', () => {
     const { tenant } = store.createTenant('Acme');
-    const p = store.createProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' })._unsafeUnwrap();
-    const m1 = store.createProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' })._unsafeUnwrap();
-    const m2 = store.createProviderModel({ aiProviderId: p.id, modelName: 'llama3-8b' })._unsafeUnwrap();
+    const p = providerStore.createProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' })._unsafeUnwrap();
+    const m1 = providerStore.createProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' })._unsafeUnwrap();
+    const m2 = providerStore.createProviderModel({ aiProviderId: p.id, modelName: 'llama3-8b' })._unsafeUnwrap();
     store.assignAiProviderKey(tenant.id, { aiProviderId: p.id, apiKey: 'sk-x' });
     store.assignAiModelPriority(tenant.id, { aiProviderModelId: m1.id, priority: 1 });
     store.assignAiModelPriority(tenant.id, { aiProviderModelId: m2.id, priority: 0 });
