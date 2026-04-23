@@ -9,7 +9,6 @@ export type ModelCallFn = (messages: AIChatMessage[]) => Promise<CallResult>;
 
 type ModelResponse = { ok: true; content: string; toolCalls?: ToolCall[]; ttftMs: number; latencyMs: number };
 
-
 export class ToolCallOrchestrator {
   constructor(
     private readonly callModel: ModelCallFn,
