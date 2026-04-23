@@ -1,16 +1,14 @@
 import type { ModelConfig } from '@/engine/types';
 
-export type ModelResolutionError = 'no_providers' | 'model_not_found';
+export type TenantModelConfigError =
+    | { code: 'no_providers' }
+    | { code: 'model_not_found'; model: string };
 
-export interface ModelResolutionOptions {
+export interface TenantModelConfig {
     tenantId: string;
     requestedModel?: string;
     forceAiProviderId?: string | null;
 }
-
-export type ModelResolutionResult =
-    | { ok: true; configs: ModelConfig[] }
-    | { ok: false; error: ModelResolutionError; model?: string };
 
 export type Tenant = {
   id: string;

@@ -35,12 +35,12 @@ describe('TenantModelConfigResolver', () => {
     const { resolver, tenant } = createTestSetup();
     const result = resolver.resolve({ tenantId: tenant.id });
 
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.configs.length).toBe(1);
-      expect(result.configs[0]!.model).toBe('gpt-4o');
-      expect(result.configs[0]!.apiKey).toBe('sk-fake-key');
-      expect(result.configs[0]!.priority).toBe(10);
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.length).toBe(1);
+      expect(result.value[0]!.model).toBe('gpt-4o');
+      expect(result.value[0]!.apiKey).toBe('sk-fake-key');
+      expect(result.value[0]!.priority).toBe(10);
     }
   });
 
@@ -48,10 +48,10 @@ describe('TenantModelConfigResolver', () => {
     const { resolver, tenant } = createTestSetup();
     const result = resolver.resolve({ tenantId: tenant.id, requestedModel: 'claude-3-opus' });
 
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error).toBe('model_not_found');
-      expect(result.model).toBe('claude-3-opus');
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe('model_not_found');
+      if (result.error.code === 'model_not_found') expect(result.error.model).toBe('claude-3-opus');
     }
   });
 
@@ -60,19 +60,15 @@ describe('TenantModelConfigResolver', () => {
     const emptyTenant = store.createTenant('Empty').tenant;
 
     const result = resolver.resolve({ tenantId: emptyTenant.id });
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error).toBe('no_providers');
-    }
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) expect(result.error.code).toBe('no_providers');
   });
 
   test('returns no_providers if forceAiProviderId does not match any configured provider', () => {
     const { resolver, tenant } = createTestSetup();
     const result = resolver.resolve({ tenantId: tenant.id, forceAiProviderId: 'non-existent-provider-id' });
 
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error).toBe('no_providers');
-    }
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) expect(result.error.code).toBe('no_providers');
   });
 });

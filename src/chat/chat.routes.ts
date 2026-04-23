@@ -21,13 +21,13 @@ export function chatRoutePlugin(tenantStore: TenantStore) {
                 requestedModel: body.model,
                 forceAiProviderId: tenant!.forceAiProviderId
             });
-            if (!modelConfResult.ok) {
-                if (modelConfResult.error === 'no_providers') return unprocessableResponse('No providers configured for this tenant');
-                return badRequestResponse(`Model '${modelConfResult.model}' is not available for this tenant`);
+            if (modelConfResult.isErr()) {
+                if (modelConfResult.error.code === 'no_providers') return unprocessableResponse('No providers configured for this tenant');
+                return badRequestResponse(`Model '${modelConfResult.error.model}' is not available for this tenant`);
             }
 
             try {
-                const result = await chatService.handleChatRequest(tenant!, body, modelConfResult.configs);
+                const result = await chatService.handleChatRequest(tenant!, body, modelConfResult.value);
 
                 if (result.isStream) {
                     return new Response(result.payload, {
