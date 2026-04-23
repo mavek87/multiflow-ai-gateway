@@ -1,6 +1,7 @@
 import { describe, test, expect } from 'bun:test';
+import { ok, err } from 'neverthrow';
 import { ToolCallOrchestrator } from './tool-call-orchestrator';
-import type { CallResult } from './http-provider-client';
+import type { CallProviderResult } from './http-provider-client';
 import type { AIChatMessage, ToolDefinition } from '@/engine/types';
 
 const HISTORY: AIChatMessage[] = [
@@ -17,22 +18,21 @@ const TOOL_DEF: ToolDefinition = {
   },
 };
 
-function okResult(content: string): CallResult {
-  return { ok: true, content, ttftMs: 1, latencyMs: 5 };
+function okResult(content: string): CallProviderResult {
+  return ok({ content, ttftMs: 1, latencyMs: 5 });
 }
 
-function toolCallResult(name: string, args: Record<string, unknown> = {}): CallResult {
-  return {
-    ok: true,
+function toolCallResult(name: string, args: Record<string, unknown> = {}): CallProviderResult {
+  return ok({
     content: '',
     toolCalls: [{ id: `tc-${name}`, type: 'function', function: { name, arguments: args } }],
     ttftMs: 1,
     latencyMs: 5,
-  };
+  });
 }
 
-function hardError(): CallResult {
-  return { ok: false, kind: 'hard', error: new Error('upstream failure') };
+function hardError(): CallProviderResult {
+  return err({ kind: 'hard', error: new Error('upstream failure') });
 }
 
 describe('ToolCallOrchestrator — input validation', () => {
@@ -41,23 +41,23 @@ describe('ToolCallOrchestrator — input validation', () => {
   test('returns hard error when history is empty', async () => {
     const orchestrator = new ToolCallOrchestrator(async () => okResult('ok'));
     const result = await orchestrator.applyTools([], [TOOL_DEF], noop);
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.kind).toBe('hard');
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) expect(result.error.kind).toBe('hard');
   });
 
   test('returns hard error when history has no user message', async () => {
     const orchestrator = new ToolCallOrchestrator(async () => okResult('ok'));
     const historyWithoutUser: AIChatMessage[] = [{ role: 'system', content: 'system prompt' }];
     const result = await orchestrator.applyTools(historyWithoutUser, [TOOL_DEF], noop);
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.kind).toBe('hard');
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) expect(result.error.kind).toBe('hard');
   });
 
   test('returns hard error when tools list is empty', async () => {
     const orchestrator = new ToolCallOrchestrator(async () => okResult('ok'));
     const result = await orchestrator.applyTools(HISTORY, [], noop);
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.kind).toBe('hard');
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) expect(result.error.kind).toBe('hard');
   });
 });
 
@@ -78,30 +78,30 @@ describe('ToolCallOrchestrator', () => {
       return 'Sunny, 28C';
     });
 
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.content).toBe('It is sunny in Rome');
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) expect(result.value.content).toBe('It is sunny in Rome');
     expect(toolCallCount).toBe(1);
   });
 
   test('strips <think> tags from final response', async () => {
     const orchestrator = new ToolCallOrchestrator(async () => okResult('<think>reasoning</think>actual answer'));
     const result = await orchestrator.applyTools(HISTORY, [TOOL_DEF], async () => '');
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.content).toBe('actual answer');
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) expect(result.value.content).toBe('actual answer');
   });
 
   test('returns hard error when content is empty and no tool calls ran', async () => {
     const orchestrator = new ToolCallOrchestrator(async () => okResult(''));
     const result = await orchestrator.applyTools(HISTORY, [TOOL_DEF], async () => '');
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.kind).toBe('hard');
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) expect(result.error.kind).toBe('hard');
   });
 
   test('propagates hard failure from fetchCompletion', async () => {
     const orchestrator = new ToolCallOrchestrator(async () => hardError());
     const result = await orchestrator.applyTools(HISTORY, [TOOL_DEF], async () => '');
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.kind).toBe('hard');
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) expect(result.error.kind).toBe('hard');
   });
 
   test('executes multiple sequential tool-calls', async () => {
@@ -119,7 +119,7 @@ describe('ToolCallOrchestrator', () => {
       return 'result';
     });
 
-    expect(result.ok).toBe(true);
+    expect(result.isOk()).toBe(true);
     expect(callSequence).toEqual(['tool_a', 'tool_b']);
   });
 
@@ -173,8 +173,8 @@ describe('ToolCallOrchestrator', () => {
     });
 
     const result = await orchestrator.applyTools(HISTORY, [TOOL_DEF], async () => 'weather data', async () => {});
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.content.length).toBeGreaterThan(0);
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) expect(result.value.content.length).toBeGreaterThan(0);
   });
 
   test('caps at 10 calls and returns last assistant content', async () => {
@@ -185,7 +185,7 @@ describe('ToolCallOrchestrator', () => {
     });
 
     const result = await orchestrator.applyTools(HISTORY, [TOOL_DEF], async () => 'loop');
-    expect(result.ok).toBe(true);
+    expect(result.isOk()).toBe(true);
     expect(calls).toBe(10);
   });
 
@@ -198,7 +198,7 @@ describe('ToolCallOrchestrator', () => {
     });
 
     const result = await orchestrator.applyTools(HISTORY, [TOOL_DEF], async () => 'data');
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.kind).toBe('hard');
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) expect(result.error.kind).toBe('hard');
   });
 });
