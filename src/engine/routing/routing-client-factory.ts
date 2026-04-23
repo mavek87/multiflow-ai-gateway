@@ -1,5 +1,5 @@
 import { RoutingAIClient } from './routing-client';
-import { AuditedAIClient } from '../decorator/audited-ai-client';
+import { AuditedAIClient } from '@/audit/audit.decorator';
 import type { ModelConfig, AIClient } from '../types';
 import { MetricsStore } from '../observability/metrics';
 import { CircuitBreaker } from '../resilience/circuit-breaker';

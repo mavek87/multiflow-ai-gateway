@@ -1,9 +1,9 @@
 import { Elysia } from 'elysia';
 import { swagger } from '@elysiajs/swagger';
 import { db } from '@/db/database';
-import { TenantStore } from '@/tenant/tenant-store';
-import { adminRoutePlugin } from '@/routes/admin';
-import { chatRoutePlugin } from '@/routes/chat';
+import { TenantStore } from '@/tenant/tenant.store';
+import { adminRoutePlugin } from '@/admin/admin.routes';
+import { chatRoutePlugin } from '@/chat/chat.routes';
 import { config } from '@/config/config';
 import { createLogger } from '@/utils/logger';
 

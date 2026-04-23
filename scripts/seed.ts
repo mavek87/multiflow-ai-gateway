@@ -1,5 +1,5 @@
 import { db } from '@/db/database';
-import { TenantStore } from '@/tenant/tenant-store';
+import { TenantStore } from '@/tenant/tenant.store';
 
 const store = new TenantStore(db);
 

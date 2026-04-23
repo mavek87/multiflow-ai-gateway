@@ -4,8 +4,12 @@ This file provides guidance to AI agents when working with this repository.
 
 ## Project Overview
 
-The project is an **AI Gateway written in TypeScript/Bun** with multi-domain RAG orchestration (LightRAG + RAG-Anything), MCP support, and
-multi-tenancy
+The project is an **AI Gateway written in TypeScript/Bun** with:
+- **Modular Architecture (Folder-by-Feature)**
+- Multi-domain RAG orchestration (LightRAG + RAG-Anything)
+- MCP support
+- Multi-tenancy
+- Intelligent routing (UCB1) and circuit breaker.
 
 ## Tech Stack
 - Bun (https://bun.com/docs)

@@ -11,10 +11,13 @@ This document contains the code writing rules for AI agents.
 
 ## Architecture
 ### STRICT
+- **Modular Architecture (Folder-by-Feature)**: Each business feature must have its own directory containing its routes, services, schemas, and tests (e.g., `src/chat/`, `src/auth/`).
+- **File Naming**: Use the `[feature].[type].ts` convention (e.g., `chat.routes.ts`, `auth.middleware.ts`, `tenant.store.ts`).
 - Don't mix the logic with UI.
 ### FLEXIBLE
 - Fail fast: validate at system boundaries, trust data inside the domain.
-- Keep a clear layer separation (controller → service → repository or equivalent).
+- Keep a clear layer separation within the module (route → service → store/resolver).
+- Shared infrastructure belongs to `src/engine/` or `src/utils/`.
 
 ## Programming principles:
 ### STRICT:

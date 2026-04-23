@@ -1,4 +1,4 @@
-import type {AIChatMessage, ToolCall} from '@/schemas/openai.schema';
+import type {AIChatMessage, ToolCall} from '@/chat/chat.schema';
 export type {AIChatMessage, ToolCall};
 
 export interface AIBaseResponse {
