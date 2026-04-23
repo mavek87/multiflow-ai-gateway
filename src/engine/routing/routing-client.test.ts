@@ -38,11 +38,11 @@ function mockFetchFail(status = 500) {
   globalThis.fetch = async () => new Response('', { status });
 }
 
-describe('RoutingAIClient — openStream()', () => {
+describe('RoutingAIClient — callStream()', () => {
   test('returns body and model info on success', async () => {
     mockFetchOk();
     const client = createRoutingClient([model('m1')], 'system');
-    const result = await client.openStream([{ role: 'user', content: 'hi' }]);
+    const result = await client.callStream([{ role: 'user', content: 'hi' }]);
     expect(result).not.toBeNull();
     expect(result!.model).toBe('m1');
     expect(result!.body).toBeDefined();
@@ -51,7 +51,7 @@ describe('RoutingAIClient — openStream()', () => {
   test('returns null when all providers fail', async () => {
     mockFetchFail(500);
     const client = createRoutingClient([model('m1'), model('m2')], 'system');
-    const result = await client.openStream([{ role: 'user', content: 'hi' }]);
+    const result = await client.callStream([{ role: 'user', content: 'hi' }]);
     expect(result).toBeNull();
   });
 
@@ -66,7 +66,7 @@ describe('RoutingAIClient — openStream()', () => {
     const m1 = { ...model('m1'), priority: 0 };
     const m2 = { ...model('m2'), priority: 1 };
     const client = createRoutingClient([m1, m2], 'system');
-    const result = await client.openStream([{ role: 'user', content: 'hi' }]);
+    const result = await client.callStream([{ role: 'user', content: 'hi' }]);
     expect(result).not.toBeNull();
     expect(result!.model).toBe('m2');
     expect(calls).toBe(2);
@@ -76,7 +76,7 @@ describe('RoutingAIClient — openStream()', () => {
     mockFetchOk();
     const config = { ...model('m1'), aiProviderId: 'groq-id' };
     const client = createRoutingClient([config], 'system');
-    const result = await client.openStream([{ role: 'user', content: 'hi' }]);
+    const result = await client.callStream([{ role: 'user', content: 'hi' }]);
     expect(result!.aiProvider).toBe('groq-id');
   });
 });

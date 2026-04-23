@@ -8,11 +8,11 @@ export class AuditedAIClient implements AIClient {
         return this.executeWithAudit(ctx?.tenantId ?? 'unknown', () => this.innerClient.chat(messages, ctx, tools, dispatcher));
     }
 
-    public async openStream(messages: AIChatMessage[], ctx?: ToolContext, tools?: ToolDefinition[], dispatcher?: ToolDispatcher): Promise<AIChatStreamResponse | null> {
-        if (!this.innerClient.openStream) {
+    public async callStream(messages: AIChatMessage[], ctx?: ToolContext, tools?: ToolDefinition[], dispatcher?: ToolDispatcher): Promise<AIChatStreamResponse | null> {
+        if (!this.innerClient.callStream) {
             throw new Error('Streaming not supported by this client');
         }
-        return this.executeWithAudit(ctx?.tenantId ?? 'unknown', () => this.innerClient.openStream!(messages, ctx, tools, dispatcher));
+        return this.executeWithAudit(ctx?.tenantId ?? 'unknown', () => this.innerClient.callStream!(messages, ctx, tools, dispatcher));
     }
 
     public async *chatStream(messages: AIChatMessage[], ctx?: ToolContext, tools?: ToolDefinition[], dispatcher?: ToolDispatcher): AsyncGenerator<string> {
@@ -37,7 +37,7 @@ export class AuditedAIClient implements AIClient {
         try {
             const result = await operation();
             
-            // if operation is openStream and it returns null, that means all models failed
+            // if operation is callStream and it returns null, that means all models failed
             if (result === null) {
                 const latencyMs = Date.now() - startedAt;
                 logAudit({ tenantId, aiProvider: 'unknown', model: 'unknown', latencyMs, success: false, statusCode: 503 });

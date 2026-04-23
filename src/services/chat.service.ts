@@ -32,10 +32,10 @@ export class ChatService {
         log.info({tenantId: tenant.id, stream: isStream}, 'chat request starting');
 
         if (isStream) {
-            if (!client.openStream) {
+            if (!client.callStream) {
                 throw new Error('Streaming not supported by this client');
             }
-            const result = await client.openStream(chatRequest.messages, {tenantId: tenant.id, tenantName: tenant.name});
+            const result = await client.callStream(chatRequest.messages, {tenantId: tenant.id, tenantName: tenant.name});
             
             if (!result) {
                 throw new AiUnavailableError();

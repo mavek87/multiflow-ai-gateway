@@ -36,7 +36,7 @@ describe('ChatService', () => {
     const fakeBody = new ReadableStream();
     const mockClient: AIClient = {
       chat: async () => ({ model: 'gpt-4o', content: '', aiProvider: 'openai', aiProviderUrl: 'https://api.openai.com' }),
-      openStream: async () => ({ body: fakeBody, model: 'gpt-4o', aiProvider: 'openai', aiProviderUrl: 'https://api.openai.com' }),
+      callStream: async () => ({ body: fakeBody, model: 'gpt-4o', aiProvider: 'openai', aiProviderUrl: 'https://api.openai.com' }),
     };
     const service = new ChatService(makeFactory(mockClient));
 
@@ -50,7 +50,7 @@ describe('ChatService', () => {
   test('throws AiUnavailableError if stream returns null', async () => {
     const mockClient: AIClient = {
       chat: async () => ({ model: 'gpt-4o', content: '', aiProvider: 'openai', aiProviderUrl: 'https://api.openai.com' }),
-      openStream: async () => null,
+      callStream: async () => null,
     };
     const service = new ChatService(makeFactory(mockClient));
 

@@ -61,7 +61,7 @@ export type ToolDispatcher = (
 export interface AIClient {
   chat(messages: AIChatMessage[], ctx?: ToolContext, tools?: ToolDefinition[], dispatcher?: ToolDispatcher): Promise<AIChatResponse>;
   chatStream?(messages: AIChatMessage[], ctx?: ToolContext, tools?: ToolDefinition[], dispatcher?: ToolDispatcher): AsyncGenerator<string>;
-  openStream?(messages: AIChatMessage[], ctx?: ToolContext, tools?: ToolDefinition[], dispatcher?: ToolDispatcher): Promise<AIChatStreamResponse | null>;
+  callStream?(messages: AIChatMessage[], ctx?: ToolContext, tools?: ToolDefinition[], dispatcher?: ToolDispatcher): Promise<AIChatStreamResponse | null>;
   setTools?(tools: ToolDefinition[], dispatcher: ToolDispatcher): void;
   getTools?(): ToolDefinition[] | undefined;
 }

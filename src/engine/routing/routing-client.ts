@@ -50,11 +50,11 @@ export class RoutingAIClient implements AIClient {
     return { content: UNAVAILABLE_RESPONSE, model: 'unknown', aiProvider: '', aiProviderUrl: '' };
   }
 
-  async openStream(messages: AIChatMessage[], ctx?: ToolContext, tools?: ToolDefinition[], dispatcher?: ToolDispatcher): Promise<AIChatStreamResponse | null> {
+  async callStream(messages: AIChatMessage[], ctx?: ToolContext, tools?: ToolDefinition[], dispatcher?: ToolDispatcher): Promise<AIChatStreamResponse | null> {
     log.info({ messages: messages.length, tenantId: ctx?.tenantId ?? 'unknown' }, 'new stream request');
     
     const result = await this.executeWithRetry(async (selectedModel, client) => {
-       return await client.openStream(messages);
+       return await client.callStream(messages);
     }, true);
 
     if (result) {
