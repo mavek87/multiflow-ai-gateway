@@ -53,18 +53,9 @@ export function adminRoutePlugin(store: TenantStore) {
       detail: { summary: 'List all global providers', tags: ['Admin'] },
     })
     .post('/providers', ({ body }) => {
-      try {
-        const aiProvider = store.createProvider({
-          name: body.name,
-          type: body.type,
-          baseUrl: body.baseUrl,
-        });
-        return createdResponse(aiProvider);
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        if (msg.includes('UNIQUE constraint failed')) return conflictResponse('Provider already exists');
-        throw e;
-      }
+      const result = store.createProvider({ name: body.name, type: body.type, baseUrl: body.baseUrl });
+      if (result.isErr()) return conflictResponse('Provider already exists');
+      return createdResponse(result.value);
     }, {
       body: t.Object({
         name: t.String({ minLength: 1 }),
@@ -90,18 +81,9 @@ export function adminRoutePlugin(store: TenantStore) {
     })
     .post('/providers/:providerId/models', ({ params, body }) => {
       if (!store.getProviderById(params.providerId)) return notFoundResponse('Provider not found');
-      let model;
-      try {
-        model = store.createProviderModel({
-          aiProviderId: params.providerId,
-          modelName: body.modelName,
-        });
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        if (msg.includes('UNIQUE constraint failed')) return conflictResponse('Model already exists for this provider');
-        throw e;
-      }
-      return createdResponse(model);
+      const result = store.createProviderModel({ aiProviderId: params.providerId, modelName: body.modelName });
+      if (result.isErr()) return conflictResponse('Model already exists for this provider');
+      return createdResponse(result.value);
     }, {
       body: t.Object({ modelName: t.String({ minLength: 1 }) }),
       detail: {

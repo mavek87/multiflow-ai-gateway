@@ -47,15 +47,16 @@ export function chatRoutePlugin(tenantStore: TenantStore) {
             const result = chatResult.value;
             if (result.isStream) {
                 return new Response(result.payload, {
-                    headers: {
-                        'Content-Type': 'text/event-stream',
-                        'Cache-Control': 'no-cache',
-                        'Connection': 'keep-alive',
-                        'X-Model': result.model,
-                        'X-AI-Provider': result.aiProvider,
-                        'X-AI-Provider-URL': result.aiProviderUrl,
-                    },
-                });
+                        headers: {
+                            'Content-Type': 'text/event-stream',
+                            'Cache-Control': 'no-cache',
+                            'Connection': 'keep-alive',
+                            'X-Model': result.model,
+                            'X-AI-Provider': result.aiProvider,
+                            'X-AI-Provider-URL': result.aiProviderUrl,
+                        }
+                    }
+                );
             } else {
                 return Response.json(result.payload, {
                     headers: {
@@ -65,7 +66,6 @@ export function chatRoutePlugin(tenantStore: TenantStore) {
                     },
                 });
             }
-
         }, {
             body: ChatRequestSchema,
             detail: {

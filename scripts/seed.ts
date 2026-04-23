@@ -9,7 +9,7 @@ const groq = store.createProvider({
   name: 'Groq',
   type: 'openai',
   baseUrl: 'https://api.groq.com/openai/v1',
-});
+})._unsafeUnwrap();
 console.log(`[provider] Groq: ${groq.id}`);
 
 // --- Models ---
@@ -22,7 +22,7 @@ const groqModels = [
 
 const createdModels: Array<{ id: string; priority: number; name: string }> = [];
 for (const m of groqModels) {
-  const model = store.createProviderModel({ aiProviderId: groq.id, modelName: m.name });
+  const model = store.createProviderModel({ aiProviderId: groq.id, modelName: m.name })._unsafeUnwrap();
   createdModels.push({ id: model.id, priority: m.priority, name: m.name });
   console.log(`[model] ${m.name}: ${model.id}`);
 }

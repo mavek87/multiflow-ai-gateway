@@ -19,8 +19,8 @@ function createTestSetup() {
   const store = new TenantStore(db);
   const { tenant } = store.createTenant('TestTenant');
 
-  const provider = store.createProvider({ name: 'OpenAI', type: 'openai', baseUrl: 'https://api.openai.com/v1' });
-  const providerModel = store.createProviderModel({ aiProviderId: provider.id, modelName: 'gpt-4o' });
+  const provider = store.createProvider({ name: 'OpenAI', type: 'openai', baseUrl: 'https://api.openai.com/v1' })._unsafeUnwrap();
+  const providerModel = store.createProviderModel({ aiProviderId: provider.id, modelName: 'gpt-4o' })._unsafeUnwrap();
 
   store.assignAiProviderKey(tenant.id, { aiProviderId: provider.id, apiKey: 'sk-fake-key' });
   store.assignAiModelPriority(tenant.id, { aiProviderModelId: providerModel.id, priority: 10 });

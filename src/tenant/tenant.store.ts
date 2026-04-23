@@ -1,3 +1,4 @@
+import {ok, err, type Result} from 'neverthrow';
 import {and, desc, eq} from 'drizzle-orm';
 import type {DrizzleDb} from '@/db/database';
 import {aiProviderModels, aiProviders, gatewayApiKeys, tenantAiModelPriorities, tenantAiProviderKeys, tenants} from '@/db/schema';
@@ -88,7 +89,7 @@ export class TenantStore {
 
   // --- Global provider management ---
 
-  createProvider(input: CreateProviderInput): AiProvider {
+  createProvider(input: CreateProviderInput): Result<AiProvider, 'duplicate'> {
     const provider: AiProvider = {
       id: randomUUID(),
       name: input.name,
@@ -96,9 +97,15 @@ export class TenantStore {
       baseUrl: input.baseUrl,
       createdAt: Date.now(),
     };
-    this.db.insert(aiProviders).values(provider).run();
+    try {
+      this.db.insert(aiProviders).values(provider).run();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes('UNIQUE constraint failed')) return err('duplicate');
+      throw e;
+    }
     log.info(`Created provider: ${provider.name} (${provider.id})`);
-    return provider;
+    return ok(provider);
   }
 
   listProviders(): AiProvider[] {
@@ -111,7 +118,7 @@ export class TenantStore {
 
   // --- Provider model management ---
 
-  createProviderModel(input: CreateProviderModelInput): AiProviderModel {
+  createProviderModel(input: CreateProviderModelInput): Result<AiProviderModel, 'duplicate'> {
     const model: AiProviderModel = {
       id: randomUUID(),
       aiProviderId: input.aiProviderId,
@@ -119,9 +126,15 @@ export class TenantStore {
       enabled: true,
       createdAt: Date.now(),
     };
-    this.db.insert(aiProviderModels).values(model).run();
+    try {
+      this.db.insert(aiProviderModels).values(model).run();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes('UNIQUE constraint failed')) return err('duplicate');
+      throw e;
+    }
     log.info(`Created model: ${model.modelName} for provider ${model.aiProviderId}`);
-    return model;
+    return ok(model);
   }
 
   listProviderModels(aiProviderId: string): AiProviderModel[] {
