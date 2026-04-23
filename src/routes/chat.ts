@@ -37,11 +37,12 @@ export function chatRoutePlugin(tenantStore: TenantStore) {
                             'Connection': 'keep-alive',
                             'X-Model': result.model,
                             'X-AI-Provider': result.aiProvider,
+                            'X-AI-Provider-URL': result.aiProviderUrl,
                         },
                     });
                 } else {
                     return Response.json(result.payload, {
-                        headers: {'X-Model': result.model, 'X-AI-Provider': result.aiProvider},
+                        headers: {'X-Model': result.model, 'X-AI-Provider': result.aiProvider, 'X-AI-Provider-URL': result.aiProviderUrl},
                     });
                 }
             } catch (err) {

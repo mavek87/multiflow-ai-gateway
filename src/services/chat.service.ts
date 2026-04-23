@@ -45,16 +45,18 @@ export class ChatService {
                 isStream: true as const,
                 payload: result.body,
                 model: result.model,
-                aiProvider: result.aiProvider || result.model
+                aiProvider: result.aiProvider || result.model,
+                aiProviderUrl: result.aiProviderUrl,
             };
         } else {
             const result = await client.chat(chatRequest.messages, {tenantId: tenant.id, tenantName: tenant.name});
-            
+
             return {
                 isStream: false as const,
                 payload: this.buildChatResponsePayload(result.model, result.content),
                 model: result.model,
-                aiProvider: result.aiProvider || result.model
+                aiProvider: result.aiProvider || result.model,
+                aiProviderUrl: result.aiProviderUrl,
             };
         }
     }

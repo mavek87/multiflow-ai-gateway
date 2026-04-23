@@ -22,7 +22,7 @@ function createRoutingClient(models: any[], systemPrompt: string) {
   
   for (const m of models) {
     clients.set(m.model, new ModelEndpointClient(m, systemPrompt, 10000, 60000, false));
-    aiProviderIds.set(m.model, m.aiProviderId ?? '');
+    aiProviderIds.set(m.model, { name: m.aiProviderId ?? '', baseUrl: m.aiProviderBaseUrl ?? '' });
   }
   
   return new RoutingAIClient(clients, metrics, circuitBreaker, selector, aiProviderIds);

@@ -20,7 +20,7 @@ export class RoutingAIClient implements AIClient {
     private readonly metrics: MetricsStore,
     private readonly circuitBreaker: CircuitBreaker,
     private readonly selector: ModelSelector,
-    private readonly aiProviderIds: Map<string, string>
+    private readonly aiProviderIds: Map<string, { name: string; baseUrl: string }>
   ) {}
 
   async chat(messages: AIChatMessage[], ctx?: ToolContext, tools?: ToolDefinition[], dispatcher?: ToolDispatcher): Promise<AIChatResponse> {
@@ -37,10 +37,10 @@ export class RoutingAIClient implements AIClient {
 
     if (result) {
       log.info({ model: result.model, latencyMs: result.latencyMs, ttftMs: result.ttftMs }, 'model succeeded');
-      return { content: result.content, model: result.model, aiProvider: result.aiProvider };
+      return { content: result.content, model: result.model, aiProvider: result.aiProvider, aiProviderUrl: result.aiProviderUrl };
     }
 
-    return { content: UNAVAILABLE_RESPONSE, model: 'unknown', aiProvider: '' };
+    return { content: UNAVAILABLE_RESPONSE, model: 'unknown', aiProvider: '', aiProviderUrl: '' };
   }
 
   async openStream(messages: AIChatMessage[], ctx?: ToolContext, tools?: ToolDefinition[], dispatcher?: ToolDispatcher): Promise<AIChatStreamResponse | null> {
@@ -51,7 +51,7 @@ export class RoutingAIClient implements AIClient {
     }, true);
 
     if (result) {
-        return { body: result.body, model: result.model, aiProvider: result.aiProvider };
+        return { body: result.body, model: result.model, aiProvider: result.aiProvider, aiProviderUrl: result.aiProviderUrl };
     }
 
     return null;
@@ -91,7 +91,8 @@ export class RoutingAIClient implements AIClient {
             ok: true, 
             ...result, 
             model: selected, 
-            aiProvider: this.aiProviderIds.get(selected) ?? '' 
+            aiProvider: this.aiProviderIds.get(selected)?.name ?? '',
+            aiProviderUrl: this.aiProviderIds.get(selected)?.baseUrl ?? '',
         };
       }
 

@@ -16,7 +16,7 @@ new Elysia()
     provider: 'swagger-ui',
     path: '/docs',
     documentation: {
-      info: { title: 'bun-ai-gateway', version: '1.0.0', description: 'Self-hosted multi-tenant AI Gateway with OpenAI-compatible API, intelligent routing (UCB1 + circuit breaker), and per-tenant provider isolation.' },
+      info: { title: 'Multiflow AI Gateway', version: '1.0.0', description: 'Self-hosted multi-tenant AI Gateway with OpenAI-compatible API, intelligent routing (UCB1 + circuit breaker), and per-tenant provider isolation.' },
       tags: [
         { name: 'Chat', description: 'OpenAI-compatible chat completions endpoint' },
         { name: 'Admin', description: 'Tenant and provider management (master key required)' },

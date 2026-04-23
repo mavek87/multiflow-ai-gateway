@@ -27,8 +27,8 @@ export type ToolCall = Static<typeof ToolCallSchema>;
 export type AIChatMessage = Static<typeof MessageSchema>;
 
 export type ChatHandlerResult =
-    | {isStream: true; payload: ReadableStream<Uint8Array>; model: string; aiProvider: string}
-    | {isStream: false; payload: ChatCompletion; model: string; aiProvider: string};
+    | {isStream: true; payload: ReadableStream<Uint8Array>; model: string; aiProvider: string; aiProviderUrl: string}
+    | {isStream: false; payload: ChatCompletion; model: string; aiProvider: string; aiProviderUrl: string};
 
 export interface ChatCompletion {
     id: string;

@@ -24,6 +24,8 @@ export class ModelConfigResolver {
                 apiKey: modelConfig.apiKeyPlain ?? undefined,
                 priority: modelConfig.priority,
                 aiProviderId: modelConfig.aiProviderId,
+                aiProviderName: modelConfig.aiProviderName,
+                aiProviderBaseUrl: modelConfig.baseUrl,
                 aiProviderModelId: modelConfig.aiProviderModelId,
             })),
         };

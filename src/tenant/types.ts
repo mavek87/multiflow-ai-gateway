@@ -53,6 +53,7 @@ export type DecryptedModelConfig = {
   aiProviderModelId: string;
   modelName: string;
   aiProviderId: string;
+  aiProviderName: string;
   aiProviderType: string;
   baseUrl: string;
   priority: number;
