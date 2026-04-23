@@ -84,7 +84,7 @@ Auth Module (src/auth/auth.middleware.ts)
 Chat Module (src/chat/chat.routes.ts)
   |
   v
-Tenant Resolver (src/tenant/tenant.resolver.ts)
+Tenant Resolver (src/tenant/tenant-model-config.resolver.ts)
   |
   v
 AuditedAIClient (src/audit/audit.decorator.ts)

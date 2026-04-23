@@ -4,7 +4,7 @@ import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { migrate } from 'drizzle-orm/bun-sqlite/migrator';
 import * as schema from '@/db/schema';
 import { TenantStore } from '@/tenant/tenant.store';
-import { TenantResolver } from './tenant.resolver';
+import { TenantModelConfigResolver } from './tenant-model-config.resolver';
 
 beforeAll(() => {
   process.env['ENCRYPTION_KEY'] = 'c'.repeat(64);
@@ -25,12 +25,12 @@ function createTestSetup() {
   store.assignAiProviderKey(tenant.id, { aiProviderId: provider.id, apiKey: 'sk-fake-key' });
   store.assignAiModelPriority(tenant.id, { aiProviderModelId: providerModel.id, priority: 10 });
 
-  const resolver = new TenantResolver(store);
+  const resolver = new TenantModelConfigResolver(store);
 
   return { store, resolver, tenant };
 }
 
-describe('TenantResolver', () => {
+describe('TenantModelConfigResolver', () => {
   test('returns configs when tenant has configured models', () => {
     const { resolver, tenant } = createTestSetup();
     const result = resolver.resolve({ tenantId: tenant.id });

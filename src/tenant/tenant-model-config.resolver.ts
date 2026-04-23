@@ -2,12 +2,12 @@ import type {TenantStore} from '@/tenant/tenant.store';
 import type {ModelResolutionOptions, ModelResolutionResult} from './tenant.types';
 
 /**
- * TenantResolver — applies per-tenant configuration policies to chat requests.
+ * TenantModelConfigResolver — applies per-tenant configuration policies to chat requests.
  *
  * It determines which model configurations are available for a given tenant,
  * filtering by model name and applying provider lockdowns.
  */
-export class TenantResolver {
+export class TenantModelConfigResolver {
     constructor(private readonly tenantStore: TenantStore) {}
 
     public resolve({tenantId, requestedModel, forceAiProviderId}: ModelResolutionOptions): ModelResolutionResult {

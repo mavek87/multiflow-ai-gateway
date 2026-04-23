@@ -3,14 +3,14 @@ import type {TenantStore} from '@/tenant/tenant.store';
 import {badRequestResponse, internalErrorResponse, unprocessableResponse} from '@/utils/http';
 import {ChatService, AiUnavailableError} from './chat.service';
 import {RoutingAIClientFactory} from '@/engine/routing/routing-client-factory';
-import {TenantResolver} from '@/tenant/tenant.resolver';
+import {TenantModelConfigResolver} from '@/tenant/tenant-model-config.resolver';
 import {tenantAuthPlugin} from '@/auth/auth.middleware';
 import {ChatRequestSchema} from './chat.schema';
 
 export function chatRoutePlugin(tenantStore: TenantStore) {
     const routingAIClientFactory = new RoutingAIClientFactory();
     const chatService = new ChatService(routingAIClientFactory);
-    const tenantResolver = new TenantResolver(tenantStore);
+    const tenantResolver = new TenantModelConfigResolver(tenantStore);
 
     return new Elysia()
         .use(tenantAuthPlugin(tenantStore))
