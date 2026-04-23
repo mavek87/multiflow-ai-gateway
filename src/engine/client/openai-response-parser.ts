@@ -1,4 +1,4 @@
-import type { ToolCall } from '@/engine/types';
+import type { ToolCall } from '@/engine/engine.types';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('MODEL-CLIENT');

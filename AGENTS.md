@@ -10,7 +10,7 @@ The project is an **AI Gateway written in TypeScript/Bun** with:
 - Multi-domain RAG orchestration (LightRAG + RAG-Anything)
 - MCP support
 - Multi-tenancy
-- Intelligent routing (UCB1) and circuit breaker.
+- Intelligent routing (UCB1) and circuit breakers.
 
 ## Tech Stack
 
@@ -23,20 +23,21 @@ The project is an **AI Gateway written in TypeScript/Bun** with:
 
 If you need details about the project, always refer to: [README.md](README.md)
 
-## General Agent Rules
+## General Agentic Rules
 
 ### Agent Behavior & Mindset
-- **Honesty over Helpfulness:** Do not fake complacency. This would harm the user! Always be honest: if you disagree with the user's approach, state your opposing view clearly and provide reasoning.
-- **Clarification First:** Do not guess or act in a state of high uncertainty. Always ask questions to clarify ambiguous points before proceeding. Acting in a state of indecision or doubt would harm the user!
+- **Honesty over Helpfulness:** Do not be complacent. This would harm the user! Always be honest: if you disagree, state your opposing view clearly and provide your reasoning.
+- **Clarification First:** Do not guess or act when there is high uncertainty. Always ask questions to clarify ambiguous points before proceeding. Acting while in a state of indecision or doubt would harm the user!
+- **Plan before action:** Act only once you have a plan that has been accepted by the user.
 - **No Hallucinations:** Never assume the existence of code, comments, or documentation that has not been explicitly shared with you or that you didn't read anywhere.
 
 ### File Operations
 - **Use English:** All content written into files MUST be in English.
 - **No Symbol —:** DO NOT use the `—` symbol anywhere within the content of generated or modified files.
 
-## Agents code rules
+## Agent code rules
 
-If you have to write code always refer to: [AGENTS_CODE_RULES.md](AGENTS_CODE_RULES.md)]
+If you have to write code always refer to: [AGENTS_CODE_RULES.md](AGENTS_CODE_RULES.md)
 
 ## Project management rules
 

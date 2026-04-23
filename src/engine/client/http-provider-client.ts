@@ -8,7 +8,7 @@
  */
 
 import { ok, err, type Result } from 'neverthrow';
-import type { AIChatMessage, ModelConfig, ToolDefinition, ToolCall } from '@/engine/types';
+import type { AIChatMessage, ModelConfig, ToolDefinition, ToolCall } from '@/engine/engine.types';
 import { createLogger } from '@/utils/logger';
 import { ToolCallOrchestrator } from './tool-call-orchestrator';
 import { SseResponseParser, JsonResponseParser, type OpenAIResponseParser } from './openai-response-parser';
@@ -25,14 +25,13 @@ export type CallProviderStreamResult = Result<CallProviderStreamSuccess, CallPro
 export class HttpProviderClient {
   constructor(
     private config: ModelConfig,
-    private systemPrompt: string,
     private firstTokenTimeoutMs = 10000,
     private streamWatchdogMs = 120000,
     private enableThinking = false,
   ) {}
 
-  async call(messages: AIChatMessage[]): Promise<CallProviderResult> {
-    const history: AIChatMessage[] = [{ role: 'system', content: this.systemPrompt }, ...messages];
+  async call(messages: AIChatMessage[], systemPrompt: string): Promise<CallProviderResult> {
+    const history: AIChatMessage[] = [{ role: 'system', content: systemPrompt }, ...messages];
     const result = await this.callProvider(history, new SseResponseParser(this.firstTokenTimeoutMs, this.streamWatchdogMs));
     return result.map((r) => ({ ...r, content: stripThinkTags(r.content) }));
   }
@@ -42,7 +41,7 @@ export class HttpProviderClient {
    * Returns a StreamResult error if the HTTP request fails before streaming starts.
    * Once the ReadableStream is returned, the caller owns it and must handle mid-stream errors.
    */
-  async callStream(messages: AIChatMessage[]): Promise<CallProviderStreamResult> {
+  async callStream(messages: AIChatMessage[], systemPrompt: string): Promise<CallProviderStreamResult> {
     const controller = new AbortController();
     const firstTokenTimeout = setTimeout(() => controller.abort(), this.firstTokenTimeoutMs);
     const start = Date.now();
@@ -51,7 +50,7 @@ export class HttpProviderClient {
       const res = await fetch(this.config.url, {
         method: 'POST',
         headers: this.buildHeaders(),
-        body: JSON.stringify({ model: this.config.model, messages: [{ role: 'system', content: this.systemPrompt }, ...messages], stream: true }),
+        body: JSON.stringify({ model: this.config.model, messages: [{ role: 'system', content: systemPrompt }, ...messages], stream: true }),
         signal: controller.signal,
       });
 
@@ -77,11 +76,12 @@ export class HttpProviderClient {
 
   async callWithTools(
     messages: AIChatMessage[],
+    systemPrompt: string,
     tools: ToolDefinition[],
     executeTool: (name: string, args: Record<string, unknown>) => Promise<string>,
     onFirstToolCall?: () => Promise<void>,
   ): Promise<CallProviderResult> {
-    const history: AIChatMessage[] = [{ role: 'system', content: this.systemPrompt }, ...messages];
+    const history: AIChatMessage[] = [{ role: 'system', content: systemPrompt }, ...messages];
     const responseParser = new JsonResponseParser();
     const orchestrator = new ToolCallOrchestrator((msgs) => this.callProvider(msgs, responseParser, tools));
     return orchestrator.applyTools(history, tools, executeTool, onFirstToolCall);

@@ -12,7 +12,7 @@ import type {
   ToolContext,
   ToolDefinition,
   ToolDispatcher,
-} from '@/engine/types';
+} from '@/engine/engine.types';
 import type { CallProviderError, CallProviderSuccess, CallProviderStreamSuccess } from '@/engine/client/http-provider-client';
 import { HttpProviderClient } from '@/engine/client/http-provider-client';
 import type { ModelSelector } from '@/engine/selection/types';
@@ -35,7 +35,7 @@ export class RoutingAIClient implements AIClient {
     private readonly aiProviderIds: Map<string, { name: string; baseUrl: string }>
   ) {}
 
-  async chat(messages: AIChatMessage[], ctx?: ToolContext, tools?: ToolDefinition[], dispatcher?: ToolDispatcher): Promise<AIChatResponse> {
+  async chat(messages: AIChatMessage[], systemPrompt: string, ctx?: ToolContext, tools?: ToolDefinition[], dispatcher?: ToolDispatcher): Promise<AIChatResponse> {
     log.info({ messages: messages.length, tenantId: ctx?.tenantId ?? 'unknown' }, 'new request');
 
     const result = await this.executeWithRetry<CallProviderSuccess>((client) => {
@@ -43,9 +43,9 @@ export class RoutingAIClient implements AIClient {
         ? (name: string, args: Record<string, unknown>) => dispatcher(name, args, ctx)
         : undefined;
       if (tools && tools.length > 0 && boundDispatcher) {
-        return client.callWithTools(messages, tools, boundDispatcher);
+        return client.callWithTools(messages, systemPrompt, tools, boundDispatcher);
       }
-      return client.call(messages);
+      return client.call(messages, systemPrompt);
     });
 
     if (result) {
@@ -56,10 +56,10 @@ export class RoutingAIClient implements AIClient {
     return { content: UNAVAILABLE_RESPONSE, model: 'unknown', aiProvider: '', aiProviderUrl: '' };
   }
 
-  async callStream(messages: AIChatMessage[], ctx?: ToolContext): Promise<AIChatStreamResponse | null> {
+  async callStream(messages: AIChatMessage[], systemPrompt: string, ctx?: ToolContext): Promise<AIChatStreamResponse | null> {
     log.info({ messages: messages.length, tenantId: ctx?.tenantId ?? 'unknown' }, 'new stream request');
 
-    const result = await this.executeWithRetry<CallProviderStreamSuccess>((client) => client.callStream(messages));
+    const result = await this.executeWithRetry<CallProviderStreamSuccess>((client) => client.callStream(messages, systemPrompt));
 
     if (result) {
       return { body: result.body, model: result.model, aiProvider: result.aiProvider, aiProviderUrl: result.aiProviderUrl };

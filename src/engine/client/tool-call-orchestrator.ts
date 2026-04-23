@@ -1,5 +1,5 @@
 import { ok, err } from 'neverthrow';
-import type { AIChatMessage, ToolCall, ToolDefinition } from '@/engine/types';
+import type { AIChatMessage, ToolCall, ToolDefinition } from '@/engine/engine.types';
 import type { CallProviderResult } from './http-provider-client';
 import { createLogger } from '@/utils/logger';
 import { stripThinkTags } from '@/utils/text';

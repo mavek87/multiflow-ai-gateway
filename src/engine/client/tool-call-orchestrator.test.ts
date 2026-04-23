@@ -2,7 +2,7 @@ import { describe, test, expect } from 'bun:test';
 import { ok, err } from 'neverthrow';
 import { ToolCallOrchestrator } from './tool-call-orchestrator';
 import type { CallProviderResult } from './http-provider-client';
-import type { AIChatMessage, ToolDefinition } from '@/engine/types';
+import type { AIChatMessage, ToolDefinition } from '@/engine/engine.types';
 
 const HISTORY: AIChatMessage[] = [
   { role: 'system', content: 'you are a helpful assistant' },

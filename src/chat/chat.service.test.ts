@@ -2,7 +2,7 @@ import { describe, test, expect, afterEach } from 'bun:test';
 import { ChatService } from './chat.service';
 import { RoutingAIClientFactory } from '@/engine/routing/routing-client-factory';
 import type { Tenant } from '@/tenant/tenant.types';
-import type { AIClient, ModelConfig } from '@/engine/types';
+import type { AIClient, ModelConfig } from '@/engine/engine.types';
 
 const fakeTenant = { id: 'tenant-1', name: 'Test' } as Tenant;
 const fakeConfigs: ModelConfig[] = [{ url: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o', apiKey: 'sk-fake' }];

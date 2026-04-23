@@ -1,6 +1,6 @@
 import {ok, err, type Result} from 'neverthrow';
 import type {Tenant} from '@/tenant/tenant.types';
-import type {ModelConfig, AIChatMessage} from '@/engine/types';
+import type {ModelConfig, AIChatMessage} from '@/engine/engine.types';
 import type {ChatCompletion, ChatHandlerResult} from './chat.schema';
 import {RoutingAIClientFactory} from '@/engine/routing/routing-client-factory';
 import {createLogger} from '@/utils/logger';
@@ -24,7 +24,8 @@ export class ChatService {
     constructor(private readonly aiClientFactory: RoutingAIClientFactory) {}
 
     public async handleChatRequest(tenant: Tenant, chatRequest: ChatServiceRequest, modelConfigs: ModelConfig[]): Promise<Result<ChatHandlerResult, ChatServiceError>> {
-        const client = this.aiClientFactory.create(modelConfigs, chatRequest.system ?? DEFAULT_SYSTEM_PROMPT);
+        const client = this.aiClientFactory.create(modelConfigs);
+        const systemPrompt = chatRequest.system ?? DEFAULT_SYSTEM_PROMPT;
         const isStream = chatRequest.stream === true;
 
         log.info({tenantId: tenant.id, stream: isStream}, 'chat request starting');
@@ -33,7 +34,7 @@ export class ChatService {
             if (!client.callStream) {
                 return err({code: 'stream_not_supported'});
             }
-            const result = await client.callStream(chatRequest.messages, {tenantId: tenant.id, tenantName: tenant.name});
+            const result = await client.callStream(chatRequest.messages, systemPrompt, {tenantId: tenant.id, tenantName: tenant.name});
 
             if (!result) {
                 return err({code: 'ai_unavailable'});
@@ -47,7 +48,7 @@ export class ChatService {
                 aiProviderUrl: result.aiProviderUrl,
             });
         } else {
-            const result = await client.chat(chatRequest.messages, {tenantId: tenant.id, tenantName: tenant.name});
+            const result = await client.chat(chatRequest.messages, systemPrompt, {tenantId: tenant.id, tenantName: tenant.name});
 
             return ok({
                 isStream: false as const,

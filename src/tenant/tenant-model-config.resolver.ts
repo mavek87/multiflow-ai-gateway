@@ -1,7 +1,7 @@
 import { ok, err, type Result } from 'neverthrow';
 import type {TenantStore} from '@/tenant/tenant.store';
 import type {TenantModelConfig, TenantModelConfigError} from './tenant.types';
-import type { ModelConfig } from '@/engine/types';
+import type { ModelConfig } from '@/engine/engine.types';
 
 export class TenantModelConfigResolver {
     constructor(private readonly tenantStore: TenantStore) {}

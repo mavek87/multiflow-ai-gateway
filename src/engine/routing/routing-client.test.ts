@@ -13,18 +13,18 @@ const model = (name: string) => ({
   aiProviderModelId: 'model-1',
 });
 
-function createRoutingClient(models: any[], systemPrompt: string) {
+function createRoutingClient(models: any[]) {
   const metrics = new MetricsStore();
   const circuitBreaker = new CircuitBreaker();
   const selector = new UCB1Selector();
   const clients = new Map();
   const aiProviderIds = new Map();
-  
+
   for (const m of models) {
-    clients.set(m.model, new HttpProviderClient(m, systemPrompt, 10000, 60000, false));
+    clients.set(m.model, new HttpProviderClient(m, 10000, 60000, false));
     aiProviderIds.set(m.model, { name: m.aiProviderId ?? '', baseUrl: m.aiProviderBaseUrl ?? '' });
   }
-  
+
   return new RoutingAIClient(clients, metrics, circuitBreaker, selector, aiProviderIds);
 }
 
@@ -41,8 +41,8 @@ function mockFetchFail(status = 500) {
 describe('RoutingAIClient — callStream()', () => {
   test('returns body and model info on success', async () => {
     mockFetchOk();
-    const client = createRoutingClient([model('m1')], 'system');
-    const result = await client.callStream([{ role: 'user', content: 'hi' }]);
+    const client = createRoutingClient([model('m1')]);
+    const result = await client.callStream([{ role: 'user', content: 'hi' }], 'system');
     expect(result).not.toBeNull();
     expect(result!.model).toBe('m1');
     expect(result!.body).toBeDefined();
@@ -50,8 +50,8 @@ describe('RoutingAIClient — callStream()', () => {
 
   test('returns null when all providers fail', async () => {
     mockFetchFail(500);
-    const client = createRoutingClient([model('m1'), model('m2')], 'system');
-    const result = await client.callStream([{ role: 'user', content: 'hi' }]);
+    const client = createRoutingClient([model('m1'), model('m2')]);
+    const result = await client.callStream([{ role: 'user', content: 'hi' }], 'system');
     expect(result).toBeNull();
   });
 
@@ -65,8 +65,8 @@ describe('RoutingAIClient — callStream()', () => {
     };
     const m1 = { ...model('m1'), priority: 0 };
     const m2 = { ...model('m2'), priority: 1 };
-    const client = createRoutingClient([m1, m2], 'system');
-    const result = await client.callStream([{ role: 'user', content: 'hi' }]);
+    const client = createRoutingClient([m1, m2]);
+    const result = await client.callStream([{ role: 'user', content: 'hi' }], 'system');
     expect(result).not.toBeNull();
     expect(result!.model).toBe('m2');
     expect(calls).toBe(2);
@@ -75,8 +75,8 @@ describe('RoutingAIClient — callStream()', () => {
   test('returns aiProvider from model config', async () => {
     mockFetchOk();
     const config = { ...model('m1'), aiProviderId: 'groq-id' };
-    const client = createRoutingClient([config], 'system');
-    const result = await client.callStream([{ role: 'user', content: 'hi' }]);
+    const client = createRoutingClient([config]);
+    const result = await client.callStream([{ role: 'user', content: 'hi' }], 'system');
     expect(result!.aiProvider).toBe('groq-id');
   });
 });
