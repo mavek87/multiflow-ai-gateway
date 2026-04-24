@@ -1,30 +1,30 @@
-import { describe, test, expect, beforeAll } from 'bun:test';
-import { Database } from 'bun:sqlite';
-import { drizzle } from 'drizzle-orm/bun-sqlite';
-import { migrate } from 'drizzle-orm/bun-sqlite/migrator';
-import * as schema from '@/db/schema';
-import { TenantStore } from '@/tenant/tenant.store';
+import { describe, test, expect, beforeAll, beforeEach } from 'bun:test';
 import { chatRoutePlugin } from '@/chat/chat.routes';
 import { Elysia } from 'elysia';
+import { createTestContext, ensureTestEncryptionKey } from '@test/test-setup';
+import type { TenantStore } from '@/tenant/tenant.store';
 
 beforeAll(() => {
-  process.env['ENCRYPTION_KEY'] = 'c'.repeat(64);
+  ensureTestEncryptionKey();
 });
+
+function makeApp(store: TenantStore) {
+  return new Elysia().use(chatRoutePlugin(store));
+}
 
 const VALID_BODY = JSON.stringify({ messages: [{ role: 'user', content: 'hi' }] });
 
-function makeApp() {
-  const sqlite = new Database(':memory:');
-  sqlite.run('PRAGMA foreign_keys=ON');
-  const db = drizzle(sqlite, { schema });
-  migrate(db, { migrationsFolder: './drizzle' });
-  const store = new TenantStore(db);
-  return { app: new Elysia().use(chatRoutePlugin(store)), store };
-}
-
 describe('chat auth guard', () => {
+  let app: ReturnType<typeof makeApp>;
+  let store: TenantStore;
+
+  beforeEach(() => {
+    const context = createTestContext();
+    store = context.tenantStore;
+    app = makeApp(store);
+  });
+
   test('returns 401 when Authorization header is missing', async () => {
-    const { app } = makeApp();
     const res = await app.handle(new Request('http://localhost/v1/chat/completions', {
       method: 'POST', body: VALID_BODY, headers: { 'Content-Type': 'application/json' },
     }));
@@ -32,7 +32,6 @@ describe('chat auth guard', () => {
   });
 
   test('returns 401 for wrong key', async () => {
-    const { app } = makeApp();
     const res = await app.handle(new Request('http://localhost/v1/chat/completions', {
       method: 'POST', body: VALID_BODY,
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer gw_wrongkey' },
@@ -41,7 +40,6 @@ describe('chat auth guard', () => {
   });
 
   test('returns 422 for invalid body (empty messages)', async () => {
-    const { app, store } = makeApp();
     const { rawApiKey } = store.createTenant('TestCorp');
     const res = await app.handle(new Request('http://localhost/v1/chat/completions', {
       method: 'POST', body: JSON.stringify({ messages: [] }),
@@ -51,7 +49,6 @@ describe('chat auth guard', () => {
   });
 
   test('passes auth for valid key (returns 422 due to no providers)', async () => {
-    const { app, store } = makeApp();
     const { rawApiKey } = store.createTenant('TestCorp');
     const res = await app.handle(new Request('http://localhost/v1/chat/completions', {
       method: 'POST', body: VALID_BODY,

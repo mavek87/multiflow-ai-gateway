@@ -1,40 +1,27 @@
-import { describe, test, expect, beforeAll } from 'bun:test';
-import { Database } from 'bun:sqlite';
-import { drizzle } from 'drizzle-orm/bun-sqlite';
-import { migrate } from 'drizzle-orm/bun-sqlite/migrator';
-import * as schema from '@/db/schema';
-import { TenantStore } from '@/tenant/tenant.store';
-import { ProviderStore } from '@/provider/provider.store';
+import { describe, test, expect, beforeAll, beforeEach } from 'bun:test';
 import { TenantModelConfigResolver } from './tenant-model-config.resolver';
+import { createTestContext, seedTestTenantAndProvider, ensureTestEncryptionKey } from '@test/test-setup';
+import type { TenantStore } from '@/tenant/tenant.store';
+import type { Tenant } from '@/tenant/tenant.types';
 
 beforeAll(() => {
-  process.env['ENCRYPTION_KEY'] = 'c'.repeat(64);
+  ensureTestEncryptionKey();
 });
 
-function createTestSetup() {
-  const sqlite = new Database(':memory:');
-  sqlite.run('PRAGMA foreign_keys=ON');
-  const db = drizzle(sqlite, { schema });
-  migrate(db, { migrationsFolder: './drizzle' });
-
-  const store = new TenantStore(db);
-  const providerStore = new ProviderStore(db);
-  const { tenant } = store.createTenant('TestTenant');
-
-  const provider = providerStore.createProvider({ name: 'OpenAI', type: 'openai', baseUrl: 'https://api.openai.com/v1' })._unsafeUnwrap();
-  const providerModel = providerStore.createProviderModel({ aiProviderId: provider.id, modelName: 'gpt-4o' })._unsafeUnwrap();
-
-  store.assignAiProviderKey(tenant.id, { aiProviderId: provider.id, apiKey: 'sk-fake-key' });
-  store.assignAiModelPriority(tenant.id, { aiProviderModelId: providerModel.id, priority: 10 });
-
-  const resolver = new TenantModelConfigResolver(store);
-
-  return { store, resolver, tenant };
-}
-
 describe('TenantModelConfigResolver', () => {
+  let store: TenantStore;
+  let resolver: TenantModelConfigResolver;
+  let tenant: Tenant;
+
+  beforeEach(() => {
+    const context = createTestContext();
+    store = context.tenantStore;
+    const seeded = seedTestTenantAndProvider(store, context.providerStore);
+    tenant = seeded.tenant;
+    resolver = new TenantModelConfigResolver(store);
+  });
+
   test('returns configs when tenant has configured models', () => {
-    const { resolver, tenant } = createTestSetup();
     const result = resolver.resolve({ tenantId: tenant.id });
 
     expect(result.isOk()).toBe(true);
@@ -47,7 +34,6 @@ describe('TenantModelConfigResolver', () => {
   });
 
   test('returns model_not_found if requested model is not assigned to tenant', () => {
-    const { resolver, tenant } = createTestSetup();
     const result = resolver.resolve({ tenantId: tenant.id, requestedModel: 'claude-3-opus' });
 
     expect(result.isErr()).toBe(true);
@@ -58,7 +44,6 @@ describe('TenantModelConfigResolver', () => {
   });
 
   test('returns no_providers if tenant has empty configuration', () => {
-    const { store, resolver } = createTestSetup();
     const emptyTenant = store.createTenant('Empty').tenant;
 
     const result = resolver.resolve({ tenantId: emptyTenant.id });
@@ -67,7 +52,6 @@ describe('TenantModelConfigResolver', () => {
   });
 
   test('returns no_providers if forceAiProviderId does not match any configured provider', () => {
-    const { resolver, tenant } = createTestSetup();
     const result = resolver.resolve({ tenantId: tenant.id, forceAiProviderId: 'non-existent-provider-id' });
 
     expect(result.isErr()).toBe(true);

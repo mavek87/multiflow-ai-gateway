@@ -1,5 +1,3 @@
-import type { AiProvider, AiProviderModel } from '@/provider/provider.types';
-
 export type TenantModelConfigError =
     | { code: 'no_providers' }
     | { code: 'model_not_found'; model: string };
@@ -17,13 +15,6 @@ export type Tenant = {
   createdAt: number;
 };
 
-export type GatewayApiKey = {
-  id: string;
-  tenantId: string;
-  keyHash: string;
-  createdAt: number;
-  lastUsedAt: number | null;
-};
 
 export type TenantAiProviderKey = {
   id: string;
@@ -69,7 +60,3 @@ export type AssignAiModelPriorityInput = {
 export type UpdateTenantInput = {
   forceAiProviderId?: string | null;
 };
-
-// Re-export provider types for backward compatibility if needed, 
-// though it's better to import from @/provider/provider.types
-export type { AiProvider, AiProviderModel };
