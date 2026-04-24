@@ -189,6 +189,34 @@ describe('ToolCallOrchestrator', () => {
     expect(calls).toBe(10);
   });
 
+  test('accumulates latency across all rounds and preserves ttftMs from first call', async () => {
+    let call = 0;
+    const orchestrator = new ToolCallOrchestrator(async () => {
+      call++;
+      if (call === 1) return ok({ content: '', toolCalls: [{ id: 'tc-1', type: 'function', function: { name: 'tool_a', arguments: {} } }], ttftMs: 10, latencyMs: 100 });
+      return ok({ content: 'done', ttftMs: 20, latencyMs: 200 });
+    });
+
+    const result = await orchestrator.applyTools(HISTORY, [TOOL_DEF], async () => 'result');
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.ttftMs).toBe(10);
+      expect(result.value.latencyMs).toBe(300);
+    }
+  });
+
+  test('preserves metrics when loop is exhausted at max calls', async () => {
+    const modelFn = async () => ok({ content: '', toolCalls: [{ id: 'tc-1', type: 'function' as const, function: { name: 'infinite_tool', arguments: {} } }], ttftMs: 5, latencyMs: 50 });
+    const orchestrator = new ToolCallOrchestrator(modelFn, 3);
+
+    const result = await orchestrator.applyTools(HISTORY, [TOOL_DEF], async () => 'loop');
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.ttftMs).toBe(5);
+      expect(result.value.latencyMs).toBe(150);
+    }
+  });
+
   test('propagates hard failure from fetchCompletion mid-loop', async () => {
     let call = 0;
     const orchestrator = new ToolCallOrchestrator(async () => {

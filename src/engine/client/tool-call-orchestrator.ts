@@ -25,23 +25,27 @@ export class ToolCallOrchestrator {
 
         const conversationHistory = [...history];
         let ackSent = false;
+        let firstTtftMs = 0;
+        let totalLatencyMs = 0;
 
         for (let callNumber = 0; callNumber < this.maxModelCalls; callNumber++) {
             const result = await this.callModelFn(conversationHistory);
             if (result.isErr()) return result;
 
             const {content, toolCalls, ttftMs, latencyMs} = result.value;
+            if (callNumber === 0) firstTtftMs = ttftMs;
+            totalLatencyMs += latencyMs;
             history.push({role: 'assistant', content, ...(toolCalls ? {tool_calls: toolCalls} : {})});
 
             const hasToolCalls = toolCalls != null && toolCalls.length > 0;
-            if (!hasToolCalls) return this.buildTextResult(content, ttftMs, latencyMs, ackSent, conversationHistory);
+            if (!hasToolCalls) return this.buildTextResult(content, firstTtftMs, totalLatencyMs, ackSent, conversationHistory);
 
             ackSent = await this.notifyFirstToolCall(ackSent, onFirstToolCall);
             await this.executeToolCallsAndAppendResults(toolCalls, conversationHistory, executeTool);
         }
 
         const finalContent = conversationHistory.findLast(m => m.role === 'assistant')?.content ?? '';
-        return ok({content: stripThinkTags(finalContent) || '✅', ttftMs: 0, latencyMs: 0});
+        return ok({content: stripThinkTags(finalContent) || '✅', ttftMs: firstTtftMs, latencyMs: totalLatencyMs});
     }
 
     private buildTextResult(content: string, ttftMs: number, latencyMs: number, ackSent: boolean, history: AIChatMessage[]): CallProviderResult {
