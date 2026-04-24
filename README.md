@@ -296,6 +296,7 @@ src/
   config/                   # App configuration
   db/                       # Database connection and schema
   engine/                   # Shared AI Engine (routing, resilience, clients)
+  provider/                 # Global provider registry (ai_providers, ai_provider_models)
   tenant/                   # Tenant management and resolution
   utils/                    # Shared utilities (crypto, http, logger)
   index.ts                  # Entry point

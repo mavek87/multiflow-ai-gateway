@@ -43,24 +43,18 @@ If you have to write code always refer to: [AGENTS_CODE_RULES.md](AGENTS_CODE_RU
 
 All the commands are available in [package.json](package.json)
 
-### How to run tests?
+### How to check tests and Typescript warnings at the same time?
 
 ```bash
-bun run test
+bun run check
 ```
-
-### How to check TypeScript warnings?
-
-```bash
-bun run typecheck
-```
-
-### How to inspect the database?
-
-**Use sqlite3**
 
 ### How to run the app in dev?
 
 ```bash
 bun run dev
 ```
+
+### How to inspect the database?
+
+**Use sqlite3**
