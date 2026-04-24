@@ -19,7 +19,7 @@ describe('HttpProviderClient — OpenAI-compat response parsing', () => {
     const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' });
     // @ts-ignore
     globalThis.fetch = mockStreamFetch(['Hello', ' world']);
-    const result = await client.call([{ role: 'user', content: 'hi' }], SYSTEM);
+    const result = await client.call(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(result.isOk()).toBe(true);
     if (result.isOk()) expect(result.value.content).toBe('Hello world');
   });
@@ -28,7 +28,7 @@ describe('HttpProviderClient — OpenAI-compat response parsing', () => {
     const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' });
     // @ts-ignore
     globalThis.fetch = mockStreamFetch(['<think>internal reasoning</think>', 'actual answer']);
-    const result = await client.call([{ role: 'user', content: 'hi' }], SYSTEM);
+    const result = await client.call(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(result.isOk()).toBe(true);
     if (result.isOk()) expect(result.value.content).toBe('actual answer');
   });
@@ -37,7 +37,7 @@ describe('HttpProviderClient — OpenAI-compat response parsing', () => {
     const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' });
     // @ts-ignore
     globalThis.fetch = async () => new Response('', { status: 500 });
-    const result = await client.call([{ role: 'user', content: 'hi' }], SYSTEM);
+    const result = await client.call(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) expect(result.error.kind).toBe('hard');
   });
@@ -51,7 +51,7 @@ describe('HttpProviderClient — OpenAI-compat response parsing', () => {
       const sse = `data: ${JSON.stringify({ choices: [{ delta: { content: 'ok' } }] })}\n\ndata: [DONE]\n\n`;
       return new Response(sse, { status: 200 });
     };
-    await client.call([{ role: 'user', content: 'hi' }], SYSTEM);
+    await client.call(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(capturedHeaders['authorization']).toBe('Bearer sk-test-key');
   });
 });
@@ -62,7 +62,7 @@ describe('HttpProviderClient — callStream()', () => {
     const sseBody = `data: ${JSON.stringify({ choices: [{ delta: { content: 'hi' } }] })}\n\ndata: [DONE]\n\n`;
     // @ts-ignore
     globalThis.fetch = async () => new Response(sseBody, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
-    const result = await client.callStream([{ role: 'user', content: 'hi' }], SYSTEM);
+    const result = await client.callStream(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(result.isOk()).toBe(true);
     if (result.isOk()) expect(result.value.body).toBeDefined();
   });
@@ -71,7 +71,7 @@ describe('HttpProviderClient — callStream()', () => {
     const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' });
     // @ts-ignore
     globalThis.fetch = async () => new Response('', { status: 500 });
-    const result = await client.callStream([{ role: 'user', content: 'hi' }], SYSTEM);
+    const result = await client.callStream(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) expect(result.error.kind).toBe('hard');
   });
@@ -84,7 +84,7 @@ describe('HttpProviderClient — callStream()', () => {
       capturedBody = JSON.parse(init.body as string);
       return new Response('data: [DONE]\n\n', { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
     };
-    await client.callStream([{ role: 'user', content: 'hi' }], SYSTEM);
+    await client.callStream(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(capturedBody['stream']).toBe(true);
   });
 
@@ -92,7 +92,7 @@ describe('HttpProviderClient — callStream()', () => {
     const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' });
     // @ts-ignore
     globalThis.fetch = async () => new Response('{"choices":[]}', { status: 200, headers: { 'Content-Type': 'application/json' } });
-    const result = await client.callStream([{ role: 'user', content: 'hi' }], SYSTEM);
+    const result = await client.callStream(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) expect(result.error.kind).toBe('hard');
   });
@@ -105,7 +105,7 @@ describe('HttpProviderClient — callStream()', () => {
       capturedMessages = (JSON.parse(init.body as string) as { messages: Array<{ role: string; content: string }> }).messages;
       return new Response('data: [DONE]\n\n', { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
     };
-    await client.callStream([{ role: 'user', content: 'hello' }], 'my system prompt');
+    await client.callStream('my system prompt', [{ role: 'user', content: 'hello' }]);
     expect(capturedMessages[0]).toEqual({ role: 'system', content: 'my system prompt' });
     expect(capturedMessages[1]).toEqual({ role: 'user', content: 'hello' });
   });

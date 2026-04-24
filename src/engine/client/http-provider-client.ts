@@ -30,7 +30,11 @@ export class HttpProviderClient {
     private enableThinking = false,
   ) {}
 
-  async call(messages: AIChatMessage[], systemPrompt: string): Promise<CallProviderResult> {
+  /**
+   * Executes a non-streaming chat completion request.
+   * Automatically strips <think> tags from the final response.
+   */
+  async call(systemPrompt: string, messages: AIChatMessage[]): Promise<CallProviderResult> {
     const history: AIChatMessage[] = [{ role: 'system', content: systemPrompt }, ...messages];
     const result = await this.callProvider(history, new SseResponseParser(this.firstTokenTimeoutMs, this.streamWatchdogMs));
     return result.map((r) => ({ ...r, content: stripThinkTags(r.content) }));
@@ -41,7 +45,7 @@ export class HttpProviderClient {
    * Returns a StreamResult error if the HTTP request fails before streaming starts.
    * Once the ReadableStream is returned, the caller owns it and must handle mid-stream errors.
    */
-  async callStream(messages: AIChatMessage[], systemPrompt: string): Promise<CallProviderStreamResult> {
+  async callStream(systemPrompt: string, messages: AIChatMessage[]): Promise<CallProviderStreamResult> {
     const controller = new AbortController();
     const firstTokenTimeout = setTimeout(() => controller.abort(), this.firstTokenTimeoutMs);
     const start = Date.now();
@@ -74,17 +78,21 @@ export class HttpProviderClient {
     }
   }
 
+  /**
+   * Executes a chat completion request with tool-calling capabilities.
+   * Orchestrates the loop of model responses and local tool executions until a final answer is reached.
+   */
   async callWithTools(
-    messages: AIChatMessage[],
     systemPrompt: string,
+    messages: AIChatMessage[],
     tools: ToolDefinition[],
-    executeTool: (name: string, args: Record<string, unknown>) => Promise<string>,
+    executeToolFn: (name: string, args: Record<string, unknown>) => Promise<string>,
     onFirstToolCall?: () => Promise<void>,
   ): Promise<CallProviderResult> {
     const history: AIChatMessage[] = [{ role: 'system', content: systemPrompt }, ...messages];
     const responseParser = new JsonResponseParser();
     const orchestrator = new ToolCallOrchestrator((msgs) => this.callProvider(msgs, responseParser, tools));
-    return orchestrator.applyTools(history, tools, executeTool, onFirstToolCall);
+    return orchestrator.applyTools(history, tools, executeToolFn, onFirstToolCall);
   }
 
   private async callProvider(

@@ -34,7 +34,7 @@ export class ChatService {
             if (!client.callStream) {
                 return err({code: 'stream_not_supported'});
             }
-            const result = await client.callStream(chatRequest.messages, systemPrompt, {tenantId: tenant.id, tenantName: tenant.name});
+            const result = await client.callStream(systemPrompt, chatRequest.messages, {tenantId: tenant.id, tenantName: tenant.name});
 
             if (!result) {
                 return err({code: 'ai_unavailable'});
@@ -48,7 +48,7 @@ export class ChatService {
                 aiProviderUrl: result.aiProviderUrl,
             });
         } else {
-            const result = await client.chat(chatRequest.messages, systemPrompt, {tenantId: tenant.id, tenantName: tenant.name});
+            const result = await client.chat(systemPrompt, chatRequest.messages, {tenantId: tenant.id, tenantName: tenant.name});
 
             return ok({
                 isStream: false as const,

@@ -13,18 +13,18 @@ export class AuditedAIClient implements AIClient {
     constructor(private readonly innerClient: AIClient) {
     }
 
-    public async chat(messages: AIChatMessage[], systemPrompt: string, ctx?: ToolContext, tools?: ToolDefinition[], dispatcher?: ToolDispatcher): Promise<AIChatResponse> {
-        return this.executeWithAudit(ctx?.tenantId ?? 'unknown', () => this.innerClient.chat(messages, systemPrompt, ctx, tools, dispatcher));
+    public async chat(systemPrompt: string, messages: AIChatMessage[], ctx?: ToolContext, tools?: ToolDefinition[], dispatcher?: ToolDispatcher): Promise<AIChatResponse> {
+        return this.executeWithAudit(ctx?.tenantId ?? 'unknown', () => this.innerClient.chat(systemPrompt, messages, ctx, tools, dispatcher));
     }
 
-    public async callStream(messages: AIChatMessage[], systemPrompt: string, ctx?: ToolContext, tools?: ToolDefinition[], dispatcher?: ToolDispatcher): Promise<AIChatStreamResponse | null> {
+    public async callStream(systemPrompt: string, messages: AIChatMessage[], ctx?: ToolContext, tools?: ToolDefinition[], dispatcher?: ToolDispatcher): Promise<AIChatStreamResponse | null> {
         this.ensureStreamSupport('callStream');
-        return this.executeWithAudit(ctx?.tenantId ?? 'unknown', () => this.innerClient.callStream!(messages, systemPrompt, ctx, tools, dispatcher));
+        return this.executeWithAudit(ctx?.tenantId ?? 'unknown', () => this.innerClient.callStream!(systemPrompt, messages, ctx, tools, dispatcher));
     }
 
-    public async* chatStream(messages: AIChatMessage[], systemPrompt: string, ctx?: ToolContext, tools?: ToolDefinition[], dispatcher?: ToolDispatcher): AsyncGenerator<string> {
+    public async* chatStream(systemPrompt: string, messages: AIChatMessage[], ctx?: ToolContext, tools?: ToolDefinition[], dispatcher?: ToolDispatcher): AsyncGenerator<string> {
         this.ensureStreamSupport('chatStream');
-        yield* this.innerClient.chatStream!(messages, systemPrompt, ctx, tools, dispatcher);
+        yield* this.innerClient.chatStream!(systemPrompt, messages, ctx, tools, dispatcher);
     }
 
     public setTools(tools: ToolDefinition[], dispatcher: ToolDispatcher): void {

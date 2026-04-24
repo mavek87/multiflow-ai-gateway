@@ -7,7 +7,7 @@ export type ModelCallFn = (messages: AIChatMessage[]) => Promise<CallProviderRes
 
 export class ToolCallOrchestrator {
     constructor(
-        private readonly callModel: ModelCallFn,
+        private readonly callModelFn: ModelCallFn,
         private readonly maxModelCalls = 10,
     ) {
     }
@@ -27,7 +27,7 @@ export class ToolCallOrchestrator {
         let ackSent = false;
 
         for (let callNumber = 0; callNumber < this.maxModelCalls; callNumber++) {
-            const result = await this.callModel(conversationHistory);
+            const result = await this.callModelFn(conversationHistory);
             if (result.isErr()) return result;
 
             const {content, toolCalls, ttftMs, latencyMs} = result.value;
@@ -58,9 +58,9 @@ export class ToolCallOrchestrator {
 
     private async executeToolCallsAndAppendResults(toolCalls: ToolCall[],
                                                    history: AIChatMessage[],
-                                                   executeTool: (name: string, args: Record<string, unknown>) => Promise<string>,): Promise<void> {
+                                                   executeToolFn: (name: string, args: Record<string, unknown>) => Promise<string>): Promise<void> {
         for (const toolCall of toolCalls) {
-            const toolResult = await executeTool(toolCall.function.name, toolCall.function.arguments);
+            const toolResult = await executeToolFn(toolCall.function.name, toolCall.function.arguments);
             history.push({role: 'tool', content: toolResult, tool_call_id: toolCall.id});
         }
     }
