@@ -4,10 +4,12 @@ import type {
     AIChatResponse,
     AIChatStreamResponse,
     AIClient,
+} from '@/engine/client/client.types';
+import type {
     ToolContext,
     ToolDefinition,
     ToolDispatcher
-} from '@/engine/engine.types';
+} from '@/engine/tools/tools.types';
 
 export class AuditedAIClient implements AIClient {
     constructor(private readonly innerClient: AIClient) {
@@ -17,14 +19,8 @@ export class AuditedAIClient implements AIClient {
         return this.executeWithAudit(ctx?.tenantId ?? 'unknown', () => this.innerClient.chat(systemPrompt, messages, ctx, tools, dispatcher));
     }
 
-    public async callStream(systemPrompt: string, messages: AIChatMessage[], ctx?: ToolContext, tools?: ToolDefinition[], dispatcher?: ToolDispatcher): Promise<AIChatStreamResponse | null> {
-        this.ensureStreamSupport('callStream');
-        return this.executeWithAudit(ctx?.tenantId ?? 'unknown', () => this.innerClient.callStream!(systemPrompt, messages, ctx, tools, dispatcher));
-    }
-
-    public async* chatStream(systemPrompt: string, messages: AIChatMessage[], ctx?: ToolContext, tools?: ToolDefinition[], dispatcher?: ToolDispatcher): AsyncGenerator<string> {
-        this.ensureStreamSupport('chatStream');
-        yield* this.innerClient.chatStream!(systemPrompt, messages, ctx, tools, dispatcher);
+    public async chatStream(systemPrompt: string, messages: AIChatMessage[], ctx?: ToolContext, tools?: ToolDefinition[], dispatcher?: ToolDispatcher): Promise<AIChatStreamResponse | null> {
+        return this.executeWithAudit(ctx?.tenantId ?? 'unknown', () => this.innerClient.chatStream(systemPrompt, messages, ctx, tools, dispatcher));
     }
 
     public setTools(tools: ToolDefinition[], dispatcher: ToolDispatcher): void {
@@ -67,12 +63,6 @@ export class AuditedAIClient implements AIClient {
                 aiProvider: 'unknown'
             });
             throw error;
-        }
-    }
-
-    private ensureStreamSupport(method: 'callStream' | 'chatStream'): void {
-        if (!this.innerClient[method]) {
-            throw new Error('Streaming not supported by this client');
         }
     }
 }

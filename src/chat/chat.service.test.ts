@@ -2,7 +2,7 @@ import { describe, test, expect, afterEach } from 'bun:test';
 import { ChatService } from './chat.service';
 import { RoutingAIClientFactory } from '@/engine/routing/routing-client-factory';
 import type { Tenant } from '@/tenant/tenant.types';
-import type { AIClient, ModelConfig } from '@/engine/engine.types';
+import type { AIClient, ModelConfig } from '@/engine/client/client.types';
 
 const fakeTenant = { id: 'tenant-1', name: 'Test' } as Tenant;
 const fakeConfigs: ModelConfig[] = [{ url: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o', apiKey: 'sk-fake' }];
@@ -21,6 +21,7 @@ describe('ChatService', () => {
   test('handles standard chat request successfully', async () => {
     const mockClient: AIClient = {
       chat: async () => ({ model: 'gpt-4o', content: 'Mocked reply', aiProvider: 'openai', aiProviderUrl: 'https://api.openai.com' }),
+      chatStream: async () => null,
     };
     const service = new ChatService(makeFactory(mockClient));
 
@@ -38,7 +39,7 @@ describe('ChatService', () => {
     const fakeBody = new ReadableStream();
     const mockClient: AIClient = {
       chat: async () => ({ model: 'gpt-4o', content: '', aiProvider: 'openai', aiProviderUrl: 'https://api.openai.com' }),
-      callStream: async () => ({ body: fakeBody, model: 'gpt-4o', aiProvider: 'openai', aiProviderUrl: 'https://api.openai.com' }),
+      chatStream: async () => ({ body: fakeBody, model: 'gpt-4o', aiProvider: 'openai', aiProviderUrl: 'https://api.openai.com' }),
     };
     const service = new ChatService(makeFactory(mockClient));
 
@@ -54,7 +55,7 @@ describe('ChatService', () => {
   test('returns ai_unavailable error if stream returns null', async () => {
     const mockClient: AIClient = {
       chat: async () => ({ model: 'gpt-4o', content: '', aiProvider: 'openai', aiProviderUrl: 'https://api.openai.com' }),
-      callStream: async () => null,
+      chatStream: async () => null,
     };
     const service = new ChatService(makeFactory(mockClient));
 

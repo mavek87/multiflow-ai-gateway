@@ -8,9 +8,10 @@
  */
 
 import { ok, err, type Result } from 'neverthrow';
-import type { AIChatMessage, ModelConfig, ToolDefinition, ToolCall } from '@/engine/engine.types';
+import type { AIChatMessage, ModelConfig, ToolCall } from '@/engine/client/client.types';
+import type { ToolDefinition, ToolDispatcher } from '@/engine/tools/tools.types';
 import { createLogger } from '@/utils/logger';
-import { ToolCallOrchestrator } from './tool-call-orchestrator';
+import { ToolCallOrchestrator } from '@/engine/tools/tools-call-orchestrator';
 import { SseResponseParser, JsonResponseParser, type OpenAIResponseParser } from './openai-response-parser';
 import { stripThinkTags } from '@/utils/text';
 
@@ -34,7 +35,7 @@ export class HttpProviderClient {
    * Executes a non-streaming chat completion request.
    * Automatically strips <think> tags from the final response.
    */
-  async call(systemPrompt: string, messages: AIChatMessage[]): Promise<CallProviderResult> {
+  async chat(systemPrompt: string, messages: AIChatMessage[]): Promise<CallProviderResult> {
     const history: AIChatMessage[] = [{ role: 'system', content: systemPrompt }, ...messages];
     const result = await this.callProvider(history, new SseResponseParser(this.firstTokenTimeoutMs, this.streamWatchdogMs));
     return result.map((r) => ({ ...r, content: stripThinkTags(r.content) }));
@@ -45,7 +46,7 @@ export class HttpProviderClient {
    * Returns a StreamResult error if the HTTP request fails before streaming starts.
    * Once the ReadableStream is returned, the caller owns it and must handle mid-stream errors.
    */
-  async callStream(systemPrompt: string, messages: AIChatMessage[]): Promise<CallProviderStreamResult> {
+  async chatStream(systemPrompt: string, messages: AIChatMessage[]): Promise<CallProviderStreamResult> {
     const controller = new AbortController();
     const firstTokenTimeout = setTimeout(() => controller.abort(), this.firstTokenTimeoutMs);
     const start = Date.now();
@@ -82,7 +83,7 @@ export class HttpProviderClient {
    * Executes a chat completion request with tool-calling capabilities.
    * Orchestrates the loop of model responses and local tool executions until a final answer is reached.
    */
-  async callWithTools(
+  async chatWithTools(
     systemPrompt: string,
     messages: AIChatMessage[],
     tools: ToolDefinition[],

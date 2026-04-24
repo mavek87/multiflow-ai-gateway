@@ -9,13 +9,16 @@ import type {
   AIChatStreamResponse,
   AIClient,
   AIBaseResponse,
+} from '@/engine/client/client.types';
+import type {
   ToolContext,
   ToolDefinition,
   ToolDispatcher,
-} from '@/engine/engine.types';
+} from '@/engine/tools/tools.types';
 import type { CallProviderError, CallProviderSuccess, CallProviderStreamSuccess } from '@/engine/client/http-provider-client';
 import { HttpProviderClient } from '@/engine/client/http-provider-client';
-import type { ModelSelector } from '@/engine/selection/types';
+
+import type { ModelSelector } from '@/engine/selection/selector.types';
 import { MetricsStore } from '@/engine/observability/metrics';
 import { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
 import { createLogger } from '@/utils/logger';
@@ -43,9 +46,9 @@ export class RoutingAIClient implements AIClient {
         ? (name: string, args: Record<string, unknown>) => dispatcher(name, args, ctx)
         : undefined;
       if (tools && tools.length > 0 && boundDispatcher) {
-        return client.callWithTools(systemPrompt, messages, tools, boundDispatcher);
+        return client.chatWithTools(systemPrompt, messages, tools, boundDispatcher);
       }
-      return client.call(systemPrompt, messages);
+      return client.chat(systemPrompt, messages);
     });
 
     if (result) {
@@ -56,10 +59,10 @@ export class RoutingAIClient implements AIClient {
     return { content: UNAVAILABLE_RESPONSE, model: 'unknown', aiProvider: '', aiProviderUrl: '' };
   }
 
-  async callStream(systemPrompt: string, messages: AIChatMessage[], ctx?: ToolContext): Promise<AIChatStreamResponse | null> {
+  async chatStream(systemPrompt: string, messages: AIChatMessage[], ctx?: ToolContext): Promise<AIChatStreamResponse | null> {
     log.info({ messages: messages.length, tenantId: ctx?.tenantId ?? 'unknown' }, 'new stream request');
 
-    const result = await this.executeWithRetry<CallProviderStreamSuccess>((client) => client.callStream(systemPrompt, messages));
+    const result = await this.executeWithRetry<CallProviderStreamSuccess>((client) => client.chatStream(systemPrompt, messages));
 
     if (result) {
       return { body: result.body, model: result.model, aiProvider: result.aiProvider, aiProviderUrl: result.aiProviderUrl };

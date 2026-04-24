@@ -1,6 +1,6 @@
 import { RoutingAIClient } from './routing-client';
 import { AuditedAIClient } from '@/audit/audit.ai-client.decorator';
-import type { ModelConfig, AIClient } from '@/engine/engine.types';
+import type { ModelConfig, AIClient } from '@/engine/client/client.types';
 import { MetricsStore } from '@/engine/observability/metrics';
 import { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
 import { UCB1Selector } from '@/engine/selection/selector';

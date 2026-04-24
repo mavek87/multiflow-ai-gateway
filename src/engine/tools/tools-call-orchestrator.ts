@@ -1,6 +1,7 @@
 import {err, ok} from 'neverthrow';
-import type {AIChatMessage, ToolCall, ToolDefinition} from '@/engine/engine.types';
-import type {CallProviderResult} from './http-provider-client';
+import type {AIChatMessage, ToolCall} from '@/engine/client/client.types';
+import type {ToolDefinition} from './tools.types';
+import type {CallProviderResult} from '@/engine/client/http-provider-client';
 import {stripThinkTags} from '@/utils/text';
 
 export type ModelCallFn = (messages: AIChatMessage[]) => Promise<CallProviderResult>;
