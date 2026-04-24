@@ -1,59 +1,43 @@
-import { describe, test, expect, beforeAll, beforeEach } from 'bun:test';
-import { chatRoutePlugin } from '@/chat/chat.routes';
-import { Elysia } from 'elysia';
-import { createTestContext, ensureTestEncryptionKey } from '@test/test-setup';
+import { describe, test, expect, beforeEach } from 'bun:test';
+import { createTestContext, createTestApp, sendRequest } from '@test/test-setup';
+import { CryptoService } from '@/crypto/crypto';
 import type { TenantStore } from '@/tenant/tenant.store';
 
-beforeAll(() => {
-  ensureTestEncryptionKey();
-});
-
-function makeApp(store: TenantStore) {
-  return new Elysia().use(chatRoutePlugin(store));
-}
-
-const VALID_BODY = JSON.stringify({ messages: [{ role: 'user', content: 'hi' }] });
-
 describe('chat auth guard', () => {
-  let app: ReturnType<typeof makeApp>;
-  let store: TenantStore;
+  let app: ReturnType<typeof createTestApp>;
+  let tenantStore: TenantStore;
 
   beforeEach(() => {
     const context = createTestContext();
-    store = context.tenantStore;
-    app = makeApp(store);
+    tenantStore = context.tenantStore;
+    app = createTestApp(tenantStore, context.providerStore, new CryptoService());
   });
 
+  const VALID_BODY = { messages: [{ role: 'user', content: 'hi' }] };
+
   test('returns 401 when Authorization header is missing', async () => {
-    const res = await app.handle(new Request('http://localhost/v1/chat/completions', {
-      method: 'POST', body: VALID_BODY, headers: { 'Content-Type': 'application/json' },
-    }));
+    const res = await sendRequest(app, '/v1/chat/completions', { method: 'POST', body: VALID_BODY });
     expect(res.status).toBe(401);
   });
 
   test('returns 401 for wrong key', async () => {
-    const res = await app.handle(new Request('http://localhost/v1/chat/completions', {
-      method: 'POST', body: VALID_BODY,
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer gw_wrongkey' },
-    }));
+    const res = await sendRequest(app, '/v1/chat/completions', { method: 'POST', body: VALID_BODY, apiKey: 'wrong' });
     expect(res.status).toBe(401);
   });
 
   test('returns 422 for invalid body (empty messages)', async () => {
-    const { rawApiKey } = store.createTenant('TestCorp');
-    const res = await app.handle(new Request('http://localhost/v1/chat/completions', {
-      method: 'POST', body: JSON.stringify({ messages: [] }),
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${rawApiKey}` },
-    }));
+    const { rawApiKey } = tenantStore.createTenant('TestCorp');
+    const res = await sendRequest(app, '/v1/chat/completions', {
+      method: 'POST', body: { messages: [] }, apiKey: rawApiKey
+    });
     expect(res.status).toBe(422);
   });
 
   test('passes auth for valid key (returns 422 due to no providers)', async () => {
-    const { rawApiKey } = store.createTenant('TestCorp');
-    const res = await app.handle(new Request('http://localhost/v1/chat/completions', {
-      method: 'POST', body: VALID_BODY,
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${rawApiKey}` },
-    }));
+    const { rawApiKey } = tenantStore.createTenant('TestCorp');
+    const res = await sendRequest(app, '/v1/chat/completions', {
+      method: 'POST', body: VALID_BODY, apiKey: rawApiKey
+    });
     expect(res.status).toBe(422);
   });
 });

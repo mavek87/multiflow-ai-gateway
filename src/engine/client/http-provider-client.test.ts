@@ -1,24 +1,14 @@
 import { describe, test, expect } from 'bun:test';
 import { HttpProviderClient } from './http-provider-client';
+import { mockSseResponse } from '@test/test-setup';
 
 const SYSTEM = 'You are a helpful assistant.';
 
-// Helper: build a mock fetch returning an OpenAI SSE stream
-function mockStreamFetch(tokens: string[]) {
-  return async (): Promise<Response> => {
-    const lines = tokens.map((t) => `data: ${JSON.stringify({ choices: [{ delta: { content: t } }] })}`);
-    lines.push('data: [DONE]');
-    const body = lines.join('\n\n') + '\n\n';
-    return new Response(body, { status: 200 });
-  };
-}
-
-describe('HttpProviderClient — OpenAI-compat response parsing', () => {
-  // chat() uses stream=true — mock must return SSE format
+describe('HttpProviderClient - OpenAI-compat response parsing', () => {
   test('chat() returns content from SSE stream', async () => {
     const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' });
     // @ts-ignore
-    globalThis.fetch = mockStreamFetch(['Hello', ' world']);
+    globalThis.fetch = async () => mockSseResponse(['Hello', ' world']);
     const result = await client.chat(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(result.isOk()).toBe(true);
     if (result.isOk()) expect(result.value.content).toBe('Hello world');
@@ -27,7 +17,7 @@ describe('HttpProviderClient — OpenAI-compat response parsing', () => {
   test('chat() strips <think> tags from streamed response', async () => {
     const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' });
     // @ts-ignore
-    globalThis.fetch = mockStreamFetch(['<think>internal reasoning</think>', 'actual answer']);
+    globalThis.fetch = async () => mockSseResponse(['<think>internal reasoning</think>', 'actual answer']);
     const result = await client.chat(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(result.isOk()).toBe(true);
     if (result.isOk()) expect(result.value.content).toBe('actual answer');
@@ -48,20 +38,18 @@ describe('HttpProviderClient — OpenAI-compat response parsing', () => {
     // @ts-ignore
     globalThis.fetch = async (_url: string, init: RequestInit) => {
       capturedHeaders = Object.fromEntries(new Headers(init.headers as Record<string, string>).entries());
-      const sse = `data: ${JSON.stringify({ choices: [{ delta: { content: 'ok' } }] })}\n\ndata: [DONE]\n\n`;
-      return new Response(sse, { status: 200 });
+      return mockSseResponse('ok');
     };
     await client.chat(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(capturedHeaders['authorization']).toBe('Bearer sk-test-key');
   });
 });
 
-describe('HttpProviderClient — chatStream()', () => {
+describe('HttpProviderClient - chatStream()', () => {
   test('returns ok with body on HTTP 200', async () => {
     const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' });
-    const sseBody = `data: ${JSON.stringify({ choices: [{ delta: { content: 'hi' } }] })}\n\ndata: [DONE]\n\n`;
     // @ts-ignore
-    globalThis.fetch = async () => new Response(sseBody, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    globalThis.fetch = async () => mockSseResponse('hi');
     const result = await client.chatStream(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(result.isOk()).toBe(true);
     if (result.isOk()) expect(result.value.body).toBeDefined();
@@ -82,7 +70,7 @@ describe('HttpProviderClient — chatStream()', () => {
     // @ts-ignore
     globalThis.fetch = async (_url: string, init: RequestInit) => {
       capturedBody = JSON.parse(init.body as string);
-      return new Response('data: [DONE]\n\n', { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+      return mockSseResponse('');
     };
     await client.chatStream(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(capturedBody['stream']).toBe(true);
@@ -103,7 +91,7 @@ describe('HttpProviderClient — chatStream()', () => {
     // @ts-ignore
     globalThis.fetch = async (_url: string, init: RequestInit) => {
       capturedMessages = (JSON.parse(init.body as string) as { messages: Array<{ role: string; content: string }> }).messages;
-      return new Response('data: [DONE]\n\n', { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+      return mockSseResponse('');
     };
     await client.chatStream('my system prompt', [{ role: 'user', content: 'hello' }]);
     expect(capturedMessages[0]).toEqual({ role: 'system', content: 'my system prompt' });

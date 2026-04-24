@@ -36,7 +36,7 @@ function hardError(): CallProviderResult {
   return err({ kind: 'hard', error: new Error('upstream failure') });
 }
 
-describe('ToolCallOrchestrator — input validation', () => {
+describe('ToolCallOrchestrator - input validation', () => {
   const noop = async () => '';
 
   test('returns hard error when history is empty', async () => {

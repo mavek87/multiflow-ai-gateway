@@ -3,8 +3,9 @@ import type { TenantStore } from '@/tenant/tenant.store';
 import type { ProviderStore } from '@/provider/provider.store';
 import { badRequestResponse, notFoundResponse, createdResponse, conflictResponse } from '@/utils/http';
 import { checkMasterKey } from '@/auth/auth.middleware';
+import type { CryptoService } from '@/crypto/crypto';
 
-export function adminRoutePlugin(tenantStore: TenantStore, providerStore: ProviderStore) {
+export function adminRoutePlugin(tenantStore: TenantStore, providerStore: ProviderStore, cryptoService: CryptoService) {
   return new Elysia({ prefix: '/admin' })
     .guard({
       beforeHandle: ({ headers }) => checkMasterKey(headers as Record<string, string | undefined>),
@@ -110,7 +111,7 @@ export function adminRoutePlugin(tenantStore: TenantStore, providerStore: Provid
       if (!providerStore.getProviderById(body.aiProviderId)) return notFoundResponse('Provider not found');
       const credential = tenantStore.assignAiProviderKey(params.id, {
         aiProviderId: body.aiProviderId,
-        apiKey: body.apiKey,
+        aiProviderApiKeyEncrypted: body.apiKey ? cryptoService.encrypt(body.apiKey) : undefined,
       });
       const { aiProviderApiKeyEncrypted: _, ...safe } = credential;
       return createdResponse(safe);

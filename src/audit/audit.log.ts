@@ -22,7 +22,7 @@ function ensureDir(): void {
 export function logAudit(entry: AuditEntry): void {
   ensureDir();
   const line = JSON.stringify({ ts: new Date().toISOString(), ...entry }) + '\n';
-  // Fire-and-forget — synchronous append is fine for MVP (one file, low volume)
+  // Fire-and-forget - synchronous append is fine for MVP (one file, low volume)
   try {
     appendFileSync(config.auditLogPath, line, 'utf8');
   } catch {

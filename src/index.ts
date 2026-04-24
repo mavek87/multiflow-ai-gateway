@@ -7,9 +7,11 @@ import { adminRoutePlugin } from '@/admin/admin.routes';
 import { chatRoutePlugin } from '@/chat/chat.routes';
 import { config } from '@/config/config';
 import { createLogger } from '@/utils/logger';
+import { CryptoService } from '@/crypto/crypto';
 
 const log = createLogger('SERVER');
 
+const cryptoService = new CryptoService();
 const tenantStore = new TenantStore(db);
 const providerStore = new ProviderStore(db);
 
@@ -40,8 +42,8 @@ new Elysia()
     },
   }))
   .get('/health', () => ({ status: 'ok', timestamp: new Date().toISOString() }))
-  .use(adminRoutePlugin(tenantStore, providerStore))
-  .use(chatRoutePlugin(tenantStore))
+  .use(adminRoutePlugin(tenantStore, providerStore, cryptoService))
+  .use(chatRoutePlugin(tenantStore, cryptoService))
   .listen(config.port);
 
 log.info(`multiflow-ai-gateway listening on port ${config.port}`);

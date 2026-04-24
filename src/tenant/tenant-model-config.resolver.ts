@@ -3,12 +3,16 @@ import type {TenantStore} from '@/tenant/tenant.store';
 import type {TenantModelConfig, TenantModelConfigError} from './tenant.types';
 import type { ModelConfig } from '@/engine/client/client.types';
 import { buildProviderUrl } from '@/provider/provider.utils';
+import type { CryptoService } from '@/crypto/crypto';
 
 export class TenantModelConfigResolver {
-    constructor(private readonly tenantStore: TenantStore) {}
+    constructor(
+        private readonly tenantStore: TenantStore,
+        private readonly cryptoService: CryptoService
+    ) {}
 
     public resolve({tenantId, requestedModel, forceAiProviderId}: TenantModelConfig): Result<ModelConfig[], TenantModelConfigError> {
-        const modelConfigs = this.tenantStore.getDecryptedModelConfigs(tenantId, forceAiProviderId);
+        const modelConfigs = this.tenantStore.getTenantModelConfigs(tenantId, forceAiProviderId);
         if (modelConfigs.length === 0) return err({ code: 'no_providers' });
 
         const matchingConfigs = requestedModel
@@ -22,7 +26,9 @@ export class TenantModelConfigResolver {
         return ok(matchingConfigs.map((modelConfig) => ({
             url: buildProviderUrl(modelConfig.baseUrl, modelConfig.aiProviderType),
             model: modelConfig.modelName,
-            apiKey: modelConfig.apiKeyPlain ?? undefined,
+            apiKey: modelConfig.aiProviderApiKeyEncrypted 
+                ? this.cryptoService.decrypt(modelConfig.aiProviderApiKeyEncrypted) 
+                : undefined,
             priority: modelConfig.priority,
             aiProviderId: modelConfig.aiProviderId,
             aiProviderName: modelConfig.aiProviderName,

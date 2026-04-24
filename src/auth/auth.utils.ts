@@ -7,7 +7,7 @@ export function generateApiKey(): string {
   return PREFIX + randomBytes(32).toString('base64url');
 }
 
-/** SHA-256 hex digest of the raw key — fast, keys are already high-entropy */
+/** SHA-256 hex digest of the raw key - fast, keys are already high-entropy */
 export function hashApiKey(raw: string): string {
   return createHash('sha256').update(raw).digest('hex');
 }

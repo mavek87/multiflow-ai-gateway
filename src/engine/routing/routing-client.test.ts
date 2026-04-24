@@ -4,6 +4,7 @@ import { MetricsStore } from '@/engine/observability/metrics';
 import { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
 import { UCB1TunedSelector } from '@/engine/selection/algorithms/ucb1-tuned';
 import { HttpProviderClient } from '@/engine/client/http-provider-client';
+import { mockSseResponse } from '@test/test-setup';
 
 const model = (name: string) => ({
   url: 'http://fake/v1/chat/completions',
@@ -28,9 +29,9 @@ function createRoutingClient(models: any[]) {
   return new RoutingAIClient(clients, metrics, circuitBreaker, selector, aiProviderIds);
 }
 
-function mockFetchOk(sseBody = 'data: [DONE]\n\n') {
+function mockFetchOk(content = '') {
   // @ts-ignore
-  globalThis.fetch = async () => new Response(sseBody, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+  globalThis.fetch = async () => mockSseResponse(content);
 }
 
 function mockFetchFail(status = 500) {
@@ -38,7 +39,7 @@ function mockFetchFail(status = 500) {
   globalThis.fetch = async () => new Response('', { status });
 }
 
-describe('RoutingAIClient — chatStream()', () => {
+describe('RoutingAIClient - chatStream()', () => {
   test('returns body and model info on success', async () => {
     mockFetchOk();
     const client = createRoutingClient([model('m1')]);
@@ -61,7 +62,7 @@ describe('RoutingAIClient — chatStream()', () => {
     globalThis.fetch = async () => {
       calls++;
       if (calls === 1) return new Response('', { status: 500 });
-      return new Response('data: [DONE]\n\n', { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+      return mockSseResponse('');
     };
     const m1 = { ...model('m1'), priority: 0 };
     const m2 = { ...model('m2'), priority: 1 };

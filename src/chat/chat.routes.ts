@@ -7,11 +7,12 @@ import {TenantModelConfigResolver} from '@/tenant/tenant-model-config.resolver';
 import {tenantAuthPlugin} from '@/auth/auth.middleware';
 import {ChatRequestSchema} from './chat.schema';
 import {config} from '@/config/config';
+import type { CryptoService } from '@/crypto/crypto';
 
-export function chatRoutePlugin(tenantStore: TenantStore) {
+export function chatRoutePlugin(tenantStore: TenantStore, cryptoService: CryptoService) {
     const routingAIClientFactory = new RoutingAIClientFactory(config.selectorType);
     const chatService = new ChatService(routingAIClientFactory);
-    const tenantModelConfResolver = new TenantModelConfigResolver(tenantStore);
+    const tenantModelConfResolver = new TenantModelConfigResolver(tenantStore, cryptoService);
 
     return new Elysia()
         .use(tenantAuthPlugin(tenantStore))

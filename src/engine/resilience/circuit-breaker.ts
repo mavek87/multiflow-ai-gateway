@@ -8,7 +8,7 @@
  *     └──────────────(2 consecutive successes)───────────────────┘
  *
  * - CLOSED    : normal operation, all calls go through.
- * - OPEN      : model is skipped — isAvailable() returns false immediately.
+ * - OPEN      : model is skipped - isAvailable() returns false immediately.
  * - HALF_OPEN : one probe is allowed; 2 consecutive successes restore to CLOSED.
  *
  * Failure types:

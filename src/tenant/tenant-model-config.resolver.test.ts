@@ -3,6 +3,7 @@ import { TenantModelConfigResolver } from './tenant-model-config.resolver';
 import { createTestContext, seedTestTenantAndProvider, ensureTestEncryptionKey } from '@test/test-setup';
 import type { TenantStore } from '@/tenant/tenant.store';
 import type { Tenant } from '@/tenant/tenant.types';
+import { CryptoService } from '@/crypto/crypto';
 
 beforeAll(() => {
   ensureTestEncryptionKey();
@@ -12,13 +13,15 @@ describe('TenantModelConfigResolver', () => {
   let store: TenantStore;
   let resolver: TenantModelConfigResolver;
   let tenant: Tenant;
+  let cryptoService: CryptoService;
 
   beforeEach(() => {
     const context = createTestContext();
     store = context.tenantStore;
+    cryptoService = new CryptoService();
     const seeded = seedTestTenantAndProvider(store, context.providerStore);
     tenant = seeded.tenant;
-    resolver = new TenantModelConfigResolver(store);
+    resolver = new TenantModelConfigResolver(store, cryptoService);
   });
 
   test('returns configs when tenant has configured models', () => {

@@ -2,7 +2,7 @@
  * Tracks per-model performance metrics using Exponential Moving Average (EMA).
  *
  * EMA with α=0.1 weights recent calls more heavily while keeping the full history
- * in a single number — no unbounded array of past values needed.
+ * in a single number - no unbounded array of past values needed.
  * Formula: ema = α * newValue + (1 - α) * previousEma
  *
  * On the very first call for a model the raw value is used directly (no prior EMA to blend with).

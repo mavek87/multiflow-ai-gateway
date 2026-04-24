@@ -12,7 +12,7 @@ function makeReader(chunks: string[]): { read(): Promise<{ done: boolean; value?
   };
 }
 
-describe('JsonResponseParser — parseJsonResponse', () => {
+describe('JsonResponseParser - parseJsonResponse', () => {
   const parser = new JsonResponseParser();
 
   test('extracts content from a valid response', () => {
@@ -43,7 +43,7 @@ describe('JsonResponseParser — parseJsonResponse', () => {
   });
 });
 
-describe('SseResponseParser — readSseStream', () => {
+describe('SseResponseParser - readSseStream', () => {
   const parser = new SseResponseParser(10000, 5000);
 
   function sseChunk(content: string): string {

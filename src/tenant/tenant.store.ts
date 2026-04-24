@@ -4,14 +4,13 @@ import { aiProviderModels, aiProviders, gatewayApiKeys, tenantAiModelPriorities,
 import type {
   AssignAiModelPriorityInput,
   AssignAiProviderKeyInput,
-  DecryptedModelConfig,
+  TenantModelConfigData,
   Tenant,
   TenantAiModelPriority,
   TenantAiProviderKey,
   UpdateTenantInput,
 } from './tenant.types';
 import { generateApiKey, hashApiKey } from '@/auth/auth.utils';
-import { decrypt, encrypt } from '@/utils/crypto';
 import { createLogger } from '@/utils/logger';
 import { randomUUID } from 'node:crypto';
 
@@ -89,7 +88,7 @@ export class TenantStore {
       id: randomUUID(),
       tenantId,
       aiProviderId: input.aiProviderId,
-      aiProviderApiKeyEncrypted: input.apiKey ? encrypt(input.apiKey) : null,
+      aiProviderApiKeyEncrypted: input.aiProviderApiKeyEncrypted ?? null,
       enabled: true,
       createdAt: Date.now(),
     };
@@ -139,7 +138,7 @@ export class TenantStore {
 
   // --- Chat routing ---
 
-  getDecryptedModelConfigs(tenantId: string, forceAiProviderId?: string | null): DecryptedModelConfig[] {
+  getTenantModelConfigs(tenantId: string, forceAiProviderId?: string | null): TenantModelConfigData[] {
     const rows = this.db
       .select({
         id: tenantAiModelPriorities.id,
@@ -175,17 +174,6 @@ export class TenantStore {
       .orderBy(tenantAiModelPriorities.priority)
       .all();
 
-    return rows.map((row) => ({
-      id: row.id,
-      tenantId: row.tenantId,
-      aiProviderModelId: row.aiProviderModelId,
-      priority: row.priority,
-      modelName: row.modelName,
-      aiProviderId: row.aiProviderId,
-      aiProviderName: row.aiProviderName,
-      aiProviderType: row.aiProviderType,
-      baseUrl: row.baseUrl,
-      apiKeyPlain: row.aiProviderApiKeyEncrypted ? decrypt(row.aiProviderApiKeyEncrypted) : null,
-    }));
+    return rows;
   }
 }

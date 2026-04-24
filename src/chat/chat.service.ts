@@ -1,24 +1,14 @@
 import {ok, err, type Result} from 'neverthrow';
 import type {Tenant} from '@/tenant/tenant.types';
-import type {ModelConfig, AIChatMessage} from '@/engine/client/client.types';
-import type {ChatCompletion, ChatHandlerResult} from './chat.schema';
+import type {ModelConfig} from '@/engine/client/client.types';
+import type {ChatCompletion, ChatHandlerResult} from '@/chat/chat.types';
+import type {ChatServiceError, ChatServiceRequest} from '@/chat/chat.types';
 import {RoutingAIClientFactory} from '@/engine/routing/routing-client-factory';
 import {createLogger} from '@/utils/logger';
 import {randomUUID} from 'node:crypto';
 
 const log = createLogger('CHAT_SVC');
 const DEFAULT_SYSTEM_PROMPT = 'You are a helpful assistant.';
-
-export type ChatServiceError =
-    | {code: 'ai_unavailable'}
-    | {code: 'stream_not_supported'};
-
-export interface ChatServiceRequest {
-    model?: string;
-    messages: AIChatMessage[];
-    system?: string;
-    stream?: boolean;
-}
 
 export class ChatService {
     constructor(private readonly aiClientFactory: RoutingAIClientFactory) {}

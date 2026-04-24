@@ -4,6 +4,10 @@ import { migrate } from 'drizzle-orm/bun-sqlite/migrator';
 import * as schema from '@/db/schema';
 import { TenantStore } from '@/tenant/tenant.store';
 import { ProviderStore } from '@/provider/provider.store';
+import { CryptoService } from '@/crypto/crypto';
+import { Elysia } from 'elysia';
+import { chatRoutePlugin } from '@/chat/chat.routes';
+import { adminRoutePlugin } from '@/admin/admin.routes';
 
 /**
  * Sets up a fresh in-memory SQLite database with migrations applied.
@@ -17,11 +21,14 @@ export function setupTestDb() {
 }
 
 /**
- * Ensures ENCRYPTION_KEY is set for tests.
+ * Ensures ENCRYPTION_KEY and MASTER_KEY are set for tests.
  */
 export function ensureTestEncryptionKey() {
   if (!process.env['ENCRYPTION_KEY']) {
     process.env['ENCRYPTION_KEY'] = 'c'.repeat(64);
+  }
+  if (!process.env['MASTER_KEY']) {
+    process.env['MASTER_KEY'] = 'test-master-key';
   }
 }
 
@@ -42,6 +49,7 @@ export function createTestContext() {
  */
 export function seedTestTenantAndProvider(tenantStore: TenantStore, providerStore: ProviderStore) {
   const { tenant, rawApiKey } = tenantStore.createTenant('TestTenant');
+  const cryptoService = new CryptoService();
   
   const provider = providerStore.createProvider({ 
     name: 'OpenAI', 
@@ -56,7 +64,7 @@ export function seedTestTenantAndProvider(tenantStore: TenantStore, providerStor
   
   tenantStore.assignAiProviderKey(tenant.id, { 
     aiProviderId: provider.id, 
-    apiKey: 'sk-fake-key' 
+    aiProviderApiKeyEncrypted: cryptoService.encrypt('sk-fake-key')
   });
   
   tenantStore.assignAiModelPriority(tenant.id, { 
@@ -66,3 +74,47 @@ export function seedTestTenantAndProvider(tenantStore: TenantStore, providerStor
   
   return { tenant, rawApiKey, provider, providerModel };
 }
+
+/**
+ * Creates an Elysia app with all routes for testing.
+ */
+export function createTestApp(tenantStore: TenantStore, providerStore: ProviderStore, cryptoService: CryptoService) {
+  return new Elysia()
+    .use(chatRoutePlugin(tenantStore, cryptoService))
+    .use(adminRoutePlugin(tenantStore, providerStore, cryptoService));
+}
+
+/**
+ * Helper to send requests to the test app.
+ */
+export async function sendRequest(app: ReturnType<typeof createTestApp>, path: string, options: {
+  method?: string;
+  body?: any;
+  apiKey?: string;
+  masterKey?: string;
+  headers?: Record<string, string>;
+} = {}) {
+  const { method = 'GET', body, apiKey, masterKey, headers = {} } = options;
+  const requestHeaders = new Headers(headers);
+  if (apiKey) requestHeaders.set('Authorization', `Bearer ${apiKey}`);
+  if (masterKey) requestHeaders.set('x-master-key', masterKey);
+  if (body && !requestHeaders.has('Content-Type')) {
+    requestHeaders.set('Content-Type', 'application/json');
+  }
+
+  return await app.handle(new Request(`http://localhost${path}`, {
+    method,
+    headers: requestHeaders,
+    body: body ? JSON.stringify(body) : undefined,
+  }));
+}
+
+/**
+ * Mocks an SSE response for fetch.
+ */
+export function mockSseResponse(content: string | string[]) {
+  const tokens = Array.isArray(content) ? content : [content];
+  const sse = tokens.map(t => `data: ${JSON.stringify({ choices: [{ delta: { content: t } }] })}\n\n`).join('') + `data: [DONE]\n\n`;
+  return new Response(sse, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+}
+

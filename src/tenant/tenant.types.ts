@@ -34,7 +34,7 @@ export type TenantAiModelPriority = {
   createdAt: number;
 };
 
-export type DecryptedModelConfig = {
+export type TenantModelConfigData = {
   id: string;
   tenantId: string;
   aiProviderModelId: string;
@@ -44,12 +44,12 @@ export type DecryptedModelConfig = {
   aiProviderType: string;
   baseUrl: string;
   priority: number;
-  apiKeyPlain: string | null;
+  aiProviderApiKeyEncrypted: string | null;
 };
 
 export type AssignAiProviderKeyInput = {
   aiProviderId: string;
-  apiKey?: string;
+  aiProviderApiKeyEncrypted?: string;
 };
 
 export type AssignAiModelPriorityInput = {

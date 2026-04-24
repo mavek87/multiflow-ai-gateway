@@ -339,7 +339,8 @@ src/
     |-- tools/              # Tool-calling (function calling) orchestration
   provider/                 # Global provider registry
   tenant/                   # Tenant management and resolution
-  utils/                    # Shared utilities (crypto, http, logger)
+  crypto/                   # Envelope encryption service (AES-256-GCM)
+  utils/                    # Shared utilities (http, logger)
   index.ts                  # Entry point
 ```
 

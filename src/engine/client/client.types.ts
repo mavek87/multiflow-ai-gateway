@@ -1,4 +1,4 @@
-import type { AIChatMessage, ToolCall } from '@/chat/chat.schema';
+import type { AIChatMessage, ToolCall } from '@/chat/chat.types';
 import type { ToolContext, ToolDefinition, ToolDispatcher } from '@/engine/tools/tools.types';
 
 export type { AIChatMessage, ToolCall };

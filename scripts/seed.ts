@@ -1,7 +1,9 @@
 import { db } from '@/db/database';
 import { TenantStore } from '@/tenant/tenant.store';
 import { ProviderStore } from '@/provider/provider.store';
+import { CryptoService } from '@/crypto/crypto';
 
+const cryptoService = new CryptoService();
 const store = new TenantStore(db);
 const providerStore = new ProviderStore(db);
 
@@ -41,7 +43,7 @@ if (!groqApiKey) {
   console.error('GROQ_API_KEY not set in .env -- aborting');
   process.exit(1);
 }
-store.assignAiProviderKey(tenant.id, { aiProviderId: groq.id, apiKey: groqApiKey });
+store.assignAiProviderKey(tenant.id, { aiProviderId: groq.id, aiProviderApiKeyEncrypted: cryptoService.encrypt(groqApiKey) });
 console.log(`[credential] Groq key assigned`);
 
 // --- Model priorities ---

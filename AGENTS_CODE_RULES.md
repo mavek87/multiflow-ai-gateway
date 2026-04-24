@@ -32,8 +32,8 @@ This document contains the code writing rules for AI agents.
 ## Code style:
 ### STRICT
 - Read existing code before adding logic to avoid duplication.
-- Keep methods pretty short — split long methods into smaller functions or classes.
-- Code should speak for itself — minimize comments.
+- Keep methods pretty short - split long methods into smaller functions or classes.
+- Code should speak for itself - minimize comments.
 - Comments explain *why*, never *what*. If you need a comment to explain what the code does, rewrite the code instead.
 - Method names and variable names must be human-readable and context-bounded.
 - Do not introduce new libraries without asking the user.
@@ -43,7 +43,7 @@ This document contains the code writing rules for AI agents.
 ## Refactoring
 ### STRICT
 - When deleting a parameter, clean up all remaining code that referenced it.
-- Delete unused classes and methods — no dead code.
+- Delete unused classes and methods - no dead code.
 
 ## Tests
 ### FLEXIBLE

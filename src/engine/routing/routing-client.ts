@@ -1,5 +1,5 @@
 /**
- * RoutingAIClient — adaptive multi-model router.
+ * RoutingAIClient - adaptive multi-model router.
  */
 
 import type { Result } from 'neverthrow';

@@ -1,4 +1,4 @@
-import {type Static, t} from 'elysia';
+import {t} from 'elysia';
 
 export const ToolCallSchema = t.Object({
     id: t.String(),
@@ -22,22 +22,3 @@ export const ChatRequestSchema = t.Object({
     system: t.Optional(t.String()),
     stream: t.Optional(t.Boolean()),
 });
-
-export type ToolCall = Static<typeof ToolCallSchema>;
-export type AIChatMessage = Static<typeof MessageSchema>;
-
-export type ChatHandlerResult =
-    | {isStream: true; payload: ReadableStream<Uint8Array>; model: string; aiProvider: string; aiProviderUrl: string}
-    | {isStream: false; payload: ChatCompletion; model: string; aiProvider: string; aiProviderUrl: string};
-
-export interface ChatCompletion {
-    id: string;
-    object: 'chat.completion';
-    created: number;
-    model: string;
-    choices: Array<{
-        index: number;
-        message: {role: 'assistant'; content: string};
-        finish_reason: 'stop' | 'length' | 'tool_calls' | 'content_filter';
-    }>;
-}
