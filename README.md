@@ -91,10 +91,11 @@ AuditedAIClient (src/audit/audit.ai-client.decorator.ts)
   |
   v
 RoutingAIClient (src/engine/routing/routing-client.ts)
-  |-- UCB1Selector       (picks best model based on EMA metrics)
-  |-- CircuitBreaker     (skips models in OPEN state)
-  |-- HttpProviderClient (low-level HTTP to OpenAI-compatible endpoint)
-  |-- MetricsStore       (updates latency/success EMA after each call)
+  |-- UCB1Selector          (picks best model based on EMA metrics)
+  |-- CircuitBreaker        (skips models in OPEN state)
+  |-- HttpProviderClient    (low-level HTTP to OpenAI-compatible endpoint)
+  |   |-- ToolCallOrchestrator (handles multi-turn tool execution loop)
+  |-- MetricsStore          (updates latency/success EMA after each chat)
   |
   v
 OpenAI-compatible response
@@ -295,8 +296,14 @@ src/
   chat/                     # Chat Completions feature (core)
   config/                   # App configuration
   db/                       # Database connection and schema
-  engine/                   # Shared AI Engine (routing, resilience, clients)
-  provider/                 # Global provider registry (ai_providers, ai_provider_models)
+  engine/                   # Shared AI Engine core
+    |-- client/             # AI Provider clients and response parsers
+    |-- observability/      # Latency and success rate metrics
+    |-- resilience/         # Circuit breaker implementation
+    |-- routing/            # Multi-model routing logic and factory
+    |-- selection/          # Model selection algorithms (UCB1)
+    |-- tools/              # Tool-calling (function calling) orchestration
+  provider/                 # Global provider registry
   tenant/                   # Tenant management and resolution
   utils/                    # Shared utilities (crypto, http, logger)
   index.ts                  # Entry point
