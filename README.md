@@ -189,7 +189,7 @@ ai_providers                          tenant_ai_provider_keys    (tenant's API k
 
 ### Routing state is in-memory only
 
-While a new `RoutingAIClient` is instantiated for each chat request, the Circuit breaker state and UCB1 metrics are managed by a singleton factory. This means routing metrics and circuit breaker statuses persist across requests but are **in-memory only and reset to zero on every server restart**. After a restart, all models start fresh with no learned preferences or failure counts.
+The `RoutingAIClientFactory` -- which owns the `MetricsStore`, `CircuitBreaker`, and `UCB1Selector` instances -- is created once when the chat plugin initializes. A new `RoutingAIClient` is built per request via `factory.create()`, but it shares these stateful components across all requests. This means routing metrics and circuit breaker statuses persist across requests but are **in-memory only and reset to zero on every server restart**. After a restart, all models start fresh with no learned preferences or failure counts.
 
 ### Back up ENCRYPTION_KEY separately from the database
 

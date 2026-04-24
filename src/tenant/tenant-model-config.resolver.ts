@@ -2,6 +2,7 @@ import { ok, err, type Result } from 'neverthrow';
 import type {TenantStore} from '@/tenant/tenant.store';
 import type {TenantModelConfig, TenantModelConfigError} from './tenant.types';
 import type { ModelConfig } from '@/engine/engine.types';
+import { buildProviderUrl } from '@/provider/provider.utils';
 
 export class TenantModelConfigResolver {
     constructor(private readonly tenantStore: TenantStore) {}
@@ -19,7 +20,7 @@ export class TenantModelConfigResolver {
         }
 
         return ok(matchingConfigs.map((modelConfig) => ({
-            url: `${modelConfig.baseUrl}/chat/completions`,
+            url: buildProviderUrl(modelConfig.baseUrl, modelConfig.aiProviderType),
             model: modelConfig.modelName,
             apiKey: modelConfig.apiKeyPlain ?? undefined,
             priority: modelConfig.priority,
