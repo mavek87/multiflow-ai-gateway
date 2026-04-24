@@ -87,7 +87,7 @@ Chat Module (src/chat/chat.routes.ts)
 Tenant Resolver (src/tenant/tenant-model-config.resolver.ts)
   |
   v
-AuditedAIClient (src/audit/audit.decorator.ts)
+AuditedAIClient (src/audit/audit.ai-client.decorator.ts)
   |
   v
 RoutingAIClient (src/engine/routing/routing-client.ts)

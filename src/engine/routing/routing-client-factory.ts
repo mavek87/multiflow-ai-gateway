@@ -1,10 +1,10 @@
 import { RoutingAIClient } from './routing-client';
-import { AuditedAIClient } from '@/audit/audit.decorator';
-import type { ModelConfig, AIClient } from '../engine.types';
-import { MetricsStore } from '../observability/metrics';
-import { CircuitBreaker } from '../resilience/circuit-breaker';
-import { UCB1Selector } from '../selection/selector';
-import { HttpProviderClient } from '../client/http-provider-client';
+import { AuditedAIClient } from '@/audit/audit.ai-client.decorator';
+import type { ModelConfig, AIClient } from '@/engine/engine.types';
+import { MetricsStore } from '@/engine/observability/metrics';
+import { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
+import { UCB1Selector } from '@/engine/selection/selector';
+import { HttpProviderClient } from '@/engine/client/http-provider-client';
 
 export class RoutingAIClientFactory {
     private readonly metrics = new MetricsStore();
