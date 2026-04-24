@@ -9,6 +9,9 @@ describe('MetricsStore', () => {
     expect(metrics.successRate).toBe(1);
     expect(metrics.latencyEma).toBe(0);
     expect(metrics.ttftEma).toBe(0);
+    expect(metrics.successCount).toBe(0);
+    expect(metrics.failureCount).toBe(0);
+    expect(metrics.rewardVariance).toBe(0);
   });
 
   test('first call sets values directly (no EMA on cold start)', () => {
@@ -19,6 +22,8 @@ describe('MetricsStore', () => {
     expect(metrics.latencyEma).toBe(1000);
     expect(metrics.ttftEma).toBe(200);
     expect(metrics.successRate).toBe(1);
+    expect(metrics.successCount).toBe(1);
+    expect(metrics.failureCount).toBe(0);
   });
 
   test('EMA applies on second call', () => {
@@ -68,5 +73,33 @@ describe('MetricsStore', () => {
     }
     const metrics = store.get('reliable-model');
     expect(metrics.successRate).toBeGreaterThan(0.9);
+  });
+
+  test('successCount and failureCount track raw integers', () => {
+    const store = new MetricsStore();
+    store.record('m', { latencyMs: 100, ttftMs: 10, success: true });
+    store.record('m', { latencyMs: 100, ttftMs: 10, success: true });
+    store.record('m', { latencyMs: 100, ttftMs: 10, success: false });
+    const metrics = store.get('m');
+    expect(metrics.successCount).toBe(2);
+    expect(metrics.failureCount).toBe(1);
+  });
+
+  test('rewardVariance is 0 after one call (Welford needs at least 2)', () => {
+    const store = new MetricsStore();
+    store.record('m', { latencyMs: 100, ttftMs: 10, success: true });
+    expect(store.get('m').rewardVariance).toBe(0);
+  });
+
+  test('rewardVariance increases with mixed outcomes', () => {
+    const store = new MetricsStore();
+    for (let i = 0; i < 10; i++) store.record('m', { latencyMs: 100, ttftMs: 10, success: i % 2 === 0 });
+    const varianceMixed = store.get('m').rewardVariance;
+
+    const store2 = new MetricsStore();
+    for (let i = 0; i < 10; i++) store2.record('m', { latencyMs: 100, ttftMs: 10, success: true });
+    const varianceConsistent = store2.get('m').rewardVariance;
+
+    expect(varianceMixed).toBeGreaterThan(varianceConsistent);
   });
 });

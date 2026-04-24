@@ -8,7 +8,7 @@ A self-hosted, multi-tenant AI Gateway written in TypeScript/Bun. It sits betwee
 
 - **OpenAI-compatible API** - drop-in replacement for `POST /v1/chat/completions` with SSE streaming support
 - **Multi-tenancy** - each tenant has isolated API keys and provider configurations
-- **Intelligent model selection** - UCB1 algorithm balances performance and exploration across models
+- **Intelligent model selection** - UCB1-Tuned (default), Thompson Sampling, or SW-UCB1-Tuned, configurable via `SELECTOR_TYPE`
 - **Circuit breaker** - automatically skips failing providers and recovers gracefully
 - **Multi-model fallback** - up to 3 attempts across different models per request
 - **Tool calling** - up to 10 rounds of tool execution per request
@@ -46,6 +46,7 @@ MASTER_KEY=<strong-random-base64-32>
 ENCRYPTION_KEY=<64-hex-chars>
 DB_PATH=./data/gateway.db
 AUDIT_LOG_PATH=./logs/audit.jsonl
+# SELECTOR_TYPE=ucb1-tuned  # options: ucb1-tuned (default), thompson, sw-ucb1-tuned
 ```
 
 Generate the values:
@@ -91,7 +92,7 @@ AuditedAIClient (src/audit/audit.ai-client.decorator.ts)
   |
   v
 RoutingAIClient (src/engine/routing/routing-client.ts)
-  |-- UCB1Selector          (picks best model based on EMA metrics)
+  |-- ModelSelector          (pluggable strategy: UCB1-Tuned, Thompson Sampling, SW-UCB1-Tuned)
   |-- CircuitBreaker        (skips models in OPEN state)
   |-- HttpProviderClient    (low-level HTTP to OpenAI-compatible endpoint)
   |   |-- ToolCallOrchestrator (handles multi-turn tool execution loop)
@@ -186,11 +187,43 @@ ai_providers                          tenant_ai_provider_keys    (tenant's API k
 
 ---
 
+## Model Selection Algorithms
+
+The gateway uses a multi-armed bandit strategy to pick the best model for each request. The algorithm is configured globally via the `SELECTOR_TYPE` environment variable.
+
+Each algorithm evaluates models that are not blocked by the circuit breaker. Models with zero observations are always tried first (warmup phase), except Thompson Sampling which handles exploration naturally via its distribution.
+
+| Algorithm | `SELECTOR_TYPE` | Default | Signals used |
+|---|---|---|---|
+| UCB1-Tuned | `ucb1-tuned` | **YES** | success rate + latency (full history) |
+| SW-UCB1-Tuned | `sw-ucb1-tuned` | no | success rate + latency (last W calls) |
+| Thompson Sampling | `thompson` | no | success/failure counts only |
+
+### UCB1-Tuned (default)
+
+Balances success rate and latency 50/50 into a reward score, then adds an exploration bonus that shrinks as observations accumulate. Uses the observed variance of rewards to avoid over-exploring stable models.
+
+**Use when**: traffic is low-to-medium (tens to low hundreds of calls per day per tenant), or when provider behavior is stable. The best general-purpose choice.
+
+### SW-UCB1-Tuned
+
+Same algorithm as UCB1-Tuned but metrics are computed from the last W observations (default: 100) instead of full history. Reacts to provider degradations and recoveries within W calls.
+
+**Use when**: traffic is high enough to fill the window (hundreds or more calls per day per tenant) and fast reaction to provider quality changes matters more than stability. With very low traffic the window stays sparse and estimates become noisy -- UCB1-Tuned is safer in that case.
+
+### Thompson Sampling
+
+Models each provider as a Beta distribution over success/failure counts and draws a random sample at each selection. Does not consider latency. Statistically efficient for pure success/failure optimization.
+
+**Use when**: latency differences between providers are negligible and you only care about availability/error rates.
+
+---
+
 ## Operational Notes
 
 ### Routing state is in-memory only
 
-The `RoutingAIClientFactory` -- which owns the `MetricsStore`, `CircuitBreaker`, and `UCB1Selector` instances -- is created once when the chat plugin initializes. A new `RoutingAIClient` is built per request via `factory.create()`, but it shares these stateful components across all requests. This means routing metrics and circuit breaker statuses persist across requests but are **in-memory only and reset to zero on every server restart**. After a restart, all models start fresh with no learned preferences or failure counts.
+The `RoutingAIClientFactory` -- which owns the `MetricsStore`, `CircuitBreaker`, and `ModelSelector` instances -- is created once when the chat plugin initializes. A new `RoutingAIClient` is built per request via `factory.create()`, but it shares these stateful components across all requests. This means routing metrics and circuit breaker statuses persist across requests but are **in-memory only and reset to zero on every server restart**. After a restart, all models start fresh with no learned preferences or failure counts.
 
 ### Back up ENCRYPTION_KEY separately from the database
 
@@ -301,7 +334,8 @@ src/
     |-- observability/      # Latency and success rate metrics
     |-- resilience/         # Circuit breaker implementation
     |-- routing/            # Multi-model routing logic and factory
-    |-- selection/          # Model selection algorithms (UCB1)
+    |-- selection/          # Model selection: types and algorithm implementations
+    |   |-- algorithms/     # UCB1-Tuned, SW-UCB1-Tuned, Thompson Sampling
     |-- tools/              # Tool-calling (function calling) orchestration
   provider/                 # Global provider registry
   tenant/                   # Tenant management and resolution

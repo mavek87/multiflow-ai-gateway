@@ -6,9 +6,10 @@ import {RoutingAIClientFactory} from '@/engine/routing/routing-client-factory';
 import {TenantModelConfigResolver} from '@/tenant/tenant-model-config.resolver';
 import {tenantAuthPlugin} from '@/auth/auth.middleware';
 import {ChatRequestSchema} from './chat.schema';
+import {config} from '@/config/config';
 
 export function chatRoutePlugin(tenantStore: TenantStore) {
-    const routingAIClientFactory = new RoutingAIClientFactory();
+    const routingAIClientFactory = new RoutingAIClientFactory(config.selectorType);
     const chatService = new ChatService(routingAIClientFactory);
     const tenantModelConfResolver = new TenantModelConfigResolver(tenantStore);
 
@@ -70,7 +71,7 @@ export function chatRoutePlugin(tenantStore: TenantStore) {
             body: ChatRequestSchema,
             detail: {
                 summary: 'Chat completions',
-                description: 'OpenAI-compatible endpoint. Requires a gateway API key (Bearer gw_xxx). Routes the request through the best available model using UCB1 selection and circuit breaker. The `model` field is optional -- when provided, only providers with a matching modelName are considered.',
+                description: 'OpenAI-compatible endpoint. Requires a gateway API key (Bearer gw_xxx). Routes the request through the best available model using intelligent selection (Thompson Sampling by default, configurable via SELECTOR_TYPE) and circuit breaker. The `model` field is optional -- when provided, only providers with a matching modelName are considered.',
                 tags: ['Chat'],
             },
         });

@@ -2,7 +2,7 @@ import type { MetricsStore } from '@/engine/observability/metrics';
 import type { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
 
 /**
- * ModelSelector — strategy interface for model selection algorithms.
+ * ModelSelector -- strategy interface for model selection algorithms.
  */
 export interface ModelSelector {
   select(
@@ -11,3 +11,5 @@ export interface ModelSelector {
     circuitBreaker: CircuitBreaker,
   ): string | null;
 }
+
+export type SelectorType = 'thompson' | 'ucb1-tuned' | 'sw-ucb1-tuned';

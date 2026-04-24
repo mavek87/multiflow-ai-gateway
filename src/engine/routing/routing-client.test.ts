@@ -2,7 +2,7 @@ import { describe, test, expect } from 'bun:test';
 import { RoutingAIClient } from './routing-client';
 import { MetricsStore } from '@/engine/observability/metrics';
 import { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
-import { UCB1Selector } from '@/engine/selection/selector';
+import { UCB1TunedSelector } from '@/engine/selection/algorithms/ucb1-tuned';
 import { HttpProviderClient } from '@/engine/client/http-provider-client';
 
 const model = (name: string) => ({
@@ -16,7 +16,7 @@ const model = (name: string) => ({
 function createRoutingClient(models: any[]) {
   const metrics = new MetricsStore();
   const circuitBreaker = new CircuitBreaker();
-  const selector = new UCB1Selector();
+  const selector = new UCB1TunedSelector();
   const clients = new Map();
   const aiProviderIds = new Map();
 
