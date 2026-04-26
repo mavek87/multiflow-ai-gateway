@@ -10,8 +10,8 @@ A self-hosted, multi-tenant AI Gateway written in TypeScript/Bun. It sits betwee
 - **Multi-tenancy** - each tenant has isolated API keys and provider configurations
 - **Intelligent model selection** - UCB1-Tuned (default), Thompson Sampling, or SW-UCB1-Tuned, configurable via `SELECTOR_TYPE`
 - **Circuit breaker** - automatically skips failing providers and recovers gracefully
-- **Multi-model fallback** - up to 3 attempts across different models per request
-- **Tool calling** - up to 10 rounds of tool execution per request
+- **Multi-model fallback** - up to 10 attempts across different models per request
+- **Tool calling (Engine)** - up to 10 rounds of internal tool execution (not yet exposed via public API)
 - **Encrypted secrets** - provider API keys stored at rest with AES-256-GCM
 - **Audit logging** - append-only JSON lines trail per request
 - **Admin API** - manage tenants and providers via REST, protected by master key
@@ -62,11 +62,23 @@ openssl rand -hex 32
 ### 3. Start the server
 
 ```bash
+# Development
 bun run dev    # hot reload
-bun run start  # production
+bun run check  # typecheck + tests
+
+# Production
+bun run start
 ```
 
 The database is created automatically on first start. The server listens on `http://localhost:3000` (or the configured `PORT`).
+
+### 4. Seed the database (Optional)
+
+You can quickly seed the database with a test tenant and Groq provider using:
+
+```bash
+GROQ_API_KEY=your-key bun run scripts/seed.ts
+```
 
 ---
 
@@ -278,6 +290,13 @@ OpenAI-compatible request body:
 The `model` field is optional. When provided, only provider configs with a matching `modelName` are considered. When omitted, all enabled providers for the tenant are candidates.
 
 Returns an OpenAI-compatible response object (or SSE stream when `stream: true`).
+
+**Custom Headers**
+
+The gateway injects headers into the response to help you identify which provider fulfilled the request:
+- `X-Model`: The actual model name used.
+- `X-AI-Provider`: The name of the provider (e.g., "Groq").
+- `X-AI-Provider-URL`: The base URL of the provider.
 
 ---
 
