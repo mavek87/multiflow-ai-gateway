@@ -5,6 +5,7 @@ export type TenantModelConfigError =
 export interface TenantModelConfigKey {
     tenantId: string;
     requestedModel?: string;
+    requestedProviderName?: string;
     forceAiProviderId?: string | null;
 }
 

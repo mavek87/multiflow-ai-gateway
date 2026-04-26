@@ -287,7 +287,20 @@ OpenAI-compatible request body:
 }
 ```
 
-The `model` field is optional. When provided, only provider configs with a matching `modelName` are considered. When omitted, all enabled providers for the tenant are candidates.
+The `model` field is optional and supports two formats:
+
+- **`"model"`** -- matches all providers that have a model with that name. If multiple providers expose the same model name, all are routing candidates and the selector picks the best one. This is intentional: it enables transparent multi-provider fallback.
+- **`"provider/model"`** -- filters to a specific provider by name (case-insensitive) before applying model matching. Use this when you need to target a particular backend explicitly.
+
+```jsonc
+// routes to any provider with model "openai" -- multi-provider pool
+{ "model": "openai", ... }
+
+// routes only to the provider named "Pollinations" with model "openai"
+{ "model": "pollinations/openai", ... }
+```
+
+When omitted, all enabled providers for the tenant are candidates.
 
 Returns an OpenAI-compatible response object (or SSE stream when `stream: true`).
 

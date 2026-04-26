@@ -22,7 +22,7 @@ export class RoutingAIClientFactory {
         for (const modelConfig of sortedModelConfigs) {
             const clientKey = modelConfig.aiProviderModelId!;
             
-            clients.set(clientKey, new HttpProviderClient(modelConfig, 10000, 60000, false));
+            clients.set(clientKey, new HttpProviderClient(modelConfig, 30000, 120000, false));
             aiProviderIds.set(clientKey, {
                 name: modelConfig.aiProviderName ?? modelConfig.aiProviderId ?? '',
                 baseUrl: modelConfig.aiProviderBaseUrl ?? '',

@@ -58,6 +58,19 @@ GROQ_MODEL_ID=$(curl -sf -X POST "$BASE/admin/providers/$GROQ_ID/models" \
   | jq -r '.id')
 echo "  $GROQ_MODEL -> $GROQ_MODEL_ID"
 
+POLLINATIONS_ID=$(curl -sf -X POST "$BASE/admin/providers" \
+  -H "$H_MASTER" -H "$H_JSON" \
+  -d '{"name":"Pollinations","type":"openai","baseUrl":"https://gen.pollinations.ai/v1"}' \
+  | jq -r '.id')
+echo "Pollinations provider: $POLLINATIONS_ID"
+
+POLLINATIONS_MODEL="openai"
+POLLINATIONS_MODEL_ID=$(curl -sf -X POST "$BASE/admin/providers/$POLLINATIONS_ID/models" \
+  -H "$H_MASTER" -H "$H_JSON" \
+  -d "{\"modelName\":\"$POLLINATIONS_MODEL\"}" \
+  | jq -r '.id')
+echo "  $POLLINATIONS_MODEL -> $POLLINATIONS_MODEL_ID"
+
 echo ""
 echo "==> Assigning AI provider keys to tenant $TENANT_ID..."
 
@@ -74,6 +87,15 @@ if [[ -n "$GROQ_API_KEY" ]]; then
     -d "{\"aiProviderId\":\"$GROQ_ID\",\"apiKey\":\"$GROQ_API_KEY\"}" | jq -r '"  Groq provider key: " + .id'
 else
   echo "  Skipping Groq provider key (GROQ_API_KEY not set)"
+fi
+
+POLLINATIONS_API_KEY="${POLLINATIONS_API_KEY:-}"
+if [[ -n "$POLLINATIONS_API_KEY" ]]; then
+  curl -sf -X POST "$BASE/admin/tenants/$TENANT_ID/credentials" \
+    -H "$H_MASTER" -H "$H_JSON" \
+    -d "{\"aiProviderId\":\"$POLLINATIONS_ID\",\"apiKey\":\"$POLLINATIONS_API_KEY\"}" | jq -r '"  Pollinations provider key: " + .id'
+else
+  echo "  Skipping Pollinations provider key (POLLINATIONS_API_KEY not set)"
 fi
 
 echo ""
@@ -97,6 +119,14 @@ for MODEL in "qwen3.5:397b-cloud" "gemini-3-flash-preview" "gemma4:31b-cloud" "d
     -d "{\"aiProviderModelId\":\"$MODEL_ID\",\"priority\":$PRIORITY}" | jq -r "\"  priority $PRIORITY: $MODEL\""
   PRIORITY=$((PRIORITY + 1))
 done
+
+# Pollinations last (if credential was assigned)
+if [[ -n "$POLLINATIONS_API_KEY" ]]; then
+  curl -sf -X POST "$BASE/admin/tenants/$TENANT_ID/models" \
+    -H "$H_MASTER" -H "$H_JSON" \
+    -d "{\"aiProviderModelId\":\"$POLLINATIONS_MODEL_ID\",\"priority\":$PRIORITY}" | jq -r "\"  priority $PRIORITY: $POLLINATIONS_MODEL (Pollinations)\""
+  PRIORITY=$((PRIORITY + 1))
+fi
 
 echo ""
 echo "Done."

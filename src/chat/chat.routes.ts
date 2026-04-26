@@ -29,9 +29,14 @@ export function chatRoutePlugin(tenantStore: TenantStore, cryptoService: CryptoS
         .guard({detail: {security: [{GatewayApiKey: []}]}}) // This guard applies the security requirement for Swagger UI / OpenAPI docs
         .post('/v1/chat/completions', async ({body, tenant}) => {
 
+            const [requestedProviderName, requestedModel] = body.model?.includes('/')
+                ? body.model.split('/', 2) as [string, string]
+                : [undefined, body.model];
+
             const modelConfigResult: Result<ModelConfig[], TenantModelConfigError> = tenantModelConfResolver.resolve({
                 tenantId: tenant!.id,
-                requestedModel: body.model,
+                requestedModel,
+                requestedProviderName,
                 forceAiProviderId: tenant!.forceAiProviderId
             });
             if (modelConfigResult.isErr()) {

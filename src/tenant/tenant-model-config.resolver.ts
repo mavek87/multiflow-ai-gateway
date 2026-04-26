@@ -12,16 +12,22 @@ export class TenantModelConfigResolver {
     ) {
     }
 
-    public resolve({tenantId, requestedModel, forceAiProviderId}: TenantModelConfigKey): Result<ModelConfig[], TenantModelConfigError> {
+    public resolve({tenantId, requestedModel, requestedProviderName, forceAiProviderId}: TenantModelConfigKey): Result<ModelConfig[], TenantModelConfigError> {
         const modelConfigs = this.tenantStore.getTenantModelConfigs(tenantId, forceAiProviderId);
         if (modelConfigs.length === 0) return err({code: 'no_providers'});
 
-        const matchingConfigs = requestedModel
+        let matchingConfigs = requestedModel
             ? modelConfigs.filter((modelConfig) => modelConfig.modelName === requestedModel)
             : modelConfigs;
 
-        if (requestedModel && matchingConfigs.length === 0) {
-            return err({code: 'model_not_found', model: requestedModel});
+        if (requestedProviderName) {
+            matchingConfigs = matchingConfigs.filter(
+                (modelConfig) => modelConfig.aiProviderName.toLowerCase() === requestedProviderName.toLowerCase()
+            );
+        }
+
+        if ((requestedModel || requestedProviderName) && matchingConfigs.length === 0) {
+            return err({code: 'model_not_found', model: requestedModel ?? requestedProviderName ?? ''});
         }
 
         const arrayOfModelConfig: ModelConfig[] = matchingConfigs.map((modelConfig) => ({
