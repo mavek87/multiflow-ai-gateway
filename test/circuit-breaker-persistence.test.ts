@@ -1,6 +1,7 @@
 import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
 import { createTestContext, mockSseResponse } from './test-setup';
-import { RoutingAIClientFactory, createModelSelector } from '@/engine/routing/routing-client-factory';
+import { RoutingAIClientFactory } from '@/engine/routing/routing-client-factory';
+import { createModelSelector } from '@/engine/selection/selector.factory';
 import { MetricsStore } from '@/engine/observability/metrics';
 import { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
 import { ChatService } from '@/chat/chat.service';

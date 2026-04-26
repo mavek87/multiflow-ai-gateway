@@ -1,5 +1,6 @@
 import { describe, test, expect } from 'bun:test';
-import { RoutingAIClientFactory, createModelSelector } from './routing-client-factory';
+import { RoutingAIClientFactory } from './routing-client-factory';
+import { createModelSelector } from '@/engine/selection/selector.factory';
 import type { ModelConfig } from '@/engine/client/client.types';
 import { mockSseResponse } from '@test/test-setup';
 import { MetricsStore } from '@/engine/observability/metrics';
