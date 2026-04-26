@@ -13,8 +13,8 @@ const DEFAULT_SYSTEM_PROMPT = 'You are a helpful assistant.';
 export class ChatService {
     constructor(private readonly aiClientFactory: RoutingAIClientFactory) {}
 
-    public async handleChatRequest(tenant: Tenant, chatRequest: ChatServiceRequest, modelConfigs: ModelConfig[]): Promise<Result<ChatHandlerResult, ChatServiceError>> {
-        const client = this.aiClientFactory.create(modelConfigs);
+    public async handleChatRequest(tenant: Tenant, chatRequest: ChatServiceRequest, arrayOfModelConfigs: ModelConfig[]): Promise<Result<ChatHandlerResult, ChatServiceError>> {
+        const client = this.aiClientFactory.create(arrayOfModelConfigs);
         const systemPrompt = chatRequest.system ?? DEFAULT_SYSTEM_PROMPT;
         const isStream = chatRequest.stream === true;
 
@@ -22,7 +22,6 @@ export class ChatService {
 
         if (isStream) {
             const result = await client.chatStream(systemPrompt, chatRequest.messages, {tenantId: tenant.id, tenantName: tenant.name});
-
             if (!result) {
                 return err({code: 'ai_unavailable'});
             }
@@ -36,6 +35,9 @@ export class ChatService {
             });
         } else {
             const result = await client.chat(systemPrompt, chatRequest.messages, {tenantId: tenant.id, tenantName: tenant.name});
+            if (!result) {
+                return err({code: 'ai_unavailable'});
+            }
 
             return ok({
                 isStream: false as const,

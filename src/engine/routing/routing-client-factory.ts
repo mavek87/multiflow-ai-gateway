@@ -6,10 +6,10 @@ import { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
 import { UCB1TunedSelector } from '@/engine/selection/algorithms/ucb1-tuned';
 import { SWUcb1TunedSelector } from '@/engine/selection/algorithms/sw-ucb1-tuned';
 import { ThompsonSelector } from '@/engine/selection/algorithms/thompson';
-import type { ModelSelector, SelectorType } from '@/engine/selection/selector.types';
+import type { ModelSelector, ModelSelectorType } from '@/engine/selection/selector.types';
 import { HttpProviderClient } from '@/engine/client/http-provider-client';
 
-function createSelector(type: SelectorType): ModelSelector {
+export function createModelSelector(type: ModelSelectorType): ModelSelector {
     switch (type) {
         case 'thompson': return new ThompsonSelector();
         case 'ucb1-tuned': return new UCB1TunedSelector();
@@ -18,25 +18,26 @@ function createSelector(type: SelectorType): ModelSelector {
 }
 
 export class RoutingAIClientFactory {
-    private readonly metrics = new MetricsStore();
-    private readonly circuitBreaker = new CircuitBreaker();
-    private readonly selector: ModelSelector;
-
-    constructor(selectorType: SelectorType = 'ucb1-tuned') {
-        this.selector = createSelector(selectorType);
-    }
+    constructor(
+        private readonly metrics: MetricsStore,
+        private readonly circuitBreaker: CircuitBreaker,
+        private readonly modelSelector: ModelSelector,
+    ) {}
 
     public create(modelConfigs: ModelConfig[]): AIClient {
         const sortedModelConfigs = [...modelConfigs].sort((confA, confB) => (confA.priority ?? 0) - (confB.priority ?? 0));
 
         const clients = new Map<string, HttpProviderClient>();
-        const aiProviderIds = new Map<string, { name: string; baseUrl: string }>();
+        const aiProviderIds = new Map<string, { name: string; baseUrl: string; modelName: string }>();
 
         for (const modelConfig of sortedModelConfigs) {
-            clients.set(modelConfig.model, new HttpProviderClient(modelConfig, 10000, 60000, false));
-            aiProviderIds.set(modelConfig.model, {
+            const clientKey = modelConfig.aiProviderModelId!;
+            
+            clients.set(clientKey, new HttpProviderClient(modelConfig, 10000, 60000, false));
+            aiProviderIds.set(clientKey, {
                 name: modelConfig.aiProviderName ?? modelConfig.aiProviderId ?? '',
                 baseUrl: modelConfig.aiProviderBaseUrl ?? '',
+                modelName: modelConfig.model,
             });
         }
 
@@ -44,7 +45,7 @@ export class RoutingAIClientFactory {
             clients,
             this.metrics,
             this.circuitBreaker,
-            this.selector,
+            this.modelSelector,
             aiProviderIds,
         ));
     }

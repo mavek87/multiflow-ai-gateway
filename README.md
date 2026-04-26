@@ -312,8 +312,22 @@ All admin endpoints require the `X-Master-Key` header.
 | `403` | Wrong or missing `X-Master-Key` on admin endpoints |
 | `404` | Tenant or resource not found |
 | `422` | Tenant has no provider models configured |
-| `503` | AI Service unavailable (all retries failed) |
+| `503` | AI Service unavailable (all providers down or circuit breaker open) |
 | `500` | Internal error |
+
+### 503 Service Unavailable Body
+
+When all AI providers are unavailable, the gateway returns:
+
+```json
+{
+  "error": {
+    "message": "AI service unavailable. All providers are currently exhausted or down.",
+    "code": "ai_unavailable",
+    "type": "service_unavailable"
+  }
+}
+```
 
 ---
 

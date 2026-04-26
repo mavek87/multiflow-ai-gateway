@@ -35,7 +35,7 @@ export interface AIClient {
     ctx?: ToolContext,
     tools?: ToolDefinition[],
     dispatcher?: ToolDispatcher,
-  ): Promise<AIChatResponse>;
+  ): Promise<AIChatResponse | null>;
   chatStream(
     systemPrompt: string,
     messages: AIChatMessage[],

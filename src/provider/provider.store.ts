@@ -34,6 +34,7 @@ export class ProviderStore {
       baseUrl: input.baseUrl,
       createdAt: Date.now(),
     };
+
     try {
       this.db.insert(aiProviders).values(provider).run();
     } catch (e) {
@@ -41,6 +42,7 @@ export class ProviderStore {
       if (msg.includes('UNIQUE constraint failed')) return err('duplicate');
       throw e;
     }
+
     log.info(`Created provider: ${provider.name} (${provider.id})`);
     return ok(provider);
   }

@@ -15,7 +15,7 @@ export class AuditedAIClient implements AIClient {
     constructor(private readonly innerClient: AIClient) {
     }
 
-    public async chat(systemPrompt: string, messages: AIChatMessage[], ctx?: ToolContext, tools?: ToolDefinition[], dispatcher?: ToolDispatcher): Promise<AIChatResponse> {
+    public async chat(systemPrompt: string, messages: AIChatMessage[], ctx?: ToolContext, tools?: ToolDefinition[], dispatcher?: ToolDispatcher): Promise<AIChatResponse | null> {
         return this.executeWithAudit(ctx?.tenantId ?? 'unknown', () => this.innerClient.chat(systemPrompt, messages, ctx, tools, dispatcher));
     }
 

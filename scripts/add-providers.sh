@@ -36,8 +36,9 @@ echo "==> Creating models..."
 
 declare -A OLLAMA_MODELS=(
   ["qwen3.5:397b-cloud"]=0
-  ["gemma4:31b-cloud"]=1
-  ["deepseek-v3.2:cloud"]=2
+  ["gemini-3-flash-preview"]=1
+  ["gemma4:31b-cloud"]=2
+  ["deepseek-v3.2:cloud"]=3
 )
 
 declare -A OLLAMA_MODEL_IDS
@@ -89,7 +90,7 @@ if [[ -n "$GROQ_API_KEY" ]]; then
 fi
 
 # Ollama models as fallback
-for MODEL in "qwen3.5:397b-cloud" "gemma4:31b-cloud" "deepseek-v3.2:cloud"; do
+for MODEL in "qwen3.5:397b-cloud" "gemini-3-flash-preview" "gemma4:31b-cloud" "deepseek-v3.2:cloud"; do
   MODEL_ID=${OLLAMA_MODEL_IDS[$MODEL]}
   curl -sf -X POST "$BASE/admin/tenants/$TENANT_ID/models" \
     -H "$H_MASTER" -H "$H_JSON" \

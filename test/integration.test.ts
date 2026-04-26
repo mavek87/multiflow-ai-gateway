@@ -1,5 +1,5 @@
 import { describe, test, expect, afterEach, beforeEach } from 'bun:test';
-import { createTestContext, createTestApp, sendRequest, mockSseResponse } from './test-setup';
+import { createTestContext, sendRequest, mockSseResponse } from './test-setup';
 import { CryptoService } from '@/crypto/crypto';
 import { Elysia } from 'elysia';
 import { adminRoutePlugin } from '@/admin/admin.routes';

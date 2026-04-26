@@ -12,4 +12,4 @@ export interface ModelSelector {
   ): string | null;
 }
 
-export type SelectorType = 'thompson' | 'ucb1-tuned' | 'sw-ucb1-tuned';
+export type ModelSelectorType = 'thompson' | 'ucb1-tuned' | 'sw-ucb1-tuned';

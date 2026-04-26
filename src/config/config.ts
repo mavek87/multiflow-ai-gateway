@@ -1,6 +1,6 @@
-import type { SelectorType } from '@/engine/selection/selector.types';
+import type { ModelSelectorType } from '@/engine/selection/selector.types';
 
-const VALID_SELECTOR_TYPES: SelectorType[] = ['thompson', 'ucb1-tuned', 'sw-ucb1-tuned'];
+const VALID_SELECTOR_TYPES: ModelSelectorType[] = ['thompson', 'ucb1-tuned', 'sw-ucb1-tuned'];
 
 function required(name: string): string {
   const val = process.env[name];
@@ -12,12 +12,12 @@ function optional(name: string, fallback: string): string {
   return process.env[name] ?? fallback;
 }
 
-function selectorType(): SelectorType {
+function selectorType(): ModelSelectorType {
   const val = optional('SELECTOR_TYPE', 'ucb1-tuned');
-  if (!VALID_SELECTOR_TYPES.includes(val as SelectorType)) {
+  if (!VALID_SELECTOR_TYPES.includes(val as ModelSelectorType)) {
     throw new Error(`Invalid SELECTOR_TYPE "${val}". Valid values: ${VALID_SELECTOR_TYPES.join(', ')}`);
   }
-  return val as SelectorType;
+  return val as ModelSelectorType;
 }
 
 export const config = {

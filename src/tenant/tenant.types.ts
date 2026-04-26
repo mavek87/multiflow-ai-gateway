@@ -2,7 +2,7 @@ export type TenantModelConfigError =
     | { code: 'no_providers' }
     | { code: 'model_not_found'; model: string };
 
-export interface TenantModelConfig {
+export interface TenantModelConfigKey {
     tenantId: string;
     requestedModel?: string;
     forceAiProviderId?: string | null;
@@ -34,7 +34,7 @@ export type TenantAiModelPriority = {
   createdAt: number;
 };
 
-export type TenantModelConfigData = {
+export type TenantModelConfig = {
   id: string;
   tenantId: string;
   aiProviderModelId: string;

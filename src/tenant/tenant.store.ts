@@ -4,7 +4,7 @@ import { aiProviderModels, aiProviders, gatewayApiKeys, tenantAiModelPriorities,
 import type {
   AssignAiModelPriorityInput,
   AssignAiProviderKeyInput,
-  TenantModelConfigData,
+  TenantModelConfig,
   Tenant,
   TenantAiModelPriority,
   TenantAiProviderKey,
@@ -138,7 +138,7 @@ export class TenantStore {
 
   // --- Chat routing ---
 
-  getTenantModelConfigs(tenantId: string, forceAiProviderId?: string | null): TenantModelConfigData[] {
+  getTenantModelConfigs(tenantId: string, forceAiProviderId?: string | null): TenantModelConfig[] {
     const rows = this.db
       .select({
         id: tenantAiModelPriorities.id,

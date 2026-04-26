@@ -25,7 +25,6 @@ import { createLogger } from '@/utils/logger';
 
 const log = createLogger('ROUTING');
 const MAX_ATTEMPTS_CAP = 10;
-const UNAVAILABLE_RESPONSE = 'AI service unavailable. Try again later.';
 
 type RoutedSuccess<T> = T & AIBaseResponse & { model: string };
 
@@ -35,28 +34,36 @@ export class RoutingAIClient implements AIClient {
     private readonly metrics: MetricsStore,
     private readonly circuitBreaker: CircuitBreaker,
     private readonly selector: ModelSelector,
-    private readonly aiProviderIds: Map<string, { name: string; baseUrl: string }>
+    private readonly aiProviderIds: Map<string, { name: string; baseUrl: string; modelName: string }>
   ) {}
 
-  async chat(systemPrompt: string, messages: AIChatMessage[], ctx?: ToolContext, tools?: ToolDefinition[], dispatcher?: ToolDispatcher): Promise<AIChatResponse> {
+  async chat(systemPrompt: string, messages: AIChatMessage[], ctx?: ToolContext, tools?: ToolDefinition[], toolDispatcher?: ToolDispatcher): Promise<AIChatResponse | null> {
     log.info({ messages: messages.length, tenantId: ctx?.tenantId ?? 'unknown' }, 'new request');
 
     const result = await this.executeWithRetry<CallProviderSuccess>((client) => {
-      const boundDispatcher = dispatcher && ctx
-        ? (name: string, args: Record<string, unknown>) => dispatcher(name, args, ctx)
+      const executeToolFn = toolDispatcher && ctx
+        ? (name: string, args: Record<string, unknown>) => toolDispatcher(name, args, ctx)
         : undefined;
-      if (tools && tools.length > 0 && boundDispatcher) {
-        return client.chatWithTools(systemPrompt, messages, tools, boundDispatcher);
+      if (tools && tools.length > 0 && executeToolFn) {
+        return client.chatWithTools(systemPrompt, messages, tools, executeToolFn);
       }
       return client.chat(systemPrompt, messages);
     });
 
     if (result) {
-      log.info({ model: result.model, latencyMs: result.latencyMs, ttftMs: result.ttftMs }, 'model succeeded');
-      return { content: result.content, model: result.model, aiProvider: result.aiProvider, aiProviderUrl: result.aiProviderUrl };
+      const modelMeta = this.aiProviderIds.get(result.model);
+      const displayName = modelMeta?.modelName ?? result.model;
+
+      log.info({ model: displayName, latencyMs: result.latencyMs, ttftMs: result.ttftMs }, 'model succeeded');
+      return { 
+        content: result.content, 
+        model: displayName, 
+        aiProvider: result.aiProvider, 
+        aiProviderUrl: result.aiProviderUrl 
+      };
     }
 
-    return { content: UNAVAILABLE_RESPONSE, model: 'unknown', aiProvider: '', aiProviderUrl: '' };
+    return null;
   }
 
   async chatStream(systemPrompt: string, messages: AIChatMessage[], ctx?: ToolContext): Promise<AIChatStreamResponse | null> {
@@ -65,7 +72,15 @@ export class RoutingAIClient implements AIClient {
     const result = await this.executeWithRetry<CallProviderStreamSuccess>((client) => client.chatStream(systemPrompt, messages));
 
     if (result) {
-      return { body: result.body, model: result.model, aiProvider: result.aiProvider, aiProviderUrl: result.aiProviderUrl };
+      const modelMeta = this.aiProviderIds.get(result.model);
+      const displayName = modelMeta?.modelName ?? result.model;
+
+      return { 
+        body: result.body, 
+        model: displayName, 
+        aiProvider: result.aiProvider, 
+        aiProviderUrl: result.aiProviderUrl 
+      };
     }
 
     return null;
@@ -88,7 +103,8 @@ export class RoutingAIClient implements AIClient {
       }
 
       attemptedModels.add(selected);
-      log.info({ attempt: attempt + 1, model: selected }, 'routing attempt');
+      const modelMeta = this.aiProviderIds.get(selected);
+      log.info({ attempt: attempt + 1, model: modelMeta?.modelName ?? selected, provider: modelMeta?.name }, 'routing attempt');
 
       const client = this.clients.get(selected)!;
       const result = await operation(client);
@@ -99,12 +115,12 @@ export class RoutingAIClient implements AIClient {
         return {
           ...result.value,
           model: selected,
-          aiProvider: this.aiProviderIds.get(selected)?.name ?? '',
-          aiProviderUrl: this.aiProviderIds.get(selected)?.baseUrl ?? '',
+          aiProvider: modelMeta?.name ?? '',
+          aiProviderUrl: modelMeta?.baseUrl ?? '',
         };
       }
 
-      log.warn({ model: selected, kind: result.error.kind }, 'attempt failed');
+      log.warn({ model: modelMeta?.modelName ?? selected, kind: result.error.kind }, 'attempt failed');
       this.onFailure(selected, result.error.kind);
     }
 
