@@ -202,11 +202,10 @@ docker compose up --build -d
 
 **How the image is built:**
 
-The Dockerfile uses a 3-stage build (~252MB final image):
+The Dockerfile uses a 2-stage build:
 
-1. **deps** - installs only production dependencies (`--production`)
-2. **builder** - installs all dependencies and pre-generates Drizzle SQL migrations
-3. **runner** - `oven/bun:1-slim` base, copies prod `node_modules`, `src/`, and pre-generated `drizzle/` migrations
+1. **builder** - installs all dependencies, pre-generates Drizzle SQL migrations, and compiles the app into a single self-contained binary
+2. **runner** - `gcr.io/distroless/cc-debian12` (pinned SHA), copies only the binary and the `drizzle/` migrations -- no `node_modules`, no source files
 
 **Persistence:**
 
