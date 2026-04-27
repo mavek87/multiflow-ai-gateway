@@ -71,7 +71,7 @@ openssl rand -hex 32
 
 Choose one of the two methods below. They are equivalent -- use whichever fits your workflow.
 
-#### A. Seed file (recommended)
+#### 3A. Seed file (recommended)
 
 Place a `seed.yaml` or `seed.yml` file in the project root (or set `SEED_FILE` to a custom path). The gateway reads it at startup and idempotently upserts all declared entities. Both `.yaml` and `.yml` extensions are supported: if the configured path is not found, the gateway automatically tries the alternative extension.
 
@@ -116,7 +116,7 @@ volumes:
 
 A new tenant's gateway API key is printed to the logs on first creation. It is not stored in plaintext and cannot be retrieved afterwards.
 
-#### B. Manual setup via REST API
+#### 3B. Manual setup via REST API
 
 Use this after the server is running if you prefer to configure tenants and providers dynamically via the Admin API.
 
