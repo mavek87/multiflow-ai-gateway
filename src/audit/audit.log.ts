@@ -4,7 +4,7 @@ import { config } from '@/config/config';
 
 type AuditEntry = {
   tenantId: string;
-  aiProvider: string;
+  aiProvider: { id: string; name: string };
   model: string;
   latencyMs: number;
   success: boolean;

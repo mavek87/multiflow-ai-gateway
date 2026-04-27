@@ -21,7 +21,7 @@ describe('ChatService', () => {
 
   test('handles standard chat request successfully', async () => {
     const mockClient: Pick<AIRouter, 'chat' | 'chatStream'> = {
-      chat: async () => ({ model: 'gpt-4o', content: 'Mocked reply', aiProvider: 'openai', aiProviderUrl: 'https://api.openai.com' }),
+      chat: async () => ({ model: 'gpt-4o', content: 'Mocked reply', aiProviderId: 'prov-1', aiProvider: 'openai', aiProviderUrl: 'https://api.openai.com' }),
       chatStream: async () => null,
     };
     const service = new ChatService(makeFactory(mockClient));
@@ -39,8 +39,8 @@ describe('ChatService', () => {
   test('handles standard stream request successfully', async () => {
     const fakeBody = new ReadableStream();
     const mockClient: Pick<AIRouter, 'chat' | 'chatStream'> = {
-      chat: async () => ({ model: 'gpt-4o', content: '', aiProvider: 'openai', aiProviderUrl: 'https://api.openai.com' }),
-      chatStream: async () => ({ body: fakeBody, model: 'gpt-4o', aiProvider: 'openai', aiProviderUrl: 'https://api.openai.com' }),
+      chat: async () => ({ model: 'gpt-4o', content: '', aiProviderId: 'prov-1', aiProvider: 'openai', aiProviderUrl: 'https://api.openai.com' }),
+      chatStream: async () => ({ body: fakeBody, model: 'gpt-4o', aiProviderId: 'prov-1', aiProvider: 'openai', aiProviderUrl: 'https://api.openai.com' }),
     };
     const service = new ChatService(makeFactory(mockClient));
 
@@ -55,7 +55,7 @@ describe('ChatService', () => {
 
   test('returns ai_unavailable error if stream returns null', async () => {
     const mockClient: Pick<AIRouter, 'chat' | 'chatStream'> = {
-      chat: async () => ({ model: 'gpt-4o', content: '', aiProvider: 'openai', aiProviderUrl: 'https://api.openai.com' }),
+      chat: async () => ({ model: 'gpt-4o', content: '', aiProviderId: 'prov-1', aiProvider: 'openai', aiProviderUrl: 'https://api.openai.com' }),
       chatStream: async () => null,
     };
     const service = new ChatService(makeFactory(mockClient));

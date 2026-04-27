@@ -5,6 +5,7 @@ export type { AIChatMessage, ToolCall };
 
 export interface AIBaseResponse {
   model: string;
+  aiProviderId: string;
   aiProvider: string;
   aiProviderUrl: string;
 }

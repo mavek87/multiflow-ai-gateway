@@ -58,7 +58,7 @@ export class AIRouter {
                 const modelMeta = this.aiProviderIds.get(result.model);
                 const displayName = modelMeta?.modelName ?? result.model;
                 log.info({model: displayName, latencyMs: result.latencyMs, ttftMs: result.ttftMs}, 'model succeeded');
-                return {content: result.content, model: displayName, aiProvider: result.aiProvider, aiProviderUrl: result.aiProviderUrl};
+                return {content: result.content, model: displayName, aiProviderId: result.aiProviderId, aiProvider: result.aiProvider, aiProviderUrl: result.aiProviderUrl};
             }
 
             return null;
@@ -74,7 +74,7 @@ export class AIRouter {
             if (result) {
                 const modelMeta = this.aiProviderIds.get(result.model);
                 const displayName = modelMeta?.modelName ?? result.model;
-                return {body: result.body, model: displayName, aiProvider: result.aiProvider, aiProviderUrl: result.aiProviderUrl};
+                return {body: result.body, model: displayName, aiProviderId: result.aiProviderId, aiProvider: result.aiProvider, aiProviderUrl: result.aiProviderUrl};
             }
 
             return null;
@@ -114,6 +114,7 @@ export class AIRouter {
                 return {
                     ...result.value,
                     model: selected,
+                    aiProviderId: selected,
                     aiProvider: modelMeta?.name ?? '',
                     aiProviderUrl: modelMeta?.baseUrl ?? '',
                 };
@@ -132,12 +133,12 @@ export class AIRouter {
             const result = await operation();
             const latencyMs = Date.now() - startedAt;
             const model = (result as any)?.model || 'unknown';
-            const aiProvider = (result as any)?.aiProvider || 'unknown';
+            const aiProvider = {id: (result as any)?.aiProviderId || 'unknown', name: (result as any)?.aiProvider || 'unknown'};
             const isFailure = result === null || model === 'unknown';
             logAudit({tenantId, latencyMs, success: !isFailure, statusCode: isFailure ? 503 : 200, model, aiProvider});
             return result;
         } catch (error) {
-            logAudit({tenantId, latencyMs: Date.now() - startedAt, success: false, statusCode: 500, model: 'unknown', aiProvider: 'unknown'});
+            logAudit({tenantId, latencyMs: Date.now() - startedAt, success: false, statusCode: 500, model: 'unknown', aiProvider: {id: 'unknown', name: 'unknown'}});
             throw error;
         }
     }
