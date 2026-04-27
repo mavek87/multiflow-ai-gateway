@@ -13,8 +13,8 @@ COPY . .
 RUN bun run db:generate
 RUN bun build ./src/index.ts --compile --outfile multiflow-ai-gateway
 
-# Create data and logs directories
-RUN mkdir -p data logs
+# Create data directory
+RUN mkdir -p data
 
 # --- STAGE 2: Production ---
 # Use Distroless with a pinned SHA for strict reproducibility
@@ -27,9 +27,8 @@ COPY --from=builder --chown=nonroot:nonroot /app/multiflow-ai-gateway ./multiflo
 # Copy directories required at runtime
 COPY --from=builder --chown=nonroot:nonroot /app/drizzle ./drizzle
 
-# Copy empty data and logs directories and ensure proper ownership
+# Copy empty data directory and ensure proper ownership
 COPY --from=builder --chown=nonroot:nonroot /app/data ./data
-COPY --from=builder --chown=nonroot:nonroot /app/logs ./logs
 
 # Set the non-privileged user (UID 65532 included in distroless)
 USER nonroot
