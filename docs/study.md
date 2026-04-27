@@ -213,40 +213,75 @@ modelSelector.select(availableModels, metrics, circuitBreaker)
 
 ---
 
-## Feature Gaps to Address
+## Roadmap
 
-| Feature | Priority | Implementation |
-|---------|----------|----------------|
-| **Prompt Management** | High | Version + environments for RAG use case |
-| **Custom Properties** | High | Extend audit log with arbitrary KV |
-| **Caching** | Medium | TTL cache for repeated prompts (exact hash) |
-| **Load Balancing** | Medium | Multiple provider keys per tenant |
-| **Session Grouping** | Medium | Group requests by session_id |
-| **Eval Scores** | Medium | Submit scores, use in model selection |
+| # | Feature | Priority | Area | Status |
+|---|---------|----------|------|--------|
+| 1 | Prometheus metrics endpoint | Critical | Observability | Not started |
+| 2 | Rate limiting / sub-users per tenant | High | Multi-tenancy | Not started |
+| 3 | Proactive health checks | High | Routing | Not started |
+| 4 | Exact-match prompt caching | High | Performance | Not started |
+| 5 | Additional provider adapters (Groq, Gemini, Claude native) | Medium | Providers | Not started |
+| 6 | BYOK per-request | Medium | Auth | Not started |
+| 7 | PostgreSQL support | Low | Infrastructure | Not started |
 
 ---
 
-## Recommendations
+### Feature Descriptions
 
-### High Priority (Align with Existing Architecture)
+#### 1. Prometheus Metrics Endpoint
 
-1. **Prompt Management**
-   - Version tenant prompts
-   - Environment promotion (dev → staging → prod)
+Expose a `/metrics` endpoint in Prometheus format with per-tenant and per-model counters (requests, errors, latency histograms, token usage). This is a prerequisite for any production deployment: without external metrics there is no alerting, no dashboarding, and no SLA visibility. All other features are harder to validate without it.
 
-2. **Custom Properties**
-   - Extend audit log with KV pairs
-   - Filter by properties in query
+**Scope:** new Elysia plugin, metrics registry (prom-client or hand-rolled), per-request middleware that records counters/histograms.
 
-3. **Eval Scores**
-   - Allow clients to submit scores
-   - Use as reward signal in selection
+---
 
-### Medium Priority
+#### 2. Rate Limiting / Sub-users per Tenant
 
-4. **Caching** - Simple TTL cache for identical prompts
-5. **Load Balancing** - Distribute across provider keys
-6. **Session Grouping** - Debug agent flows
+Each tenant can define sub-users (API keys) with individual rate limits (requests per minute, tokens per minute). The gateway enforces these limits before forwarding to any provider. Without this, a single misbehaving tenant can saturate all upstream providers and degrade service for others -- making the multi-tenant isolation incomplete.
+
+**Scope:** new `sub_user` and `rate_limit` tables, sliding window counter in SQLite (or in-memory with periodic flush), enforcement middleware before the routing layer.
+
+---
+
+#### 3. Proactive Health Checks
+
+A background job periodically pings each active provider/model endpoint and marks it as degraded before it causes real request failures. This feeds a health signal into the UCB1 selector, complementing the reactive circuit breaker. Currently the circuit breaker only opens after observed failures -- a proactive check catches providers that are throttling silently (e.g. Groq free tier hitting rate limits between requests).
+
+**Scope:** background scheduler (Bun's `setInterval` or a cron job), health check result stored per provider, exposed as an additional input to the model selector.
+
+---
+
+#### 4. Exact-Match Prompt Caching
+
+Cache responses keyed by a hash of `(tenant_id, model, messages, temperature, max_tokens)` with a configurable TTL. On cache hit, return the stored response without calling the provider. Especially high ROI for RAG workloads where the same context + question is repeated across users or retries.
+
+**Scope:** new `prompt_cache` table in SQLite, cache lookup/store in the request pipeline before the routing layer, per-tenant opt-in flag and TTL setting.
+
+---
+
+#### 5. Additional Provider Adapters (Groq, Gemini native, Claude native)
+
+Add first-class adapters for Groq, Google Gemini, and Anthropic Claude (currently likely proxied via OpenAI-compatible endpoints). Native adapters unlock provider-specific features (streaming formats, tool use schemas, context caching) and give UCB1 more diverse providers to route across -- which is where the algorithm's value compounds.
+
+**Scope:** one adapter module per provider following the existing provider abstraction, integration tests with provider sandboxes.
+
+---
+
+#### 6. BYOK Per-request (Bring Your Own Key)
+
+Allow a tenant to pass their own provider API key at request time via a header (e.g. `x-provider-key`), bypassing the gateway's stored keys entirely. This is a hard requirement for enterprise clients that have a zero-key-custody policy -- they will not allow a third party (even self-hosted) to store their provider credentials.
+
+**Scope:** optional header extraction in the auth middleware, key passed directly to the provider adapter without being persisted.
+
+---
+
+#### 7. PostgreSQL Support
+
+Replace SQLite with PostgreSQL as an optional backend for horizontal scaling (multiple gateway instances sharing state). Low priority because SQLite is sufficient for single-node deployments and most self-hosted use cases. Only relevant when tenants need high availability across multiple nodes.
+
+**Scope:** Drizzle adapter swap, connection pooling, migration scripts for Postgres dialect.
 
 ---
 

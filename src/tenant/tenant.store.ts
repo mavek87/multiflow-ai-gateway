@@ -151,6 +151,12 @@ export class TenantStore {
     return { tenant, rawApiKey, isNew: true };
   }
 
+  getAiProviderKey(tenantId: string, aiProviderId: string): TenantAiProviderKey | null {
+    return this.db.select().from(tenantAiProviderKeys)
+      .where(and(eq(tenantAiProviderKeys.tenantId, tenantId), eq(tenantAiProviderKeys.aiProviderId, aiProviderId)))
+      .get() ?? null;
+  }
+
   upsertAiProviderKey(tenantId: string, input: AssignAiProviderKeyInput): TenantAiProviderKey {
     const id = randomUUID();
     const now = Date.now();
@@ -167,20 +173,28 @@ export class TenantStore {
       .get()!;
   }
 
-  upsertAiModelPriority(tenantId: string, input: AssignAiModelPriorityInput): TenantAiModelPriority {
+  upsertAiModelPriority(tenantId: string, input: AssignAiModelPriorityInput): { priority: TenantAiModelPriority; op: 'created' | 'updated' | 'unchanged' } {
+    const existing = this.db.select().from(tenantAiModelPriorities)
+      .where(and(eq(tenantAiModelPriorities.tenantId, tenantId), eq(tenantAiModelPriorities.aiProviderModelId, input.aiProviderModelId)))
+      .get() ?? null;
     const id = randomUUID();
     const now = Date.now();
-    const priority = input.priority ?? 0;
+    const priorityVal = input.priority ?? 0;
     this.db.insert(tenantAiModelPriorities)
-      .values({ id, tenantId, aiProviderModelId: input.aiProviderModelId, priority, enabled: true, createdAt: now })
+      .values({ id, tenantId, aiProviderModelId: input.aiProviderModelId, priority: priorityVal, enabled: true, createdAt: now })
       .onConflictDoUpdate({
         target: [tenantAiModelPriorities.tenantId, tenantAiModelPriorities.aiProviderModelId],
-        set: { priority, enabled: true },
+        set: { priority: priorityVal, enabled: true },
       })
       .run();
-    return this.db.select().from(tenantAiModelPriorities)
+    const priority = this.db.select().from(tenantAiModelPriorities)
       .where(and(eq(tenantAiModelPriorities.tenantId, tenantId), eq(tenantAiModelPriorities.aiProviderModelId, input.aiProviderModelId)))
       .get()!;
+    let op: 'created' | 'updated' | 'unchanged';
+    if (!existing) op = 'created';
+    else if (existing.priority !== priorityVal) op = 'updated';
+    else op = 'unchanged';
+    return { priority, op };
   }
 
   // --- Chat routing ---

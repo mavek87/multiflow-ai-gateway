@@ -55,7 +55,7 @@ cp .env.example .env
 | `LOG_LEVEL` | no | `info` | Log level: `trace`, `debug`, `info`, `warn`, `error` |
 | `FIRST_TOKEN_TIMEOUT_MS` | no | `30000` | Max wait for first token from a provider (ms) |
 | `STREAM_WATCHDOG_MS` | no | `120000` | Max total streaming duration per request (ms) |
-| `SEED_FILE` | no | `./seed.yaml` | Path to the declarative seed file applied at startup |
+| `SEED_FILE` | no | `./seed.yaml` | Path to the declarative seed file applied at startup. Both `.yaml` and `.yml` extensions are accepted. |
 
 Generate the required secret values:
 
@@ -69,7 +69,7 @@ openssl rand -hex 32
 
 ### 3. Seed file (optional)
 
-Place a `seed.yaml` file in the project root (or set `SEED_FILE` to a custom path). The gateway reads it at startup and idempotently upserts all declared entities.
+Place a `seed.yaml` or `seed.yml` file in the project root (or set `SEED_FILE` to a custom path). The gateway reads it at startup and idempotently upserts all declared entities. Both `.yaml` and `.yml` extensions are supported: if the configured path is not found, the gateway automatically tries the alternative extension.
 
 ```yaml
 providers:
@@ -107,7 +107,7 @@ tenants:
 
 ```yaml
 volumes:
-  - ./seed.yaml:/app/seed.yaml:ro
+  - ./seed.yml:/app/seed.yml:ro
 ```
 
 A new tenant's gateway API key is printed to the logs on first creation. It is not stored in plaintext and cannot be retrieved afterwards.

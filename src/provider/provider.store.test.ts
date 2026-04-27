@@ -106,35 +106,35 @@ describe('ProviderStore', () => {
     });
 
     test('getProviderModelByName returns model when exists', () => {
-      const p = store.upsertProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' });
+      const { provider: p } = store.upsertProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' });
       store.upsertProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' });
       const found = store.getProviderModelByName(p.id, 'llama3-70b');
       expect(found?.modelName).toBe('llama3-70b');
     });
 
     test('getProviderModelByName returns null when absent', () => {
-      const p = store.upsertProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' });
+      const { provider: p } = store.upsertProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' });
       expect(store.getProviderModelByName(p.id, 'nonexistent')).toBeNull();
     });
 
     test('upsertProviderModel creates when absent', () => {
-      const p = store.upsertProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' });
-      const m = store.upsertProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' });
+      const { provider: p } = store.upsertProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' });
+      const { model: m } = store.upsertProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' });
       expect(m.modelName).toBe('llama3-70b');
       expect(store.listProviderModels(p.id)).toHaveLength(1);
     });
 
     test('upsertProviderModel does not duplicate', () => {
-      const p = store.upsertProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' });
+      const { provider: p } = store.upsertProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' });
       store.upsertProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' });
       store.upsertProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' });
       expect(store.listProviderModels(p.id)).toHaveLength(1);
     });
 
     test('upsertProviderModel preserves original id', () => {
-      const p = store.upsertProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' });
-      const first = store.upsertProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' });
-      const second = store.upsertProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' });
+      const { provider: p } = store.upsertProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' });
+      const { model: first } = store.upsertProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' });
+      const { model: second } = store.upsertProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' });
       expect(second.id).toBe(first.id);
     });
   });

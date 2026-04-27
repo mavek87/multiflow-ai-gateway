@@ -8,13 +8,13 @@ import { chatRoutePlugin } from '@/chat/chat.routes';
 import { config } from '@/config/config';
 import { createLogger } from '@/utils/logger';
 import { CryptoService } from '@/crypto/crypto';
-import { runBootstrap } from '@/bootstrap/seed.service';
+import { runSeed } from '@/bootstrap/seed.service';
 
 const log = createLogger('SERVER');
 
 const cryptoService = new CryptoService();
 
-runBootstrap(db, cryptoService, config.seedFile);
+runSeed(db, cryptoService, config.seedFile);
 
 const tenantStore = new TenantStore(db);
 const providerStore = new ProviderStore(db);

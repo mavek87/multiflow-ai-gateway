@@ -113,7 +113,7 @@ describe('TenantStore', () => {
 
     test('upsertAiProviderKey creates when absent', () => {
       const { tenant } = tenantStore.upsertTenant('Acme');
-      const p = providerStore.upsertProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' });
+      const { provider: p } = providerStore.upsertProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' });
       const encrypted = cryptoService.encrypt('sk-groq-secret');
       const key = tenantStore.upsertAiProviderKey(tenant.id, { aiProviderId: p.id, aiProviderApiKeyEncrypted: encrypted });
       expect(key.aiProviderApiKeyEncrypted).toBe(encrypted);
@@ -121,7 +121,7 @@ describe('TenantStore', () => {
 
     test('upsertAiProviderKey overwrites credential on conflict', () => {
       const { tenant } = tenantStore.upsertTenant('Acme');
-      const p = providerStore.upsertProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' });
+      const { provider: p } = providerStore.upsertProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' });
       const encryptedA = cryptoService.encrypt('sk-key-a');
       const encryptedB = cryptoService.encrypt('sk-key-b');
       tenantStore.upsertAiProviderKey(tenant.id, { aiProviderId: p.id, aiProviderApiKeyEncrypted: encryptedA });
@@ -131,32 +131,32 @@ describe('TenantStore', () => {
 
     test('upsertAiProviderKey stores null for no-auth provider', () => {
       const { tenant } = tenantStore.upsertTenant('Acme');
-      const p = providerStore.upsertProvider({ name: 'Ollama', type: 'ollama', baseUrl: 'http://localhost:11434/v1' });
+      const { provider: p } = providerStore.upsertProvider({ name: 'Ollama', type: 'ollama', baseUrl: 'http://localhost:11434/v1' });
       const key = tenantStore.upsertAiProviderKey(tenant.id, { aiProviderId: p.id });
       expect(key.aiProviderApiKeyEncrypted).toBeNull();
     });
 
     test('upsertAiModelPriority creates when absent', () => {
       const { tenant } = tenantStore.upsertTenant('Acme');
-      const p = providerStore.upsertProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' });
-      const m = providerStore.upsertProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' });
-      const priority = tenantStore.upsertAiModelPriority(tenant.id, { aiProviderModelId: m.id, priority: 5 });
+      const { provider: p } = providerStore.upsertProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' });
+      const { model: m } = providerStore.upsertProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' });
+      const { priority } = tenantStore.upsertAiModelPriority(tenant.id, { aiProviderModelId: m.id, priority: 5 });
       expect(priority.priority).toBe(5);
     });
 
     test('upsertAiModelPriority updates priority on conflict', () => {
       const { tenant } = tenantStore.upsertTenant('Acme');
-      const p = providerStore.upsertProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' });
-      const m = providerStore.upsertProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' });
+      const { provider: p } = providerStore.upsertProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' });
+      const { model: m } = providerStore.upsertProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' });
       tenantStore.upsertAiModelPriority(tenant.id, { aiProviderModelId: m.id, priority: 5 });
-      const updated = tenantStore.upsertAiModelPriority(tenant.id, { aiProviderModelId: m.id, priority: 10 });
+      const { priority: updated } = tenantStore.upsertAiModelPriority(tenant.id, { aiProviderModelId: m.id, priority: 10 });
       expect(updated.priority).toBe(10);
     });
 
     test('upsertAiModelPriority does not duplicate', () => {
       const { tenant } = tenantStore.upsertTenant('Acme');
-      const p = providerStore.upsertProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' });
-      const m = providerStore.upsertProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' });
+      const { provider: p } = providerStore.upsertProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' });
+      const { model: m } = providerStore.upsertProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' });
       tenantStore.upsertAiModelPriority(tenant.id, { aiProviderModelId: m.id, priority: 5 });
       tenantStore.upsertAiModelPriority(tenant.id, { aiProviderModelId: m.id, priority: 10 });
       expect(tenantStore.listTenantAiModelPriorities(tenant.id)).toHaveLength(1);

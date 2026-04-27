@@ -86,14 +86,20 @@ export class ProviderStore {
     return this.db.select().from(aiProviders).where(eq(aiProviders.name, name)).get() ?? null;
   }
 
-  upsertProvider(input: CreateProviderInput): AiProvider {
+  upsertProvider(input: CreateProviderInput): { provider: AiProvider; op: 'created' | 'updated' | 'unchanged' } {
+    const existing = this.getProviderByName(input.name);
     const id = randomUUID();
     const now = Date.now();
     this.db.insert(aiProviders)
       .values({ id, name: input.name, type: input.type, baseUrl: input.baseUrl, createdAt: now })
       .onConflictDoUpdate({ target: aiProviders.name, set: { type: input.type, baseUrl: input.baseUrl } })
       .run();
-    return this.db.select().from(aiProviders).where(eq(aiProviders.name, input.name)).get()!;
+    const provider = this.db.select().from(aiProviders).where(eq(aiProviders.name, input.name)).get()!;
+    let op: 'created' | 'updated' | 'unchanged';
+    if (!existing) op = 'created';
+    else if (existing.type !== input.type || existing.baseUrl !== input.baseUrl) op = 'updated';
+    else op = 'unchanged';
+    return { provider, op };
   }
 
   getProviderModelByName(aiProviderId: string, modelName: string): AiProviderModel | null {
@@ -102,7 +108,8 @@ export class ProviderStore {
       .get() ?? null;
   }
 
-  upsertProviderModel(input: CreateProviderModelInput): AiProviderModel {
+  upsertProviderModel(input: CreateProviderModelInput): { model: AiProviderModel; op: 'created' | 'unchanged' } {
+    const existing = this.getProviderModelByName(input.aiProviderId, input.modelName);
     const id = randomUUID();
     const now = Date.now();
     this.db.insert(aiProviderModels)
@@ -112,8 +119,9 @@ export class ProviderStore {
         set: { enabled: true },
       })
       .run();
-    return this.db.select().from(aiProviderModels)
+    const model = this.db.select().from(aiProviderModels)
       .where(and(eq(aiProviderModels.aiProviderId, input.aiProviderId), eq(aiProviderModels.modelName, input.modelName)))
       .get()!;
+    return { model, op: existing ? 'unchanged' : 'created' };
   }
 }
