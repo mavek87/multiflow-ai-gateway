@@ -55,6 +55,7 @@ cp .env.example .env
 | `LOG_LEVEL` | no | `info` | Log level: `trace`, `debug`, `info`, `warn`, `error` |
 | `FIRST_TOKEN_TIMEOUT_MS` | no | `30000` | Max wait for first token from a provider (ms) |
 | `STREAM_WATCHDOG_MS` | no | `120000` | Max total streaming duration per request (ms) |
+| `SEED_FILE` | no | `./seed.yaml` | Path to the declarative seed file applied at startup |
 
 Generate the required secret values:
 
@@ -66,7 +67,52 @@ openssl rand -base64 32
 openssl rand -hex 32
 ```
 
-### 3. Start the server
+### 3. Seed file (optional)
+
+Place a `seed.yaml` file in the project root (or set `SEED_FILE` to a custom path). The gateway reads it at startup and idempotently upserts all declared entities.
+
+```yaml
+providers:
+  - name: Groq
+    type: groq
+    baseUrl: https://api.groq.com/openai/v1
+    models:
+      - llama3-70b-8192
+      - llama3-8b-8192
+  - name: Ollama
+    type: ollama
+    baseUrl: http://localhost:11434/v1
+    models:
+      - qwen3:6b
+
+tenants:
+  - name: Acme
+    providers:
+      - name: Groq
+        apiKeyEnv: GROQ_API_KEY
+        models:
+          - name: llama3-70b-8192
+            priority: 0
+          - name: llama3-8b-8192
+            priority: 1
+      - name: Ollama
+        models:
+          - name: qwen3:6b
+            priority: 2
+```
+
+**Idempotency:** running the same seed file twice produces no duplicates. Provider credentials are always overwritten, enabling API key rotation on restart. If `apiKeyEnv` is set but the environment variable is not defined, that provider entry for the tenant is skipped entirely. Omitting `apiKeyEnv` stores a null credential (for no-auth providers like Ollama).
+
+**Docker volume mount example:**
+
+```yaml
+volumes:
+  - ./seed.yaml:/app/seed.yaml:ro
+```
+
+A new tenant's gateway API key is printed to the logs on first creation. It is not stored in plaintext and cannot be retrieved afterwards.
+
+### 4. Start the server
 
 ```bash
 # Development
@@ -125,14 +171,6 @@ SQLite and audit logs are stored outside the container via mounted volumes:
 | `./logs` | `/app/logs` | Audit log (`audit.jsonl`) |
 
 Both directories are created automatically on first start. Do not delete `./data` unless you want to wipe the database.
-
-### 4. Seed the database (Optional)
-
-You can quickly seed the database with a test tenant and Groq provider using:
-
-```bash
-GROQ_API_KEY=your-key bun run scripts/seed.ts
-```
 
 ---
 
@@ -293,8 +331,6 @@ curl -X POST $BASE/v1/chat/completions \
   -H "Authorization: Bearer $TENANT_KEY" -H "Content-Type: application/json" \
   -d '{"messages":[{"role":"user","content":"Hello!"}]}'
 ```
-
-For a more complete example with multiple providers and fallbacks, see `scripts/add-providers.sh`.
 
 ---
 
@@ -507,6 +543,7 @@ src/
   admin/                    # Admin API routes
   audit/                    # Audit logging and decorator
   auth/                     # Authentication (Tenant & Admin)
+  bootstrap/                # Declarative seed file bootstrap (seed.yaml)
   chat/                     # Chat Completions feature (core)
   config/                   # App configuration
   db/                       # Database connection and schema

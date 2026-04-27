@@ -28,4 +28,5 @@ export const config = {
   selectorType: selectorType(),
   firstTokenTimeoutMs: parseInt(optional('FIRST_TOKEN_TIMEOUT_MS', '30000'), 10),
   streamWatchdogMs: parseInt(optional('STREAM_WATCHDOG_MS', '120000'), 10),
+  seedFile: optional('SEED_FILE', './seed.yaml'),
 } as const;

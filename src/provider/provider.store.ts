@@ -1,5 +1,5 @@
 import { ok, err, type Result } from 'neverthrow';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import type { DrizzleDb } from '@/db/database';
 import { aiProviderModels, aiProviders } from '@/db/schema';
 import type {
@@ -78,5 +78,42 @@ export class ProviderStore {
     }
     log.info(`Created model: ${model.modelName} for provider ${model.aiProviderId}`);
     return ok(model);
+  }
+
+  // --- Upsert methods for seed bootstrap ---
+
+  getProviderByName(name: string): AiProvider | null {
+    return this.db.select().from(aiProviders).where(eq(aiProviders.name, name)).get() ?? null;
+  }
+
+  upsertProvider(input: CreateProviderInput): AiProvider {
+    const id = randomUUID();
+    const now = Date.now();
+    this.db.insert(aiProviders)
+      .values({ id, name: input.name, type: input.type, baseUrl: input.baseUrl, createdAt: now })
+      .onConflictDoUpdate({ target: aiProviders.name, set: { type: input.type, baseUrl: input.baseUrl } })
+      .run();
+    return this.db.select().from(aiProviders).where(eq(aiProviders.name, input.name)).get()!;
+  }
+
+  getProviderModelByName(aiProviderId: string, modelName: string): AiProviderModel | null {
+    return this.db.select().from(aiProviderModels)
+      .where(and(eq(aiProviderModels.aiProviderId, aiProviderId), eq(aiProviderModels.modelName, modelName)))
+      .get() ?? null;
+  }
+
+  upsertProviderModel(input: CreateProviderModelInput): AiProviderModel {
+    const id = randomUUID();
+    const now = Date.now();
+    this.db.insert(aiProviderModels)
+      .values({ id, aiProviderId: input.aiProviderId, modelName: input.modelName, enabled: true, createdAt: now })
+      .onConflictDoUpdate({
+        target: [aiProviderModels.aiProviderId, aiProviderModels.modelName],
+        set: { enabled: true },
+      })
+      .run();
+    return this.db.select().from(aiProviderModels)
+      .where(and(eq(aiProviderModels.aiProviderId, input.aiProviderId), eq(aiProviderModels.modelName, input.modelName)))
+      .get()!;
   }
 }

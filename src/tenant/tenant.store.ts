@@ -136,6 +136,53 @@ export class TenantStore {
       .all();
   }
 
+  // --- Upsert methods for seed bootstrap ---
+
+  getTenantByName(name: string): Tenant | null {
+    const row = this.db.select().from(tenants).where(eq(tenants.name, name)).get();
+    if (!row) return null;
+    return { ...row, forceAiProviderId: row.forceAiProviderId ?? null };
+  }
+
+  upsertTenant(name: string): { tenant: Tenant; rawApiKey: string | null; isNew: boolean } {
+    const existing = this.getTenantByName(name);
+    if (existing) return { tenant: existing, rawApiKey: null, isNew: false };
+    const { tenant, rawApiKey } = this.createTenant(name);
+    return { tenant, rawApiKey, isNew: true };
+  }
+
+  upsertAiProviderKey(tenantId: string, input: AssignAiProviderKeyInput): TenantAiProviderKey {
+    const id = randomUUID();
+    const now = Date.now();
+    const encrypted = input.aiProviderApiKeyEncrypted ?? null;
+    this.db.insert(tenantAiProviderKeys)
+      .values({ id, tenantId, aiProviderId: input.aiProviderId, aiProviderApiKeyEncrypted: encrypted, enabled: true, createdAt: now })
+      .onConflictDoUpdate({
+        target: [tenantAiProviderKeys.tenantId, tenantAiProviderKeys.aiProviderId],
+        set: { aiProviderApiKeyEncrypted: encrypted, enabled: true },
+      })
+      .run();
+    return this.db.select().from(tenantAiProviderKeys)
+      .where(and(eq(tenantAiProviderKeys.tenantId, tenantId), eq(tenantAiProviderKeys.aiProviderId, input.aiProviderId)))
+      .get()!;
+  }
+
+  upsertAiModelPriority(tenantId: string, input: AssignAiModelPriorityInput): TenantAiModelPriority {
+    const id = randomUUID();
+    const now = Date.now();
+    const priority = input.priority ?? 0;
+    this.db.insert(tenantAiModelPriorities)
+      .values({ id, tenantId, aiProviderModelId: input.aiProviderModelId, priority, enabled: true, createdAt: now })
+      .onConflictDoUpdate({
+        target: [tenantAiModelPriorities.tenantId, tenantAiModelPriorities.aiProviderModelId],
+        set: { priority, enabled: true },
+      })
+      .run();
+    return this.db.select().from(tenantAiModelPriorities)
+      .where(and(eq(tenantAiModelPriorities.tenantId, tenantId), eq(tenantAiModelPriorities.aiProviderModelId, input.aiProviderModelId)))
+      .get()!;
+  }
+
   // --- Chat routing ---
 
   getTenantModelConfigs(tenantId: string, forceAiProviderId?: string | null): TenantModelConfig[] {

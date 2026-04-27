@@ -70,4 +70,72 @@ describe('ProviderStore', () => {
     const found = store.getProviderModelById(m.id);
     expect(found?.modelName).toBe('m1');
   });
+
+  describe('upsert and lookup methods', () => {
+    test('getProviderByName returns provider when exists', () => {
+      store.createProvider({ name: 'OpenAI', type: 'openai', baseUrl: 'https://api.openai.com/v1' });
+      const found = store.getProviderByName('OpenAI');
+      expect(found?.name).toBe('OpenAI');
+    });
+
+    test('getProviderByName returns null when absent', () => {
+      expect(store.getProviderByName('Unknown')).toBeNull();
+    });
+
+    test('upsertProvider creates when absent', () => {
+      store.upsertProvider({ name: 'OpenAI', type: 'openai', baseUrl: 'https://api.openai.com/v1' });
+      const providers = store.listProviders();
+      expect(providers).toHaveLength(1);
+      expect(providers[0]!.name).toBe('OpenAI');
+      expect(providers[0]!.type).toBe('openai');
+    });
+
+    test('upsertProvider updates type and baseUrl on conflict', () => {
+      store.upsertProvider({ name: 'OpenAI', type: 'openai', baseUrl: 'https://api.openai.com/v1' });
+      store.upsertProvider({ name: 'OpenAI', type: 'azure', baseUrl: 'https://custom.openai.azure.com/v1' });
+      const providers = store.listProviders();
+      expect(providers).toHaveLength(1);
+      expect(providers[0]!.type).toBe('azure');
+      expect(providers[0]!.baseUrl).toBe('https://custom.openai.azure.com/v1');
+    });
+
+    test('upsertProvider does not create duplicates', () => {
+      store.upsertProvider({ name: 'OpenAI', type: 'openai', baseUrl: 'https://api.openai.com/v1' });
+      store.upsertProvider({ name: 'OpenAI', type: 'openai', baseUrl: 'https://api.openai.com/v1' });
+      expect(store.listProviders()).toHaveLength(1);
+    });
+
+    test('getProviderModelByName returns model when exists', () => {
+      const p = store.upsertProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' });
+      store.upsertProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' });
+      const found = store.getProviderModelByName(p.id, 'llama3-70b');
+      expect(found?.modelName).toBe('llama3-70b');
+    });
+
+    test('getProviderModelByName returns null when absent', () => {
+      const p = store.upsertProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' });
+      expect(store.getProviderModelByName(p.id, 'nonexistent')).toBeNull();
+    });
+
+    test('upsertProviderModel creates when absent', () => {
+      const p = store.upsertProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' });
+      const m = store.upsertProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' });
+      expect(m.modelName).toBe('llama3-70b');
+      expect(store.listProviderModels(p.id)).toHaveLength(1);
+    });
+
+    test('upsertProviderModel does not duplicate', () => {
+      const p = store.upsertProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' });
+      store.upsertProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' });
+      store.upsertProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' });
+      expect(store.listProviderModels(p.id)).toHaveLength(1);
+    });
+
+    test('upsertProviderModel preserves original id', () => {
+      const p = store.upsertProvider({ name: 'Groq', type: 'groq', baseUrl: 'https://api.groq.com/openai/v1' });
+      const first = store.upsertProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' });
+      const second = store.upsertProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' });
+      expect(second.id).toBe(first.id);
+    });
+  });
 });
