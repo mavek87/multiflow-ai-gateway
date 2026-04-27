@@ -26,4 +26,6 @@ export const config = {
   dbPath: optional('DB_PATH', './data/gateway.db'),
   auditLogPath: optional('AUDIT_LOG_PATH', './logs/audit.jsonl'),
   selectorType: selectorType(),
+  firstTokenTimeoutMs: parseInt(optional('FIRST_TOKEN_TIMEOUT_MS', '30000'), 10),
+  streamWatchdogMs: parseInt(optional('STREAM_WATCHDOG_MS', '120000'), 10),
 } as const;

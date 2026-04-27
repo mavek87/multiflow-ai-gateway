@@ -26,7 +26,7 @@ export type CallProviderStreamResult = Result<CallProviderStreamSuccess, CallPro
 export class HttpProviderClient {
   constructor(
     private config: ModelConfig,
-    private firstTokenTimeoutMs = 10000,
+    private firstTokenTimeoutMs = 30000,
     private streamWatchdogMs = 120000,
     private enableThinking = false,
   ) {}

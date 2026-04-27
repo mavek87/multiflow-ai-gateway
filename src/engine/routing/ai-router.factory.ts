@@ -4,6 +4,7 @@ import {MetricsStore} from '@/engine/observability/metrics';
 import {CircuitBreaker} from '@/engine/resilience/circuit-breaker';
 import type {ModelSelector} from '@/engine/selection/model-selector.types';
 import {HttpProviderClient} from '@/engine/client/http-provider-client';
+import {config} from '@/config/config';
 
 export class AIRouterFactory {
     constructor(
@@ -22,7 +23,7 @@ export class AIRouterFactory {
         for (const modelConfig of sortedModelConfigs) {
             const clientKey = modelConfig.aiProviderModelId!;
 
-            aiProviderClients.set(clientKey, new HttpProviderClient(modelConfig, 30000, 120000, false));
+            aiProviderClients.set(clientKey, new HttpProviderClient(modelConfig, config.firstTokenTimeoutMs, config.streamWatchdogMs, false));
             aiProviderIds.set(clientKey, {
                 name: modelConfig.aiProviderName ?? modelConfig.aiProviderId ?? '',
                 baseUrl: modelConfig.aiProviderBaseUrl ?? '',

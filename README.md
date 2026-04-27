@@ -38,24 +38,31 @@ bun install
 
 ### 2. Configure environment
 
-Create a `.env` file in the project root:
-
-```env
-PORT=3000
-MASTER_KEY=<strong-random-base64-32>
-ENCRYPTION_KEY=<64-hex-chars>
-DB_PATH=./data/gateway.db
-AUDIT_LOG_PATH=./logs/audit.jsonl
-# SELECTOR_TYPE=ucb1-tuned  # options: ucb1-tuned (default), thompson, sw-ucb1-tuned
-```
-
-Generate the values:
+Copy the example file and fill in the required values:
 
 ```bash
-# MASTER_KEY (protects /admin/* endpoints)
+cp .env.example .env
+```
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `MASTER_KEY` | yes | - | Protects `/admin/*` endpoints |
+| `ENCRYPTION_KEY` | yes | - | AES-256 key for provider API keys (64 hex chars) |
+| `PORT` | no | `3000` | HTTP server port |
+| `DB_PATH` | no | `./data/gateway.db` | SQLite database path |
+| `AUDIT_LOG_PATH` | no | `./logs/audit.jsonl` | Audit log file path |
+| `SELECTOR_TYPE` | no | `ucb1-tuned` | Model selector algorithm: `ucb1-tuned`, `thompson`, `sw-ucb1-tuned` |
+| `LOG_LEVEL` | no | `info` | Log level: `trace`, `debug`, `info`, `warn`, `error` |
+| `FIRST_TOKEN_TIMEOUT_MS` | no | `30000` | Max wait for first token from a provider (ms) |
+| `STREAM_WATCHDOG_MS` | no | `120000` | Max total streaming duration per request (ms) |
+
+Generate the required secret values:
+
+```bash
+# MASTER_KEY
 openssl rand -base64 32
 
-# ENCRYPTION_KEY (AES-256 key, 32 bytes as hex)
+# ENCRYPTION_KEY (32 bytes as hex)
 openssl rand -hex 32
 ```
 
