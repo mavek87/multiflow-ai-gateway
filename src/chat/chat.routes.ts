@@ -2,16 +2,13 @@ import {Elysia} from 'elysia';
 import type {TenantStore} from '@/tenant/tenant.store';
 import {badRequestResponse, internalErrorResponse, unprocessableResponse} from '@/utils/http';
 import {ChatService} from './chat.service';
-import { RoutingAIClientFactory } from '@/engine/routing/routing-client-factory';
-import { createModelSelector } from '@/engine/selection/selector.factory';
+import {RoutingAIClientFactory} from '@/engine/routing/routing-client-factory';
+import {createModelSelector} from '@/engine/selection/selector.factory';
 import {TenantModelConfigResolver} from '@/tenant/tenant-model-config.resolver';
 import {tenantAuthPlugin} from '@/auth/auth.middleware';
 import {ChatRequestSchema} from './chat.schema';
 import {config} from '@/config/config';
-import type { CryptoService } from '@/crypto/crypto';
-import type {ModelConfig} from '@/engine/client/client.types';
-import type {Result} from 'neverthrow';
-import type {TenantModelConfigError} from '@/tenant/tenant.types';
+import type {CryptoService} from '@/crypto/crypto';
 import {MetricsStore} from '@/engine/observability/metrics';
 import {CircuitBreaker} from '@/engine/resilience/circuit-breaker';
 
@@ -29,26 +26,32 @@ export function chatRoutePlugin(tenantStore: TenantStore, cryptoService: CryptoS
         .guard({detail: {security: [{GatewayApiKey: []}]}}) // This guard applies the security requirement for Swagger UI / OpenAPI docs
         .post('/v1/chat/completions', async ({body, tenant}) => {
 
-            const [requestedProviderName, requestedModel] = body.model?.includes('/')
-                ? body.model.split('/', 2) as [string, string]
-                : [undefined, body.model];
+            let requestedProviderName: string | undefined;
+            let requestedModel: string | undefined;
+            if (body.model?.includes('/')) {
+                const slashIdx = body.model.indexOf('/');
+                requestedProviderName = body.model.slice(0, slashIdx);
+                requestedModel = body.model.slice(slashIdx + 1);
+            } else {
+                requestedModel = body.model;
+            }
 
-            const modelConfigResult: Result<ModelConfig[], TenantModelConfigError> = tenantModelConfResolver.resolve({
+            const modelConfigsResult = tenantModelConfResolver.resolve({
                 tenantId: tenant!.id,
                 requestedModel,
                 requestedProviderName,
                 forceAiProviderId: tenant!.forceAiProviderId
             });
-            if (modelConfigResult.isErr()) {
-                switch (modelConfigResult.error.code) {
+            if (modelConfigsResult.isErr()) {
+                switch (modelConfigsResult.error.code) {
                     case 'no_providers':
                         return unprocessableResponse('No providers configured for this tenant');
                     case 'model_not_found':
-                        return badRequestResponse(`Model '${modelConfigResult.error.model}' is not available for this tenant`);
+                        return badRequestResponse(`Model '${modelConfigsResult.error.model}' is not available for this tenant`);
                 }
             }
 
-            const chatResult = await chatService.handleChatRequest(tenant!, body, modelConfigResult.value);
+            const chatResult = await chatService.handleChatRequest(tenant!, body, modelConfigsResult.value);
             if (chatResult.isErr()) {
                 switch (chatResult.error.code) {
                     case 'ai_unavailable':

@@ -58,4 +58,81 @@ describe('chatPlugin E2E', () => {
 
     expect(res.status).toBe(400);
   });
+
+  describe('model field routing', () => {
+    test('routes correctly when model is omitted (uses all tenant providers)', async () => {
+      // @ts-ignore
+      globalThis.fetch = async () => mockSseResponse('ok');
+
+      const res = await sendRequest(app, '/v1/chat/completions', {
+        method: 'POST',
+        apiKey: rawApiKey,
+        body: { messages: [{ role: 'user', content: 'hi' }] }
+      });
+
+      expect(res.status).toBe(200);
+    });
+
+    test('routes correctly with provider/model format', async () => {
+      // @ts-ignore
+      globalThis.fetch = async () => mockSseResponse('ok');
+
+      const res = await sendRequest(app, '/v1/chat/completions', {
+        method: 'POST',
+        apiKey: rawApiKey,
+        body: { model: 'OpenAI/gpt-4o', messages: [{ role: 'user', content: 'hi' }] }
+      });
+
+      expect(res.status).toBe(200);
+    });
+
+    test('returns 400 when provider in provider/model format does not match any configured provider', async () => {
+      const res = await sendRequest(app, '/v1/chat/completions', {
+        method: 'POST',
+        apiKey: rawApiKey,
+        body: { model: 'Groq/gpt-4o', messages: [{ role: 'user', content: 'hi' }] }
+      });
+
+      expect(res.status).toBe(400);
+    });
+
+    test('returns 400 when model in provider/model format does not match any configured model', async () => {
+      const res = await sendRequest(app, '/v1/chat/completions', {
+        method: 'POST',
+        apiKey: rawApiKey,
+        body: { model: 'OpenAI/gpt-99', messages: [{ role: 'user', content: 'hi' }] }
+      });
+
+      expect(res.status).toBe(400);
+    });
+
+    test('routes correctly with provider-only format (no model specified after slash)', async () => {
+      // @ts-ignore
+      globalThis.fetch = async () => mockSseResponse('ok');
+
+      const res = await sendRequest(app, '/v1/chat/completions', {
+        method: 'POST',
+        apiKey: rawApiKey,
+        body: { model: 'OpenAI/', messages: [{ role: 'user', content: 'hi' }] }
+      });
+
+      expect(res.status).toBe(200);
+    });
+  });
+
+  describe('error responses', () => {
+    test('returns 422 when tenant has no providers configured', async () => {
+      const { tenantStore, providerStore } = createTestContext();
+      const emptyTenant = tenantStore.createTenant('Empty');
+      const emptyApp = createTestApp(tenantStore, providerStore, new CryptoService());
+
+      const res = await sendRequest(emptyApp, '/v1/chat/completions', {
+        method: 'POST',
+        apiKey: emptyTenant.rawApiKey,
+        body: { messages: [{ role: 'user', content: 'hi' }] }
+      });
+
+      expect(res.status).toBe(422);
+    });
+  });
 });

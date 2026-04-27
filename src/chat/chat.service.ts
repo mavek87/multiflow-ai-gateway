@@ -20,8 +20,10 @@ export class ChatService {
 
         log.info({tenantId: tenant.id, stream: isStream}, 'chat request starting');
 
+        const tenantCtx = {tenantId: tenant.id, tenantName: tenant.name};
+
         if (isStream) {
-            const result = await client.chatStream(systemPrompt, chatRequest.messages, {tenantId: tenant.id, tenantName: tenant.name});
+            const result = await client.chatStream(systemPrompt, chatRequest.messages, tenantCtx);
             if (!result) {
                 return err({code: 'ai_unavailable'});
             }
@@ -34,7 +36,7 @@ export class ChatService {
                 aiProviderUrl: result.aiProviderUrl,
             });
         } else {
-            const result = await client.chat(systemPrompt, chatRequest.messages, {tenantId: tenant.id, tenantName: tenant.name});
+            const result = await client.chat(systemPrompt, chatRequest.messages, tenantCtx);
             if (!result) {
                 return err({code: 'ai_unavailable'});
             }

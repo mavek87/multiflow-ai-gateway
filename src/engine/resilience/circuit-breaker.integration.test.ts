@@ -1,5 +1,4 @@
-import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
-import { createTestContext, mockSseResponse } from './test-setup';
+import { describe, test, expect, afterEach } from 'bun:test';
 import { RoutingAIClientFactory } from '@/engine/routing/routing-client-factory';
 import { createModelSelector } from '@/engine/selection/selector.factory';
 import { MetricsStore } from '@/engine/observability/metrics';
@@ -48,11 +47,11 @@ describe('Circuit Breaker Persistence', () => {
 
     // 3. The FOURTH request must fail with an explicit error without calling fetch
     const result = await chatService.handleChatRequest(tenant, { messages: [] }, modelConfigs);
-    
+
     expect(fetchCalls).toBe(3); // Should not increase!
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-        expect(result.error.code).toBe('ai_unavailable');
+      expect(result.error.code).toBe('ai_unavailable');
     }
   });
 });
