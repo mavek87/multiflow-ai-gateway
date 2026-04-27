@@ -21,7 +21,7 @@ import type {
 } from '@/engine/client/http-provider-client';
 import {HttpProviderClient} from '@/engine/client/http-provider-client';
 
-import type {ModelSelector} from '@/engine/selection/selector.types';
+import type {ModelSelector} from '@/engine/selection/model-selector.types';
 import {MetricsStore} from '@/engine/observability/metrics';
 import {CircuitBreaker} from '@/engine/resilience/circuit-breaker';
 import {createLogger} from '@/utils/logger';
@@ -37,7 +37,7 @@ export class AIRouter {
         private readonly clients: Map<string, HttpProviderClient>,
         private readonly metrics: MetricsStore,
         private readonly circuitBreaker: CircuitBreaker,
-        private readonly selector: ModelSelector,
+        private readonly modelSelector: ModelSelector,
         private readonly aiProviderIds: Map<string, { name: string; baseUrl: string; modelName: string }>
     ) {
     }
@@ -90,7 +90,7 @@ export class AIRouter {
 
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
             const remaining = modelIds.filter((id) => !attemptedModels.has(id));
-            const selected = this.selector.select(remaining, this.metrics, this.circuitBreaker);
+            const selected = this.modelSelector.select(remaining, this.metrics, this.circuitBreaker);
 
             if (!selected) {
                 log.warn('All models unavailable or exhausted');

@@ -1,6 +1,6 @@
 import { describe, test, expect, afterEach } from 'bun:test';
 import { AIRouterFactory } from '@/engine/routing/ai-router.factory';
-import { createModelSelector } from '@/engine/selection/selector.factory';
+import { createModelSelector } from '@/engine/selection/model-selector.factory';
 import { MetricsStore } from '@/engine/observability/metrics';
 import { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
 import { ChatService } from '@/chat/chat.service';

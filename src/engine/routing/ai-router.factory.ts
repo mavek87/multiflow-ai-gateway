@@ -2,7 +2,7 @@ import {AIRouter} from './ai-router';
 import type {ModelConfig} from '@/engine/client/client.types';
 import {MetricsStore} from '@/engine/observability/metrics';
 import {CircuitBreaker} from '@/engine/resilience/circuit-breaker';
-import type {ModelSelector} from '@/engine/selection/selector.types';
+import type {ModelSelector} from '@/engine/selection/model-selector.types';
 import {HttpProviderClient} from '@/engine/client/http-provider-client';
 
 export class AIRouterFactory {

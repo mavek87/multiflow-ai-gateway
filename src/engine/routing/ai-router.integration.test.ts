@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'bun:test';
 import { AIRouterFactory } from './ai-router.factory';
-import { createModelSelector } from '@/engine/selection/selector.factory';
+import { createModelSelector } from '@/engine/selection/model-selector.factory';
 import type { ModelConfig } from '@/engine/client/client.types';
 import { mockSseResponse } from '@test/test-setup';
 import { MetricsStore } from '@/engine/observability/metrics';

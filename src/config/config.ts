@@ -1,4 +1,4 @@
-import type { ModelSelectorType } from '@/engine/selection/selector.types';
+import type { ModelSelectorType } from '@/engine/selection/model-selector.types';
 
 const VALID_SELECTOR_TYPES: ModelSelectorType[] = ['thompson', 'ucb1-tuned', 'sw-ucb1-tuned'];
 

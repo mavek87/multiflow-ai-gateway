@@ -16,7 +16,7 @@
 
 import type { MetricsStore } from '@/engine/observability/metrics';
 import type { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
-import type { ModelSelector } from '@/engine/selection/selector.types';
+import type { ModelSelector } from '@/engine/selection/model-selector.types';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('SELECTOR');

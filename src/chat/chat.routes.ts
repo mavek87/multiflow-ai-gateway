@@ -3,7 +3,7 @@ import type {TenantStore} from '@/tenant/tenant.store';
 import {badRequestResponse, internalErrorResponse, unprocessableResponse} from '@/utils/http';
 import {ChatService} from './chat.service';
 import {AIRouterFactory} from '@/engine/routing/ai-router.factory';
-import {createModelSelector} from '@/engine/selection/selector.factory';
+import {createModelSelector} from '@/engine/selection/model-selector.factory';
 import {TenantModelConfigResolver} from '@/tenant/tenant-model-config.resolver';
 import {tenantAuthPlugin} from '@/auth/auth.middleware';
 import {ChatRequestSchema} from './chat.schema';
