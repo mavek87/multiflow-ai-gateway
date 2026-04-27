@@ -67,7 +67,11 @@ openssl rand -base64 32
 openssl rand -hex 32
 ```
 
-### 3. Seed file (optional)
+### 3. Populate data
+
+Choose one of the two methods below. They are equivalent -- use whichever fits your workflow.
+
+#### A. Seed file (recommended)
 
 Place a `seed.yaml` or `seed.yml` file in the project root (or set `SEED_FILE` to a custom path). The gateway reads it at startup and idempotently upserts all declared entities. Both `.yaml` and `.yml` extensions are supported: if the configured path is not found, the gateway automatically tries the alternative extension.
 
@@ -112,9 +116,9 @@ volumes:
 
 A new tenant's gateway API key is printed to the logs on first creation. It is not stored in plaintext and cannot be retrieved afterwards.
 
-### 4. Manual API setup (alternative to seed file)
+#### B. Manual setup via REST API
 
-If you prefer to configure tenants and providers via the REST API instead of a seed file, use this sequence after the server is running:
+Use this after the server is running if you prefer to configure tenants and providers dynamically via the Admin API.
 
 ```bash
 BASE=http://localhost:3000
@@ -155,7 +159,7 @@ curl -X POST $BASE/v1/chat/completions \
   -d '{"messages":[{"role":"user","content":"Hello!"}]}'
 ```
 
-### 5. Start the server
+### 4. Start the server
 
 ```bash
 # Development
@@ -168,7 +172,7 @@ bun run start
 
 The database is created automatically on first start. The server listens on `http://localhost:3000` (or the configured `PORT`).
 
-### 3b. Run with Docker (alternative)
+### 4b. Run with Docker (alternative)
 
 **Local / development:**
 
