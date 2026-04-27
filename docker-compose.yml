@@ -9,7 +9,6 @@ services:
       - .env
     volumes:
       - gateway_data:/app/data
-    # We removed the logs volume as logs should go to stdout in Docker
     restart: unless-stopped
 
 volumes:
