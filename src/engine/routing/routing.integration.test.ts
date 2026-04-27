@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { RoutingAIClientFactory } from './routing-client-factory';
+import { AIRouterFactory } from './ai-router.factory';
 import { createModelSelector } from '@/engine/selection/selector.factory';
 import type { ModelConfig } from '@/engine/client/client.types';
 import { mockSseResponse } from '@test/test-setup';
@@ -10,7 +10,7 @@ function createTestFactory() {
   const metrics = new MetricsStore();
   const cb = new CircuitBreaker();
   const selector = createModelSelector('ucb1-tuned');
-  return new RoutingAIClientFactory(metrics, cb, selector);
+  return new AIRouterFactory(metrics, cb, selector);
 }
 
 describe('Routing Integration', () => {
@@ -35,9 +35,8 @@ describe('Routing Integration', () => {
       }
     ];
 
-    const auditedClient = factory.create(configs);
-    // AuditedAIClient wraps RoutingAIClient, which has the 'clients' property
-    const internalClients = (auditedClient as any).innerClient.clients;
+    const router = factory.create(configs);
+    const internalClients = (router as any).clients;
     
     // Verify that the map contains both unique IDs
     expect(internalClients.size).toBe(2);
@@ -57,8 +56,8 @@ describe('Routing Integration', () => {
       aiProviderModelId: 'uuid-unique-1'
     }];
 
-    const client = factory.create(configs);
-    const result = await client.chat('system', [{ role: 'user', content: 'hi' }]);
+    const router = factory.create(configs);
+    const result = await router.chat('system', [{ role: 'user', content: 'hi' }]);
     
     // The returned model must be the 'logical' one (gpt-4o-requested), not the internal ID (uuid-unique-1)
     expect(result!.model).toBe('gpt-4o-requested');
@@ -68,7 +67,7 @@ describe('Routing Integration', () => {
     const metrics = new MetricsStore();
     const cb = new CircuitBreaker();
     const selector = createModelSelector('ucb1-tuned');
-    const factory = new RoutingAIClientFactory(metrics, cb, selector);
+    const factory = new AIRouterFactory(metrics, cb, selector);
 
     const configs: ModelConfig[] = [
       {
@@ -85,7 +84,7 @@ describe('Routing Integration', () => {
       }
     ];
 
-    const auditedClient = factory.create(configs);
+    const router = factory.create(configs);
     
     // Simulate 3 hard failures on Provider 1 (uuid-1)
     cb.recordHardFailure('uuid-1');

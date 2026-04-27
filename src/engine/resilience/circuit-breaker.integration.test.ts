@@ -1,5 +1,5 @@
 import { describe, test, expect, afterEach } from 'bun:test';
-import { RoutingAIClientFactory } from '@/engine/routing/routing-client-factory';
+import { AIRouterFactory } from '@/engine/routing/ai-router.factory';
 import { createModelSelector } from '@/engine/selection/selector.factory';
 import { MetricsStore } from '@/engine/observability/metrics';
 import { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
@@ -18,7 +18,7 @@ describe('Circuit Breaker Persistence', () => {
     const metrics = new MetricsStore();
     const cb = new CircuitBreaker();
     const selector = createModelSelector('ucb1-tuned');
-    const factory = new RoutingAIClientFactory(metrics, cb, selector);
+    const factory = new AIRouterFactory(metrics, cb, selector);
     const chatService = new ChatService(factory);
 
     const tenant = { id: 't1' } as any;

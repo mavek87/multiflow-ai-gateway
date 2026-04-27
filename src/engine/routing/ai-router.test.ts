@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { RoutingAIClient } from './routing-client';
+import { AIRouter } from './ai-router';
 import { MetricsStore } from '@/engine/observability/metrics';
 import { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
 import { UCB1TunedSelector } from '@/engine/selection/algorithms/ucb1-tuned';
@@ -14,7 +14,7 @@ const model = (name: string) => ({
   aiProviderModelId: 'model-1',
 });
 
-function createRoutingClient(models: any[]) {
+function createAIRouter(models: any[]) {
   const metrics = new MetricsStore();
   const circuitBreaker = new CircuitBreaker();
   const selector = new UCB1TunedSelector();
@@ -26,7 +26,7 @@ function createRoutingClient(models: any[]) {
     aiProviderIds.set(m.model, { name: m.aiProviderId ?? '', baseUrl: m.aiProviderBaseUrl ?? '' });
   }
 
-  return new RoutingAIClient(clients, metrics, circuitBreaker, selector, aiProviderIds);
+  return new AIRouter(clients, metrics, circuitBreaker, selector, aiProviderIds);
 }
 
 function mockFetchOk(content = '') {
@@ -39,11 +39,11 @@ function mockFetchFail(status = 500) {
   globalThis.fetch = async () => new Response('', { status });
 }
 
-describe('RoutingAIClient - chatStream()', () => {
+describe('AIRouter - chatStream()', () => {
   test('returns body and model info on success', async () => {
     mockFetchOk();
-    const client = createRoutingClient([model('m1')]);
-    const result = await client.chatStream('system', [{ role: 'user', content: 'hi' }]);
+    const router = createAIRouter([model('m1')]);
+    const result = await router.chatStream('system', [{ role: 'user', content: 'hi' }]);
     expect(result).not.toBeNull();
     expect(result!.model).toBe('m1');
     expect(result!.body).toBeDefined();
@@ -51,8 +51,8 @@ describe('RoutingAIClient - chatStream()', () => {
 
   test('returns null when all providers fail', async () => {
     mockFetchFail(500);
-    const client = createRoutingClient([model('m1'), model('m2')]);
-    const result = await client.chatStream('system', [{ role: 'user', content: 'hi' }]);
+    const router = createAIRouter([model('m1'), model('m2')]);
+    const result = await router.chatStream('system', [{ role: 'user', content: 'hi' }]);
     expect(result).toBeNull();
   });
 
@@ -66,8 +66,8 @@ describe('RoutingAIClient - chatStream()', () => {
     };
     const m1 = { ...model('m1'), priority: 0 };
     const m2 = { ...model('m2'), priority: 1 };
-    const client = createRoutingClient([m1, m2]);
-    const result = await client.chatStream('system', [{ role: 'user', content: 'hi' }]);
+    const router = createAIRouter([m1, m2]);
+    const result = await router.chatStream('system', [{ role: 'user', content: 'hi' }]);
     expect(result).not.toBeNull();
     expect(result!.model).toBe('m2');
     expect(calls).toBe(2);
@@ -76,8 +76,8 @@ describe('RoutingAIClient - chatStream()', () => {
   test('returns aiProvider from model config', async () => {
     mockFetchOk();
     const config = { ...model('m1'), aiProviderId: 'groq-id' };
-    const client = createRoutingClient([config]);
-    const result = await client.chatStream('system', [{ role: 'user', content: 'hi' }]);
+    const router = createAIRouter([config]);
+    const result = await router.chatStream('system', [{ role: 'user', content: 'hi' }]);
     expect(result!.aiProvider).toBe('groq-id');
   });
 });

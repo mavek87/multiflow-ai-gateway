@@ -1,8 +1,9 @@
 import { describe, test, expect, afterEach } from 'bun:test';
 import { ChatService } from './chat.service';
-import { RoutingAIClientFactory } from '@/engine/routing/routing-client-factory';
+import { AIRouterFactory } from '@/engine/routing/ai-router.factory';
 import type { Tenant } from '@/tenant/tenant.types';
-import type { AIClient, ModelConfig } from '@/engine/client/client.types';
+import type { ModelConfig } from '@/engine/client/client.types';
+import type { AIRouter } from '@/engine/routing/ai-router';
 
 const fakeTenant = { id: 'tenant-1', name: 'Test' } as Tenant;
 const fakeConfigs: ModelConfig[] = [{ url: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o', apiKey: 'sk-fake' }];
@@ -14,12 +15,12 @@ describe('ChatService', () => {
     globalThis.fetch = originalFetch;
   });
 
-  function makeFactory(client: AIClient): RoutingAIClientFactory {
-    return { create: () => client } as unknown as RoutingAIClientFactory;
+  function makeFactory(client: Pick<AIRouter, 'chat' | 'chatStream'>): AIRouterFactory {
+    return { create: () => client } as unknown as AIRouterFactory;
   }
 
   test('handles standard chat request successfully', async () => {
-    const mockClient: AIClient = {
+    const mockClient: Pick<AIRouter, 'chat' | 'chatStream'> = {
       chat: async () => ({ model: 'gpt-4o', content: 'Mocked reply', aiProvider: 'openai', aiProviderUrl: 'https://api.openai.com' }),
       chatStream: async () => null,
     };
@@ -37,7 +38,7 @@ describe('ChatService', () => {
 
   test('handles standard stream request successfully', async () => {
     const fakeBody = new ReadableStream();
-    const mockClient: AIClient = {
+    const mockClient: Pick<AIRouter, 'chat' | 'chatStream'> = {
       chat: async () => ({ model: 'gpt-4o', content: '', aiProvider: 'openai', aiProviderUrl: 'https://api.openai.com' }),
       chatStream: async () => ({ body: fakeBody, model: 'gpt-4o', aiProvider: 'openai', aiProviderUrl: 'https://api.openai.com' }),
     };
@@ -53,7 +54,7 @@ describe('ChatService', () => {
   });
 
   test('returns ai_unavailable error if stream returns null', async () => {
-    const mockClient: AIClient = {
+    const mockClient: Pick<AIRouter, 'chat' | 'chatStream'> = {
       chat: async () => ({ model: 'gpt-4o', content: '', aiProvider: 'openai', aiProviderUrl: 'https://api.openai.com' }),
       chatStream: async () => null,
     };

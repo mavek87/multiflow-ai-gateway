@@ -3,7 +3,7 @@ import type {Tenant} from '@/tenant/tenant.types';
 import type {ModelConfig} from '@/engine/client/client.types';
 import type {ChatCompletion, ChatHandlerResult} from '@/chat/chat.types';
 import type {ChatServiceError, ChatServiceRequest} from '@/chat/chat.types';
-import {RoutingAIClientFactory} from '@/engine/routing/routing-client-factory';
+import {AIRouterFactory} from '@/engine/routing/ai-router.factory';
 import {createLogger} from '@/utils/logger';
 import {randomUUID} from 'node:crypto';
 
@@ -11,10 +11,10 @@ const log = createLogger('CHAT_SVC');
 const DEFAULT_SYSTEM_PROMPT = 'You are a helpful assistant.';
 
 export class ChatService {
-    constructor(private readonly aiClientFactory: RoutingAIClientFactory) {}
+    constructor(private readonly aiRouterFactory: AIRouterFactory) {}
 
     public async handleChatRequest(tenant: Tenant, chatRequest: ChatServiceRequest, arrayOfModelConfigs: ModelConfig[]): Promise<Result<ChatHandlerResult, ChatServiceError>> {
-        const client = this.aiClientFactory.create(arrayOfModelConfigs);
+        const aiRouter = this.aiRouterFactory.create(arrayOfModelConfigs);
         const systemPrompt = chatRequest.system ?? DEFAULT_SYSTEM_PROMPT;
         const isStream = chatRequest.stream === true;
 
@@ -23,7 +23,7 @@ export class ChatService {
         const tenantCtx = {tenantId: tenant.id, tenantName: tenant.name};
 
         if (isStream) {
-            const result = await client.chatStream(systemPrompt, chatRequest.messages, tenantCtx);
+            const result = await aiRouter.chatStream(systemPrompt, chatRequest.messages, tenantCtx);
             if (!result) {
                 return err({code: 'ai_unavailable'});
             }
@@ -36,7 +36,7 @@ export class ChatService {
                 aiProviderUrl: result.aiProviderUrl,
             });
         } else {
-            const result = await client.chat(systemPrompt, chatRequest.messages, tenantCtx);
+            const result = await aiRouter.chat(systemPrompt, chatRequest.messages, tenantCtx);
             if (!result) {
                 return err({code: 'ai_unavailable'});
             }

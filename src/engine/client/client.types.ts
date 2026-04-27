@@ -28,21 +28,3 @@ export type ModelConfig = {
   aiProviderModelId?: string;
 };
 
-export interface AIClient {
-  chat(
-    systemPrompt: string,
-    messages: AIChatMessage[],
-    ctx?: ToolContext,
-    tools?: ToolDefinition[],
-    dispatcher?: ToolDispatcher,
-  ): Promise<AIChatResponse | null>;
-  chatStream(
-    systemPrompt: string,
-    messages: AIChatMessage[],
-    ctx?: ToolContext,
-    tools?: ToolDefinition[],
-    dispatcher?: ToolDispatcher,
-  ): Promise<AIChatStreamResponse | null>;
-  setTools?(tools: ToolDefinition[], dispatcher: ToolDispatcher): void;
-  getTools?(): ToolDefinition[] | undefined;
-}

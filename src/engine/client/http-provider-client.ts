@@ -42,6 +42,22 @@ export class HttpProviderClient {
   }
 
   /**
+   * Executes a chat completion request with tool-calling capabilities.
+   * Orchestrates the loop of model responses and local tool executions until a final answer is reached.
+   */
+  async chatWithTools(
+      systemPrompt: string,
+      messages: AIChatMessage[],
+      tools: ToolDefinition[],
+      executeToolFn: (name: string, args: Record<string, unknown>) => Promise<string>,
+      onFirstToolCall?: () => Promise<void>,
+  ): Promise<CallProviderResult> {
+    const history: AIChatMessage[] = [{ role: 'system', content: systemPrompt }, ...messages];
+    const orchestrator = new ToolCallOrchestrator((msgs) => this.callProvider(msgs, new JsonResponseParser(), tools));
+    return orchestrator.applyTools(history, tools, executeToolFn, onFirstToolCall);
+  }
+
+  /**
    * Opens a streaming connection to the provider and returns the raw Response body.
    * Returns a StreamResult error if the HTTP request fails before streaming starts.
    * Once the ReadableStream is returned, the caller owns it and must handle mid-stream errors.
@@ -77,23 +93,6 @@ export class HttpProviderClient {
       }
       return err({ kind: 'hard', error: e });
     }
-  }
-
-  /**
-   * Executes a chat completion request with tool-calling capabilities.
-   * Orchestrates the loop of model responses and local tool executions until a final answer is reached.
-   */
-  async chatWithTools(
-    systemPrompt: string,
-    messages: AIChatMessage[],
-    tools: ToolDefinition[],
-    executeToolFn: (name: string, args: Record<string, unknown>) => Promise<string>,
-    onFirstToolCall?: () => Promise<void>,
-  ): Promise<CallProviderResult> {
-    const history: AIChatMessage[] = [{ role: 'system', content: systemPrompt }, ...messages];
-    const responseParser = new JsonResponseParser();
-    const orchestrator = new ToolCallOrchestrator((msgs) => this.callProvider(msgs, responseParser, tools));
-    return orchestrator.applyTools(history, tools, executeToolFn, onFirstToolCall);
   }
 
   private async callProvider(

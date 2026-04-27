@@ -84,6 +84,8 @@ GROQ_API_KEY=your-key bun run scripts/seed.ts
 
 ## Architecture
 
+### Request lifecycle
+
 ```
 Request
   |
@@ -100,21 +102,45 @@ Chat Module (src/chat/chat.routes.ts)
 Tenant Resolver (src/tenant/tenant-model-config.resolver.ts)
   |
   v
-AuditedAIClient (src/audit/audit.ai-client.decorator.ts)
-  |
-  v
-RoutingAIClient (src/engine/routing/routing-client.ts)
+AIRouter (src/engine/routing/ai-router.ts)
   |-- ModelSelector          (pluggable strategy: UCB1-Tuned, Thompson Sampling, SW-UCB1-Tuned)
   |-- CircuitBreaker        (skips models in OPEN state)
   |-- HttpProviderClient    (low-level HTTP to OpenAI-compatible endpoint)
   |   |-- ToolCallOrchestrator (handles multi-turn tool execution loop)
   |-- MetricsStore          (updates latency/success EMA after each chat)
-  |
-  v
-OpenAI-compatible response
-  |
-  v
-Audit Log (src/audit/audit.log.ts)
+  |-- Audit Log (src/audit/audit.log.ts)
+```
+
+### Routing and retry loop
+
+On each request `AIRouter` attempts models one by one (up to 10) until one succeeds or all are exhausted. The circuit breaker and selector collaborate to skip unhealthy models and prefer the fastest/most reliable one.
+
+```mermaid
+sequenceDiagram
+    participant R as AIRouter
+    participant S as ModelSelector
+    participant CB as CircuitBreaker
+    participant A as HttpProviderClient (A)
+    participant B as HttpProviderClient (B)
+    participant C as HttpProviderClient (C)
+
+    R->>S: select([A, B, C])
+    S->>CB: isAvailable(A)?
+    CB-->>S: CLOSED
+    S-->>R: A (highest UCB1 score)
+    R->>A: chat()
+    A-->>R: HTTP 500
+    R->>CB: recordHardFailure(A)
+    R->>S: select([B, C])
+    S->>CB: isAvailable(B)?
+    CB-->>S: OPEN (skip)
+    S->>CB: isAvailable(C)?
+    CB-->>S: CLOSED
+    S-->>R: C
+    R->>C: chat()
+    C-->>R: success
+    R->>CB: recordSuccess(C)
+    R->>S: record(C, latency, success=true)
 ```
 
 ### Database
@@ -129,6 +155,45 @@ SQLite via Drizzle ORM. Schema defined in `src/db/schema.ts`. Migrations in `dri
 | `ai_provider_models` | Models available per provider |
 | `tenant_ai_provider_keys` | Per-tenant API key for each provider (AES-256-GCM encrypted) |
 | `tenant_ai_model_priorities` | Which models a tenant can use, with priority order |
+
+```mermaid
+erDiagram
+    tenants ||--o{ gateway_api_keys : "has"
+    tenants ||--o{ tenant_ai_provider_keys : "has credentials for"
+    tenants ||--o{ tenant_ai_model_priorities : "has access to"
+    ai_providers ||--o{ ai_provider_models : "exposes"
+    ai_providers ||--o{ tenant_ai_provider_keys : "referenced by"
+    ai_provider_models ||--o{ tenant_ai_model_priorities : "assigned to"
+
+    tenants {
+        string id PK
+        string name
+        string forceAiProviderId FK
+    }
+    ai_providers {
+        string id PK
+        string name
+        string type
+        string baseUrl
+    }
+    ai_provider_models {
+        string id PK
+        string aiProviderId FK
+        string modelName
+    }
+    tenant_ai_provider_keys {
+        string id PK
+        string tenantId FK
+        string aiProviderId FK
+        string encryptedApiKey
+    }
+    tenant_ai_model_priorities {
+        string id PK
+        string tenantId FK
+        string aiProviderModelId FK
+        int priority
+    }
+```
 
 ---
 
@@ -211,6 +276,22 @@ Each algorithm evaluates models that are not blocked by the circuit breaker. Mod
 | SW-UCB1-Tuned | `sw-ucb1-tuned` | no | success rate + latency (last W calls) |
 | Thompson Sampling | `thompson` | no | success/failure counts only |
 
+### Circuit breaker state machine
+
+The circuit breaker runs per model and is shared across all requests (in-memory singleton). It prevents wasting time on known-down providers.
+
+```mermaid
+stateDiagram-v2
+    [*] --> CLOSED
+
+    CLOSED --> OPEN: 3 consecutive hard failures\n(HTTP 4xx/5xx)\nor 5 consecutive soft failures\n(timeout)
+
+    OPEN --> HALF_OPEN: 30s elapsed\n(one probe allowed)
+
+    HALF_OPEN --> CLOSED: 2 consecutive successes
+    HALF_OPEN --> OPEN: any failure
+```
+
 ### UCB1-Tuned (default)
 
 Balances success rate and latency 50/50 into a reward score, then adds an exploration bonus that shrinks as observations accumulate. Uses the observed variance of rewards to avoid over-exploring stable models.
@@ -235,7 +316,7 @@ Models each provider as a Beta distribution over success/failure counts and draw
 
 ### Routing state is in-memory only
 
-The `RoutingAIClientFactory` -- which owns the `MetricsStore`, `CircuitBreaker`, and `ModelSelector` instances -- is created once when the chat plugin initializes. A new `RoutingAIClient` is built per request via `factory.create()`, but it shares these stateful components across all requests. This means routing metrics and circuit breaker statuses persist across requests but are **in-memory only and reset to zero on every server restart**. After a restart, all models start fresh with no learned preferences or failure counts.
+The `AIRouterFactory` -- which owns the `MetricsStore`, `CircuitBreaker`, and `ModelSelector` instances -- is created once when the chat plugin initializes. A new `AIRouter` is built per request via `factory.create()`, but it shares these stateful components across all requests. This means routing metrics and circuit breaker statuses persist across requests but are **in-memory only and reset to zero on every server restart**. After a restart, all models start fresh with no learned preferences or failure counts.
 
 ### Back up ENCRYPTION_KEY separately from the database
 

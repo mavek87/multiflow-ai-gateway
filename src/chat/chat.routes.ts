@@ -2,7 +2,7 @@ import {Elysia} from 'elysia';
 import type {TenantStore} from '@/tenant/tenant.store';
 import {badRequestResponse, internalErrorResponse, unprocessableResponse} from '@/utils/http';
 import {ChatService} from './chat.service';
-import {RoutingAIClientFactory} from '@/engine/routing/routing-client-factory';
+import {AIRouterFactory} from '@/engine/routing/ai-router.factory';
 import {createModelSelector} from '@/engine/selection/selector.factory';
 import {TenantModelConfigResolver} from '@/tenant/tenant-model-config.resolver';
 import {tenantAuthPlugin} from '@/auth/auth.middleware';
@@ -13,12 +13,12 @@ import {MetricsStore} from '@/engine/observability/metrics';
 import {CircuitBreaker} from '@/engine/resilience/circuit-breaker';
 
 export function chatRoutePlugin(tenantStore: TenantStore, cryptoService: CryptoService) {
-    const routingAIClientFactory = new RoutingAIClientFactory(
+    const aiRouterFactory = new AIRouterFactory(
         new MetricsStore(),
         new CircuitBreaker(),
         createModelSelector(config.selectorType)
     );
-    const chatService = new ChatService(routingAIClientFactory);
+    const chatService = new ChatService(aiRouterFactory);
     const tenantModelConfResolver = new TenantModelConfigResolver(tenantStore, cryptoService);
 
     return new Elysia()
