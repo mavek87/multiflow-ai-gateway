@@ -50,6 +50,7 @@ export class HttpProviderClient {
       messages: AIChatMessage[],
       tools: ToolDefinition[],
       executeToolFn: (name: string, args: Record<string, unknown>) => Promise<string>,
+      // TODO: onFirstToolCall is unused by any caller - evaluate removal
       onFirstToolCall?: () => Promise<void>,
   ): Promise<CallProviderResult> {
     const history: AIChatMessage[] = [{ role: 'system', content: systemPrompt }, ...messages];
