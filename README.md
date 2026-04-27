@@ -112,7 +112,50 @@ volumes:
 
 A new tenant's gateway API key is printed to the logs on first creation. It is not stored in plaintext and cannot be retrieved afterwards.
 
-### 4. Start the server
+### 4. Manual API setup (alternative to seed file)
+
+If you prefer to configure tenants and providers via the REST API instead of a seed file, use this sequence after the server is running:
+
+```bash
+BASE=http://localhost:3000
+MASTER=your-master-key
+
+# 1. Create a global provider (once per provider, shared across tenants)
+PROVIDER_ID=$(curl -sf -X POST $BASE/admin/providers \
+  -H "x-master-key: $MASTER" -H "Content-Type: application/json" \
+  -d '{"name":"Groq","type":"groq","baseUrl":"https://api.groq.com/openai/v1"}' \
+  | jq -r '.id')
+
+# 2. Add a model to that provider (once per model)
+MODEL_ID=$(curl -sf -X POST $BASE/admin/providers/$PROVIDER_ID/models \
+  -H "x-master-key: $MASTER" -H "Content-Type: application/json" \
+  -d '{"modelName":"llama3-70b-8192"}' \
+  | jq -r '.id')
+
+# 3. Create the tenant -- save the returned apiKey, it is shown only once
+RESULT=$(curl -sf -X POST $BASE/admin/tenants \
+  -H "x-master-key: $MASTER" -H "Content-Type: application/json" \
+  -d '{"name":"Acme"}')
+TENANT_ID=$(echo $RESULT | jq -r '.tenantId')
+TENANT_KEY=$(echo $RESULT | jq -r '.apiKey')
+
+# 4. Assign the provider credential to the tenant
+curl -sf -X POST $BASE/admin/tenants/$TENANT_ID/credentials \
+  -H "x-master-key: $MASTER" -H "Content-Type: application/json" \
+  -d "{\"aiProviderId\":\"$PROVIDER_ID\",\"apiKey\":\"sk-groq-secret\"}"
+
+# 5. Assign the model to the tenant with a priority (0 = first choice)
+curl -sf -X POST $BASE/admin/tenants/$TENANT_ID/models \
+  -H "x-master-key: $MASTER" -H "Content-Type: application/json" \
+  -d "{\"aiProviderModelId\":\"$MODEL_ID\",\"priority\":0}"
+
+# 6. The tenant can now call the gateway
+curl -X POST $BASE/v1/chat/completions \
+  -H "Authorization: Bearer $TENANT_KEY" -H "Content-Type: application/json" \
+  -d '{"messages":[{"role":"user","content":"Hello!"}]}'
+```
+
+### 5. Start the server
 
 ```bash
 # Development
@@ -285,51 +328,6 @@ erDiagram
         string aiProviderModelId FK
         int priority
     }
-```
-
----
-
-## Quick Start: Onboard a New Client
-
-The full flow to add a tenant and make it ready to call `/v1/chat/completions`:
-
-```bash
-BASE=http://localhost:3000
-MASTER=your-master-key
-
-# 1. Create a global provider (once per provider, shared across tenants)
-PROVIDER_ID=$(curl -sf -X POST $BASE/admin/providers \
-  -H "x-master-key: $MASTER" -H "Content-Type: application/json" \
-  -d '{"name":"Groq","type":"groq","baseUrl":"https://api.groq.com/openai/v1"}' \
-  | jq -r '.id')
-
-# 2. Add a model to that provider (once per model)
-MODEL_ID=$(curl -sf -X POST $BASE/admin/providers/$PROVIDER_ID/models \
-  -H "x-master-key: $MASTER" -H "Content-Type: application/json" \
-  -d '{"modelName":"llama3-70b-8192"}' \
-  | jq -r '.id')
-
-# 3. Create the tenant -- save the returned apiKey, it is shown only once
-RESULT=$(curl -sf -X POST $BASE/admin/tenants \
-  -H "x-master-key: $MASTER" -H "Content-Type: application/json" \
-  -d '{"name":"ClienteA"}')
-TENANT_ID=$(echo $RESULT | jq -r '.tenantId')
-TENANT_KEY=$(echo $RESULT | jq -r '.apiKey')
-
-# 4. Assign the provider credential to the tenant
-curl -sf -X POST $BASE/admin/tenants/$TENANT_ID/credentials \
-  -H "x-master-key: $MASTER" -H "Content-Type: application/json" \
-  -d "{\"aiProviderId\":\"$PROVIDER_ID\",\"apiKey\":\"sk-groq-secret\"}"
-
-# 5. Assign the model to the tenant with a priority (0 = first choice)
-curl -sf -X POST $BASE/admin/tenants/$TENANT_ID/models \
-  -H "x-master-key: $MASTER" -H "Content-Type: application/json" \
-  -d "{\"aiProviderModelId\":\"$MODEL_ID\",\"priority\":0}"
-
-# 6. The tenant can now call the gateway
-curl -X POST $BASE/v1/chat/completions \
-  -H "Authorization: Bearer $TENANT_KEY" -H "Content-Type: application/json" \
-  -d '{"messages":[{"role":"user","content":"Hello!"}]}'
 ```
 
 ---
