@@ -79,6 +79,53 @@ bun run start
 
 The database is created automatically on first start. The server listens on `http://localhost:3000` (or the configured `PORT`).
 
+### 3b. Run with Docker (alternative)
+
+**Local / development:**
+
+Clone the repo, create a `.env` file (see step 2 above), then:
+
+```bash
+# Build and start (foreground)
+docker compose up --build
+
+# Build and start (background)
+docker compose up --build -d
+
+# Stop
+docker compose down
+```
+
+**On a remote server:**
+
+Clone the repo on the server, create the `.env` file with production secrets, then run the same commands above. The `docker-compose.yml` uses `build: .` so the source must be present to build the image.
+
+```bash
+git clone https://github.com/your-org/multiflow-ai-gateway.git
+cd multiflow-ai-gateway
+cp .env.example .env   # then fill in MASTER_KEY and ENCRYPTION_KEY
+docker compose up --build -d
+```
+
+**How the image is built:**
+
+The Dockerfile uses a 3-stage build (~252MB final image):
+
+1. **deps** - installs only production dependencies (`--production`)
+2. **builder** - installs all dependencies and pre-generates Drizzle SQL migrations
+3. **runner** - `oven/bun:1-slim` base, copies prod `node_modules`, `src/`, and pre-generated `drizzle/` migrations
+
+**Persistence:**
+
+SQLite and audit logs are stored outside the container via mounted volumes:
+
+| Volume | Container path | Description |
+|---|---|---|
+| `./data` | `/app/data` | SQLite database file |
+| `./logs` | `/app/logs` | Audit log (`audit.jsonl`) |
+
+Both directories are created automatically on first start. Do not delete `./data` unless you want to wipe the database.
+
 ### 4. Seed the database (Optional)
 
 You can quickly seed the database with a test tenant and Groq provider using:
