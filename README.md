@@ -464,14 +464,27 @@ The `model` field is optional and supports two formats:
 - **`"provider/model"`** -- filters to a specific provider by name (case-insensitive) before applying model matching. Use this when you need to target a particular backend explicitly.
 
 ```jsonc
-// routes to any provider with model "openai" -- multi-provider pool
-{ "model": "openai", ... }
+// routes to any provider with model "llama-3-70b"
+{ "model": "llama-3-70b", ... }
 
-// routes only to the provider named "Pollinations" with model "openai"
-{ "model": "pollinations/openai", ... }
+// routes only to the provider named "Groq" with model "llama-3-70b"
+{ "model": "groq/llama-3-70b", ... }
 ```
 
 When omitted, all enabled providers for the tenant are candidates.
+
+#### Routing to a subset of models (gateway extension)
+
+The `models` field (array of strings) is a gateway-specific extension that restricts routing to an explicit subset of the tenant's configured models. It takes precedence over `model` and cannot be used together with it.
+
+Each entry supports the same `"model"` or `"provider/model"` syntax as the `model` field. The routing engine uses the union of all matching configs as the candidate pool, then applies the normal selector and circuit breaker.
+
+```jsonc
+// routes only to these three models across different providers
+{ "models": ["groq/llama-3-70b", "openai/gpt-4o-mini", "gemma-2-9b"], ... }
+```
+
+Use this when a single tenant needs different model pools for different workloads (e.g. fast cheap models for one use case, powerful models for another) without creating multiple tenants.
 
 Returns an OpenAI-compatible response object (or SSE stream when `stream: true`).
 

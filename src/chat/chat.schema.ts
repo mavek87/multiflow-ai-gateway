@@ -20,6 +20,7 @@ export const MessageSchema = t.Object({
 
 export const ChatRequestSchema = t.Object({
     model: t.Optional(t.String()),
+    models: t.Optional(t.Array(t.String(), {minItems: 1})),
     messages: t.Array(MessageSchema, {minItems: 1, error: 'messages array is required and must not be empty'}),
     system: t.Optional(t.String()),
     stream: t.Optional(t.Boolean()),

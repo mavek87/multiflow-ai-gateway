@@ -6,6 +6,7 @@ export interface TenantModelConfigKey {
     tenantId: string;
     requestedModel?: string;
     requestedProviderName?: string;
+    requestedModels?: Array<{model?: string; providerName?: string}>;
     forceAiProviderId?: string | null;
 }
 

@@ -12,22 +12,44 @@ export class TenantModelConfigResolver {
     ) {
     }
 
-    public resolve({tenantId, requestedModel, requestedProviderName, forceAiProviderId}: TenantModelConfigKey): Result<ModelConfig[], TenantModelConfigError> {
+    public resolve({tenantId, requestedModel, requestedProviderName, requestedModels, forceAiProviderId}: TenantModelConfigKey): Result<ModelConfig[], TenantModelConfigError> {
         const modelConfigs = this.tenantStore.getTenantModelConfigs(tenantId, forceAiProviderId);
         if (modelConfigs.length === 0) return err({code: 'no_providers'});
 
-        let matchingConfigs = requestedModel
-            ? modelConfigs.filter((modelConfig) => modelConfig.modelName === requestedModel)
-            : modelConfigs;
+        let matchingConfigs;
 
-        if (requestedProviderName) {
-            matchingConfigs = matchingConfigs.filter(
-                (modelConfig) => modelConfig.aiProviderName.toLowerCase() === requestedProviderName.toLowerCase()
-            );
-        }
+        if (requestedModels && requestedModels.length > 0) {
+            const seen = new Set<string>();
+            matchingConfigs = requestedModels.flatMap(({model, providerName}) => {
+                const results = modelConfigs.filter((mc) => {
+                    const modelMatch = model ? mc.modelName === model : true;
+                    const providerMatch = providerName ? mc.aiProviderName.toLowerCase() === providerName.toLowerCase() : true;
+                    return modelMatch && providerMatch;
+                });
+                return results.filter((mc) => {
+                    if (seen.has(mc.id)) return false;
+                    seen.add(mc.id);
+                    return true;
+                });
+            });
 
-        if ((requestedModel || requestedProviderName) && matchingConfigs.length === 0) {
-            return err({code: 'model_not_found', model: requestedModel ?? requestedProviderName ?? ''});
+            if (matchingConfigs.length === 0) {
+                return err({code: 'model_not_found', model: requestedModels.map(({providerName, model}) => [providerName, model].filter(Boolean).join('/')).join(', ')});
+            }
+        } else {
+            matchingConfigs = requestedModel
+                ? modelConfigs.filter((modelConfig) => modelConfig.modelName === requestedModel)
+                : modelConfigs;
+
+            if (requestedProviderName) {
+                matchingConfigs = matchingConfigs.filter(
+                    (modelConfig) => modelConfig.aiProviderName.toLowerCase() === requestedProviderName.toLowerCase()
+                );
+            }
+
+            if ((requestedModel || requestedProviderName) && matchingConfigs.length === 0) {
+                return err({code: 'model_not_found', model: requestedModel ?? requestedProviderName ?? ''});
+            }
         }
 
         const arrayOfModelConfig: ModelConfig[] = matchingConfigs.map((modelConfig) => ({

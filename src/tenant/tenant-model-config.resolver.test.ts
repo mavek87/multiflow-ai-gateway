@@ -1,7 +1,8 @@
 import { describe, test, expect, beforeAll, beforeEach } from 'bun:test';
 import { TenantModelConfigResolver } from './tenant-model-config.resolver';
-import { createTestContext, seedTestTenantAndProvider, ensureTestEncryptionKey } from '@test/test-setup';
+import { createTestContext, seedTestTenantAndProvider, seedTestTenantWithMultipleModels, ensureTestEncryptionKey } from '@test/test-setup';
 import type { TenantStore } from '@/tenant/tenant.store';
+import type { ProviderStore } from '@/provider/provider.store';
 import type { Tenant } from '@/tenant/tenant.types';
 import { CryptoService } from '@/crypto/crypto';
 
@@ -11,6 +12,7 @@ beforeAll(() => {
 
 describe('TenantModelConfigResolver', () => {
   let store: TenantStore;
+  let providerStore: ProviderStore;
   let resolver: TenantModelConfigResolver;
   let tenant: Tenant;
   let cryptoService: CryptoService;
@@ -18,8 +20,9 @@ describe('TenantModelConfigResolver', () => {
   beforeEach(() => {
     const context = createTestContext();
     store = context.tenantStore;
+    providerStore = context.providerStore;
     cryptoService = new CryptoService();
-    const seeded = seedTestTenantAndProvider(store, context.providerStore);
+    const seeded = seedTestTenantAndProvider(store, providerStore);
     tenant = seeded.tenant;
     resolver = new TenantModelConfigResolver(store, cryptoService);
   });
@@ -105,6 +108,101 @@ describe('TenantModelConfigResolver', () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) expect(result.error.code).toBe('model_not_found');
+    });
+  });
+
+  describe('requestedModels array', () => {
+    test('returns matching config for a single entry in requestedModels', () => {
+      const result = resolver.resolve({ tenantId: tenant.id, requestedModels: [{model: 'gpt-4o'}] });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.length).toBe(1);
+        expect(result.value[0]!.model).toBe('gpt-4o');
+      }
+    });
+
+    test('returns union of configs for multiple entries across different providers', () => {
+      const seeded = seedTestTenantWithMultipleModels(store, providerStore);
+      const multiResolver = new TenantModelConfigResolver(store, cryptoService);
+
+      const result = multiResolver.resolve({
+        tenantId: seeded.tenant.id,
+        requestedModels: [{model: 'model-a'}, {model: 'model-b'}],
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.length).toBe(2);
+        const models = result.value.map(c => c.model);
+        expect(models).toContain('model-a');
+        expect(models).toContain('model-b');
+      }
+    });
+
+    test('filters by provider when entry has providerName', () => {
+      const seeded = seedTestTenantWithMultipleModels(store, providerStore);
+      const multiResolver = new TenantModelConfigResolver(store, cryptoService);
+
+      const result = multiResolver.resolve({
+        tenantId: seeded.tenant.id,
+        requestedModels: [{providerName: 'ProviderA', model: 'model-a'}],
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.length).toBe(1);
+        expect(result.value[0]!.model).toBe('model-a');
+        expect(result.value[0]!.aiProviderName).toBe('ProviderA');
+      }
+    });
+
+    test('returns only models matching providerName when no model specified in entry', () => {
+      const seeded = seedTestTenantWithMultipleModels(store, providerStore);
+      const multiResolver = new TenantModelConfigResolver(store, cryptoService);
+
+      const result = multiResolver.resolve({
+        tenantId: seeded.tenant.id,
+        requestedModels: [{providerName: 'ProviderA'}],
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.length).toBe(1);
+        expect(result.value[0]!.aiProviderName).toBe('ProviderA');
+      }
+    });
+
+    test('returns model_not_found when none of the entries match', () => {
+      const result = resolver.resolve({ tenantId: tenant.id, requestedModels: [{model: 'unknown-model'}] });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) expect(result.error.code).toBe('model_not_found');
+    });
+
+    test('deduplicates configs when multiple entries match the same model', () => {
+      const result = resolver.resolve({
+        tenantId: tenant.id,
+        requestedModels: [{model: 'gpt-4o'}, {providerName: 'OpenAI'}],
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) expect(result.value.length).toBe(1);
+    });
+
+    test('takes precedence over requestedModel and requestedProviderName', () => {
+      const result = resolver.resolve({
+        tenantId: tenant.id,
+        requestedModels: [{model: 'gpt-4o'}],
+        requestedModel: 'unknown-model',
+        requestedProviderName: 'UnknownProvider',
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.length).toBe(1);
+        expect(result.value[0]!.model).toBe('gpt-4o');
+      }
     });
   });
 });

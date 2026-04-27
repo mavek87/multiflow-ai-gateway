@@ -76,6 +76,37 @@ export function seedTestTenantAndProvider(tenantStore: TenantStore, providerStor
 }
 
 /**
+ * Seeds a tenant with two providers and two models for multi-model routing tests.
+ */
+export function seedTestTenantWithMultipleModels(tenantStore: TenantStore, providerStore: ProviderStore) {
+  const { tenant, rawApiKey } = tenantStore.createTenant('MultiModelTenant');
+  const cryptoService = new CryptoService();
+
+  const providerA = providerStore.createProvider({
+    name: 'ProviderA',
+    type: 'openai',
+    baseUrl: 'https://api.provider-a.com/v1',
+  })._unsafeUnwrap();
+
+  const providerB = providerStore.createProvider({
+    name: 'ProviderB',
+    type: 'openai',
+    baseUrl: 'https://api.provider-b.com/v1',
+  })._unsafeUnwrap();
+
+  const modelA = providerStore.createProviderModel({ aiProviderId: providerA.id, modelName: 'model-a' })._unsafeUnwrap();
+  const modelB = providerStore.createProviderModel({ aiProviderId: providerB.id, modelName: 'model-b' })._unsafeUnwrap();
+
+  tenantStore.assignAiProviderKey(tenant.id, { aiProviderId: providerA.id, aiProviderApiKeyEncrypted: cryptoService.encrypt('key-a') });
+  tenantStore.assignAiProviderKey(tenant.id, { aiProviderId: providerB.id, aiProviderApiKeyEncrypted: cryptoService.encrypt('key-b') });
+
+  tenantStore.assignAiModelPriority(tenant.id, { aiProviderModelId: modelA.id, priority: 0 });
+  tenantStore.assignAiModelPriority(tenant.id, { aiProviderModelId: modelB.id, priority: 1 });
+
+  return { tenant, rawApiKey, providerA, providerB, modelA, modelB };
+}
+
+/**
  * Creates an Elysia app with all routes for testing.
  */
 export function createTestApp(tenantStore: TenantStore, providerStore: ProviderStore, cryptoService: CryptoService) {

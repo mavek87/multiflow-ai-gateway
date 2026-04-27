@@ -10,6 +10,7 @@ export type ChatServiceError =
 
 export interface ChatServiceRequest {
     model?: string;
+    models?: string[];
     messages: AIChatMessage[];
     system?: string;
     stream?: boolean;

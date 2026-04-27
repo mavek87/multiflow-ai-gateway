@@ -26,6 +26,18 @@ export function chatRoutePlugin(tenantStore: TenantStore, cryptoService: CryptoS
         .guard({detail: {security: [{GatewayApiKey: []}]}}) // This guard applies the security requirement for Swagger UI / OpenAPI docs
         .post('/v1/chat/completions', async ({body, tenant}) => {
 
+            if (body.model && body.models) {
+                return badRequestResponse("Cannot use both 'model' and 'models' fields simultaneously");
+            }
+
+            const parseModelEntry = (entry: string): {model?: string; providerName?: string} => {
+                if (entry.includes('/')) {
+                    const slashIdx = entry.indexOf('/');
+                    return {providerName: entry.slice(0, slashIdx), model: entry.slice(slashIdx + 1)};
+                }
+                return {model: entry};
+            };
+
             let requestedProviderName: string | undefined;
             let requestedModel: string | undefined;
             if (body.model?.includes('/')) {
@@ -36,10 +48,13 @@ export function chatRoutePlugin(tenantStore: TenantStore, cryptoService: CryptoS
                 requestedModel = body.model;
             }
 
+            const requestedModels = body.models?.map(parseModelEntry);
+
             const modelConfigsResult = tenantModelConfResolver.resolve({
                 tenantId: tenant!.id,
                 requestedModel,
                 requestedProviderName,
+                requestedModels,
                 forceAiProviderId: tenant!.forceAiProviderId
             });
             if (modelConfigsResult.isErr()) {
@@ -99,7 +114,7 @@ export function chatRoutePlugin(tenantStore: TenantStore, cryptoService: CryptoS
             body: ChatRequestSchema,
             detail: {
                 summary: 'Chat completions',
-                description: 'OpenAI-compatible endpoint. Requires a gateway API key (Bearer gw_xxx). Routes the request through the best available model using intelligent selection (UCB1-Tuned by default, configurable via SELECTOR_TYPE) and circuit breaker. The `model` field is optional -- when provided, only providers with a matching modelName are considered.',
+                description: 'OpenAI-compatible endpoint. Requires a gateway API key (Bearer gw_xxx). Routes the request through the best available model using intelligent selection (UCB1-Tuned by default, configurable via SELECTOR_TYPE) and circuit breaker. The `model` field is optional -- when provided, only providers with a matching modelName are considered. Use `models` (gateway extension) to restrict routing to a named subset of models; it takes precedence over `model` when provided.',
                 tags: ['Chat'],
             },
         });

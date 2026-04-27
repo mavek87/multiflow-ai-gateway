@@ -1,5 +1,5 @@
 import { describe, test, expect, afterEach, beforeEach } from 'bun:test';
-import { createTestContext, seedTestTenantAndProvider, createTestApp, sendRequest, mockSseResponse } from '@test/test-setup';
+import { createTestContext, seedTestTenantAndProvider, seedTestTenantWithMultipleModels, createTestApp, sendRequest, mockSseResponse } from '@test/test-setup';
 import { CryptoService } from '@/crypto/crypto';
 const originalFetch = globalThis.fetch;
 
@@ -117,6 +117,64 @@ describe('chatPlugin E2E', () => {
       });
 
       expect(res.status).toBe(200);
+    });
+  });
+
+  describe('models array routing', () => {
+    let multiRawApiKey: string;
+    let multiApp: ReturnType<typeof createTestApp>;
+
+    beforeEach(() => {
+      const { tenantStore, providerStore } = createTestContext();
+      const seeded = seedTestTenantWithMultipleModels(tenantStore, providerStore);
+      multiRawApiKey = seeded.rawApiKey;
+      multiApp = createTestApp(tenantStore, providerStore, new CryptoService());
+    });
+
+    test('returns 200 when models array contains valid models', async () => {
+      // @ts-ignore
+      globalThis.fetch = async () => mockSseResponse('ok');
+
+      const res = await sendRequest(multiApp, '/v1/chat/completions', {
+        method: 'POST',
+        apiKey: multiRawApiKey,
+        body: { models: ['model-a', 'model-b'], messages: [{role: 'user', content: 'hi'}] },
+      });
+
+      expect(res.status).toBe(200);
+    });
+
+    test('returns 200 with provider/model format in models array', async () => {
+      // @ts-ignore
+      globalThis.fetch = async () => mockSseResponse('ok');
+
+      const res = await sendRequest(multiApp, '/v1/chat/completions', {
+        method: 'POST',
+        apiKey: multiRawApiKey,
+        body: { models: ['ProviderA/model-a'], messages: [{role: 'user', content: 'hi'}] },
+      });
+
+      expect(res.status).toBe(200);
+    });
+
+    test('returns 400 when models array contains no valid models', async () => {
+      const res = await sendRequest(multiApp, '/v1/chat/completions', {
+        method: 'POST',
+        apiKey: multiRawApiKey,
+        body: { models: ['unknown-model'], messages: [{role: 'user', content: 'hi'}] },
+      });
+
+      expect(res.status).toBe(400);
+    });
+
+    test('returns 400 when both model and models are provided', async () => {
+      const res = await sendRequest(multiApp, '/v1/chat/completions', {
+        method: 'POST',
+        apiKey: multiRawApiKey,
+        body: { model: 'model-a', models: ['model-b'], messages: [{role: 'user', content: 'hi'}] },
+      });
+
+      expect(res.status).toBe(400);
     });
   });
 

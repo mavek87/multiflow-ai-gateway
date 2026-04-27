@@ -33,6 +33,44 @@ new Elysia()
       log.error(`[${code}] ${method} ${path} - ${error.message}`);
     }
   })
+  .onAfterHandle({as: 'global'}, ({request, response}) => {
+    if (new URL(request.url).pathname !== '/docs/json') return;
+    const spec = response as Record<string, unknown>;
+    const post = (spec?.paths as Record<string, Record<string, unknown>>)?.['/v1/chat/completions']?.post as Record<string, unknown> | undefined;
+    if (!post) return;
+    const requestBody = post.requestBody as Record<string, unknown>;
+    const content = requestBody?.content as Record<string, Record<string, unknown>>;
+    if (!content?.['application/json']) return;
+    content['application/json'].examples = {
+      'all-fields': {
+        summary: 'All optional fields (system prompt + streaming)',
+        value: {model: 'gpt-4o', messages: [{role: 'user', content: 'Hello'}], system: 'You are a helpful assistant.', stream: true},
+      },
+      'single-model': {
+        summary: 'Single model (OpenAI-compatible)',
+        value: {model: 'llama-3-70b', messages: [{role: 'user', content: 'Hello'}]},
+      },
+      'provider-slash-model': {
+        summary: 'Force specific provider',
+        value: {model: 'groq/llama-3-70b', messages: [{role: 'user', content: 'Hello'}]},
+      },
+      'models-subset': {
+        summary: 'Gateway extension: subset of models (multi-provider)',
+        value: {models: ['groq/llama-3-70b', 'openai/gpt-4o-mini', 'gemma-2-9b'], messages: [{role: 'user', content: 'Hello'}]},
+      },
+      'with-tool-result': {
+        summary: 'Conversation with tool call result',
+        value: {
+          model: 'gpt-4o',
+          messages: [
+            {role: 'user', content: 'What is the weather in Rome?'},
+            {role: 'assistant', content: '', tool_calls: [{id: 'call_1', type: 'function', function: {name: 'get_weather', arguments: {city: 'Rome'}}}]},
+            {role: 'tool', content: '{"temperature": 22, "condition": "sunny"}', tool_call_id: 'call_1'},
+          ],
+        },
+      },
+    };
+  })
   .use(swagger({
     provider: 'swagger-ui',
     path: '/docs',
