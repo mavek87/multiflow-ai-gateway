@@ -11,7 +11,7 @@ COPY . .
 
 # Generate DB schema (if needed at runtime) and compile the application into a binary
 RUN bun run db:generate
-RUN bun build ./src/index.ts --compile --outfile ai-gateway
+RUN bun build ./src/index.ts --compile --outfile multiflow-ai-gateway
 
 # Create data and logs directories
 RUN mkdir -p data logs
@@ -22,7 +22,7 @@ FROM gcr.io/distroless/cc-debian12@sha256:847433844c7e04bcf07a3a0f0f5a8de554c6df
 WORKDIR /app
 
 # Copy the binary from the build stage
-COPY --from=builder --chown=nonroot:nonroot /app/ai-gateway ./ai-gateway
+COPY --from=builder --chown=nonroot:nonroot /app/multiflow-ai-gateway ./multiflow-ai-gateway
 
 # Copy directories required at runtime
 COPY --from=builder --chown=nonroot:nonroot /app/drizzle ./drizzle
@@ -37,4 +37,4 @@ USER nonroot
 EXPOSE 3000
 
 # Start the binary
-CMD ["./ai-gateway"]
+CMD ["./multiflow-ai-gateway"]
