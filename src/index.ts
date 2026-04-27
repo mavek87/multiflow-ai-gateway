@@ -20,6 +20,25 @@ const tenantStore = new TenantStore(db);
 const providerStore = new ProviderStore(db);
 
 new Elysia()
+  .onError(({ code, error, request }) => {
+    const url = new URL(request.url);
+    if (code === 'VALIDATION') {
+      let summary: string;
+      try {
+        const parsed = JSON.parse(error.message) as { summary?: string };
+        summary = parsed.summary ?? 'Validation error';
+      } catch {
+        summary = error.message;
+      }
+      log.warn(`[422] ${request.method} ${url.pathname} - ${summary}`);
+      const details = (error.all as Array<{ path: string; message: string }> | undefined)
+        ?.map((e) => ({ field: e.path, message: e.message })) ?? [];
+      return Response.json({ type: 'validation_error', message: summary, details }, { status: 422 });
+    }
+    if ('message' in error) {
+      log.error(`[${code}] ${request.method} ${url.pathname} - ${error.message}`);
+    }
+  })
   .use(swagger({
     provider: 'swagger-ui',
     path: '/docs',

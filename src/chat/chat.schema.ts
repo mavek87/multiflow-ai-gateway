@@ -10,7 +10,9 @@ export const ToolCallSchema = t.Object({
 });
 
 export const MessageSchema = t.Object({
-    role: t.Union([t.Literal('system'), t.Literal('user'), t.Literal('assistant'), t.Literal('tool')]),
+    role: t.Union([t.Literal('system'), t.Literal('user'), t.Literal('assistant'), t.Literal('tool')], {
+        error: "Expected role to be one of: 'system', 'user', 'assistant', 'tool'",
+    }),
     content: t.String(),
     tool_calls: t.Optional(t.Array(ToolCallSchema)),
     tool_call_id: t.Optional(t.String()),
