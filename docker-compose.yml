@@ -1,11 +1,16 @@
 services:
   gateway:
     build: .
+    image: multiflow-ai-gateway:latest
+    container_name: multiflow-ai-gateway
     ports:
       - "${PORT:-3000}:3000"
     env_file:
       - .env
     volumes:
-      - ./data:/app/data
-      - ./logs:/app/logs
+      - gateway_data:/app/data
+    # We removed the logs volume as logs should go to stdout in Docker
     restart: unless-stopped
+
+volumes:
+  gateway_data:
