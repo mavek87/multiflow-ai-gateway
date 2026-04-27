@@ -582,10 +582,14 @@ File naming convention: `[feature].[type].ts` (e.g., `chat.routes.ts`, `tenant.s
 
 ## Roadmap
 
-- Sub-users per tenant with per-user rate limits
-- LightRAG integration for multi-domain RAG
-- MCP client support per tenant
-- Prometheus metrics endpoint
-- Additional provider adapters (Groq, Gemini native, Claude native)
-- Web admin UI
-- PostgreSQL support for horizontal scaling
+Full details and feature descriptions in [`docs/study.md`](docs/study.md).
+
+| # | Feature | Priority | Area |
+|---|---------|----------|------|
+| 1 | Prometheus metrics endpoint | Critical | Observability |
+| 2 | Rate limiting / sub-users per tenant | High | Multi-tenancy |
+| 3 | Proactive health checks | High | Routing |
+| 4 | Exact-match prompt caching | High | Performance |
+| 5 | Additional provider adapters (Groq, Gemini, Claude native) | Medium | Providers |
+| 6 | BYOK per-request | Medium | Auth |
+| 7 | PostgreSQL support | Low | Infrastructure |
