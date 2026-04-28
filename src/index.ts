@@ -1,5 +1,6 @@
 import {Elysia} from 'elysia';
 import {swagger} from '@elysiajs/swagger';
+import {sql} from 'drizzle-orm';
 import {db} from '@/db/database';
 import {TenantStore} from '@/tenant/tenant.store';
 import {ProviderStore} from '@/provider/provider.store';
@@ -52,6 +53,7 @@ new Elysia()
                 description: 'Self-hosted multi-tenant AI Gateway with OpenAI-compatible API, intelligent routing (UCB1 + circuit breaker), and per-tenant provider isolation.'
             },
             tags: [
+                {name: 'Health', description: 'Liveness and readiness probes'},
                 {name: 'Chat', description: 'OpenAI-compatible chat completions endpoint'},
                 {name: 'Admin', description: 'Tenant and provider management (master key required)'},
             ],
@@ -71,7 +73,25 @@ new Elysia()
             },
         },
     }))
-    .get('/health', () => ({status: 'ok', timestamp: new Date().toISOString()}))
+    .get('/liveness', () => ({status: 'ok', timestamp: new Date().toISOString()}), {
+        detail: {summary: 'Liveness probe', tags: ['Health']},
+    })
+    .get('/readiness', () => {
+        try {
+            db.run(sql`SELECT 1`);
+            return new Response(JSON.stringify({status: 'ok', db: 'ok', timestamp: new Date().toISOString()}), {
+                status: 200,
+                headers: {'content-type': 'application/json'},
+            });
+        } catch {
+            return new Response(JSON.stringify({status: 'error', db: 'unreachable', timestamp: new Date().toISOString()}), {
+                status: 503,
+                headers: {'content-type': 'application/json'},
+            });
+        }
+    }, {
+        detail: {summary: 'Readiness probe', tags: ['Health']},
+    })
     .use(adminRoutePlugin(tenantStore, providerStore, cryptoService, auditStore, metricsStore, circuitBreaker))
     .use(chatRoutePlugin(tenantStore, auditStore, metricsStore, cryptoService, circuitBreaker))
     .listen(config.port);
