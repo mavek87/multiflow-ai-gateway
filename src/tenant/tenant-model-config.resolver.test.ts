@@ -113,7 +113,7 @@ describe('TenantModelConfigResolver', () => {
 
   describe('requestedModels array', () => {
     test('returns matching config for a single entry in requestedModels', () => {
-      const result = resolver.resolve({ tenantId: tenant.id, requestedModels: [{model: 'gpt-4o'}] });
+      const result = resolver.resolve({ tenantId: tenant.id, requestedModelsAndProviders: [{model: 'gpt-4o'}] });
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -128,7 +128,7 @@ describe('TenantModelConfigResolver', () => {
 
       const result = multiResolver.resolve({
         tenantId: seeded.tenant.id,
-        requestedModels: [{model: 'model-a'}, {model: 'model-b'}],
+        requestedModelsAndProviders: [{model: 'model-a'}, {model: 'model-b'}],
       });
 
       expect(result.isOk()).toBe(true);
@@ -146,7 +146,7 @@ describe('TenantModelConfigResolver', () => {
 
       const result = multiResolver.resolve({
         tenantId: seeded.tenant.id,
-        requestedModels: [{providerName: 'ProviderA', model: 'model-a'}],
+        requestedModelsAndProviders: [{providerName: 'ProviderA', model: 'model-a'}],
       });
 
       expect(result.isOk()).toBe(true);
@@ -163,7 +163,7 @@ describe('TenantModelConfigResolver', () => {
 
       const result = multiResolver.resolve({
         tenantId: seeded.tenant.id,
-        requestedModels: [{providerName: 'ProviderA'}],
+        requestedModelsAndProviders: [{providerName: 'ProviderA'}],
       });
 
       expect(result.isOk()).toBe(true);
@@ -174,7 +174,7 @@ describe('TenantModelConfigResolver', () => {
     });
 
     test('returns model_not_found when none of the entries match', () => {
-      const result = resolver.resolve({ tenantId: tenant.id, requestedModels: [{model: 'unknown-model'}] });
+      const result = resolver.resolve({ tenantId: tenant.id, requestedModelsAndProviders: [{model: 'unknown-model'}] });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) expect(result.error.code).toBe('model_not_found');
@@ -183,7 +183,7 @@ describe('TenantModelConfigResolver', () => {
     test('deduplicates configs when multiple entries match the same model', () => {
       const result = resolver.resolve({
         tenantId: tenant.id,
-        requestedModels: [{model: 'gpt-4o'}, {providerName: 'OpenAI'}],
+        requestedModelsAndProviders: [{model: 'gpt-4o'}, {providerName: 'OpenAI'}],
       });
 
       expect(result.isOk()).toBe(true);
@@ -193,7 +193,7 @@ describe('TenantModelConfigResolver', () => {
     test('takes precedence over requestedModel and requestedProviderName', () => {
       const result = resolver.resolve({
         tenantId: tenant.id,
-        requestedModels: [{model: 'gpt-4o'}],
+        requestedModelsAndProviders: [{model: 'gpt-4o'}],
         requestedModel: 'unknown-model',
         requestedProviderName: 'UnknownProvider',
       });

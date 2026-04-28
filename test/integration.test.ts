@@ -4,16 +4,17 @@ import { CryptoService } from '@/crypto/crypto';
 import { Elysia } from 'elysia';
 import { adminRoutePlugin } from '@/admin/admin.routes';
 import { chatRoutePlugin } from '@/chat/chat.routes';
+import { MetricsStore } from '@/engine/observability/metrics';
 
 const originalFetch = globalThis.fetch;
 
 function createFullApp(context: ReturnType<typeof createTestContext>) {
-  const { tenantStore, providerStore, auditStore } = context;
+  const { tenantStore, providerStore, auditStore, metricsStore } = context;
   const cryptoService = new CryptoService();
   return new Elysia()
     .get('/health', () => ({ status: 'ok', timestamp: new Date().toISOString() }))
     .use(adminRoutePlugin(tenantStore, providerStore, cryptoService, auditStore))
-    .use(chatRoutePlugin(tenantStore, cryptoService, auditStore));
+    .use(chatRoutePlugin(tenantStore, auditStore, metricsStore, cryptoService));
 }
 
 describe('Full System Integration', () => {

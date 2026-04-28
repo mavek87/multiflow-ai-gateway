@@ -8,8 +8,8 @@ describe('Admin Routes', () => {
   const MASTER_KEY = config.masterKey;
 
   beforeEach(() => {
-    const { tenantStore, providerStore, auditStore } = createTestContext();
-    app = createTestApp(tenantStore, providerStore, new CryptoService(), auditStore);
+    const { tenantStore, providerStore, auditStore, metricsStore } = createTestContext();
+    app = createTestApp(tenantStore, providerStore, auditStore, metricsStore, new CryptoService());
   });
 
   test('GET /admin/tenants returns 403 without master key', async () => {
@@ -99,8 +99,8 @@ describe('Admin Routes', () => {
 
   test('GET /admin/audit returns logged entries', async () => {
     const { auditStore } = createTestContext();
-    const { tenantStore, providerStore, auditStore: localAuditStore } = createTestContext();
-    const localApp = createTestApp(tenantStore, providerStore, new CryptoService(), localAuditStore);
+    const { tenantStore, providerStore, auditStore: localAuditStore, metricsStore: localMetricsStore } = createTestContext();
+    const localApp = createTestApp(tenantStore, providerStore, localAuditStore, localMetricsStore, new CryptoService());
 
     localAuditStore.log({
       tenantId: 'test-tenant',
@@ -120,8 +120,8 @@ describe('Admin Routes', () => {
   });
 
   test('GET /admin/audit filters by tenantId', async () => {
-    const { tenantStore, providerStore, auditStore: localAuditStore } = createTestContext();
-    const localApp = createTestApp(tenantStore, providerStore, new CryptoService(), localAuditStore);
+    const { tenantStore, providerStore, auditStore: localAuditStore, metricsStore: localMetricsStore } = createTestContext();
+    const localApp = createTestApp(tenantStore, providerStore, localAuditStore, localMetricsStore, new CryptoService());
 
     localAuditStore.log({ tenantId: 'tenant-a', aiProvider: { id: 'p1', name: 'Groq' }, model: 'llama3', latencyMs: 100, success: true, statusCode: 200 });
     localAuditStore.log({ tenantId: 'tenant-b', aiProvider: { id: 'p1', name: 'Groq' }, model: 'gpt-4', latencyMs: 200, success: true, statusCode: 200 });

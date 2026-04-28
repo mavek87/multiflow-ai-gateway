@@ -15,7 +15,7 @@ import { ToolCallOrchestrator } from '@/engine/tools/tools-call-orchestrator';
 import { SseResponseParser, JsonResponseParser, type OpenAIResponseParser } from './openai-response-parser';
 import { stripThinkTags } from '@/utils/text';
 
-const log = createLogger('MODEL-CLIENT');
+const log = createLogger('HTTP-PROVIDER-CLIENT');
 
 export type CallProviderError = { kind: 'soft' | 'hard'; error: unknown };
 export type CallProviderSuccess = { content: string; toolCalls?: ToolCall[]; ttftMs: number; latencyMs: number };

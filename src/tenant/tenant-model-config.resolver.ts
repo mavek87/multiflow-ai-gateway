@@ -12,15 +12,15 @@ export class TenantModelConfigResolver {
     ) {
     }
 
-    public resolve({tenantId, requestedModel, requestedProviderName, requestedModels, forceAiProviderId}: TenantModelConfigKey): Result<ModelConfig[], TenantModelConfigError> {
+    public resolve({tenantId, requestedModel, requestedProviderName, requestedModelsAndProviders, forceAiProviderId}: TenantModelConfigKey): Result<ModelConfig[], TenantModelConfigError> {
         const modelConfigs = this.tenantStore.getTenantModelConfigs(tenantId, forceAiProviderId);
         if (modelConfigs.length === 0) return err({code: 'no_providers'});
 
         let matchingConfigs;
 
-        if (requestedModels && requestedModels.length > 0) {
+        if (requestedModelsAndProviders && requestedModelsAndProviders.length > 0) {
             const seen = new Set<string>();
-            matchingConfigs = requestedModels.flatMap(({model, providerName}) => {
+            matchingConfigs = requestedModelsAndProviders.flatMap(({model, providerName}) => {
                 const results = modelConfigs.filter((mc) => {
                     const modelMatch = model ? mc.modelName === model : true;
                     const providerMatch = providerName ? mc.aiProviderName.toLowerCase() === providerName.toLowerCase() : true;
@@ -34,7 +34,7 @@ export class TenantModelConfigResolver {
             });
 
             if (matchingConfigs.length === 0) {
-                return err({code: 'model_not_found', model: requestedModels.map(({providerName, model}) => [providerName, model].filter(Boolean).join('/')).join(', ')});
+                return err({code: 'model_not_found', model: requestedModelsAndProviders.map(({providerName, model}) => [providerName, model].filter(Boolean).join('/')).join(', ')});
             }
         } else {
             matchingConfigs = requestedModel

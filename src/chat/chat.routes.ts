@@ -13,8 +13,7 @@ import {MetricsStore} from '@/engine/observability/metrics';
 import {CircuitBreaker} from '@/engine/resilience/circuit-breaker';
 import type {AuditStore} from '@/audit/audit.store';
 
-export function chatRoutePlugin(tenantStore: TenantStore, cryptoService: CryptoService, auditStore: AuditStore) {
-    const metricsStore = new MetricsStore();
+export function chatRoutePlugin(tenantStore: TenantStore, auditStore: AuditStore, metricsStore: MetricsStore, cryptoService: CryptoService) {
     const recentRecords = auditStore.getRecentRecords(Date.now() - config.metricsWarmUpWindowMs);
     metricsStore.warmUp(recentRecords);
 
@@ -27,6 +26,17 @@ export function chatRoutePlugin(tenantStore: TenantStore, cryptoService: CryptoS
     const chatService = new ChatService(aiRouterFactory);
     const tenantModelConfResolver = new TenantModelConfigResolver(tenantStore, cryptoService);
 
+    function parseModelString(entry: string): { providerName?: string; model: string } {
+        const slashIdx = entry.indexOf('/');
+        if (slashIdx === -1) {
+            return {model: entry};
+        }
+        return {
+            providerName: entry.slice(0, slashIdx),
+            model: entry.slice(slashIdx + 1)
+        };
+    }
+
     return new Elysia()
         .use(tenantAuthPlugin(tenantStore))
         .guard({detail: {security: [{GatewayApiKey: []}]}}) // This guard applies the security requirement for Swagger UI / OpenAPI docs
@@ -36,31 +46,18 @@ export function chatRoutePlugin(tenantStore: TenantStore, cryptoService: CryptoS
                 return badRequestResponse("Cannot use both 'model' and 'models' fields simultaneously");
             }
 
-            const parseModelEntry = (entry: string): {model?: string; providerName?: string} => {
-                if (entry.includes('/')) {
-                    const slashIdx = entry.indexOf('/');
-                    return {providerName: entry.slice(0, slashIdx), model: entry.slice(slashIdx + 1)};
-                }
-                return {model: entry};
-            };
+            const {
+                providerName: requestedProviderName,
+                model: requestedModel
+            } = body.model ? parseModelString(body.model) : {providerName: undefined, model: undefined};
 
-            let requestedProviderName: string | undefined;
-            let requestedModel: string | undefined;
-            if (body.model?.includes('/')) {
-                const slashIdx = body.model.indexOf('/');
-                requestedProviderName = body.model.slice(0, slashIdx);
-                requestedModel = body.model.slice(slashIdx + 1);
-            } else {
-                requestedModel = body.model;
-            }
-
-            const requestedModels = body.models?.map(parseModelEntry);
+            const requestedModelsAndProviders = body.models?.map(parseModelString);
 
             const modelConfigsResult = tenantModelConfResolver.resolve({
                 tenantId: tenant!.id,
                 requestedModel,
                 requestedProviderName,
-                requestedModels,
+                requestedModelsAndProviders: requestedModelsAndProviders,
                 forceAiProviderId: tenant!.forceAiProviderId
             });
             if (modelConfigsResult.isErr()) {
@@ -88,7 +85,7 @@ export function chatRoutePlugin(tenantStore: TenantStore, cryptoService: CryptoS
                                 code: 'ai_unavailable',
                                 type: 'service_unavailable'
                             }
-                        }, { status: 503 });
+                        }, {status: 503});
                     case 'stream_not_supported':
                         return internalErrorResponse();
                 }
@@ -117,7 +114,7 @@ export function chatRoutePlugin(tenantStore: TenantStore, cryptoService: CryptoS
                 });
             }
         }, {
-            beforeHandle: ({ tenant }) => {
+            beforeHandle: ({tenant}) => {
                 if (tenant?.rateLimitDailyRequests != null && !auditStore.isAllowed(tenant.id, tenant.rateLimitDailyRequests)) {
                     return tooManyRequestsResponse('Daily rate limit exceeded for this tenant');
                 }

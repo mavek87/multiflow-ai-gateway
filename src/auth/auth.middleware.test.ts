@@ -10,7 +10,7 @@ describe('chat auth guard', () => {
   beforeEach(() => {
     const context = createTestContext();
     tenantStore = context.tenantStore;
-    app = createTestApp(tenantStore, context.providerStore, new CryptoService(), context.auditStore);
+    app = createTestApp(tenantStore, context.providerStore, context.auditStore, context.metricsStore, new CryptoService());
   });
 
   const VALID_BODY = { messages: [{ role: 'user', content: 'hi' }] };

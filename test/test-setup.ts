@@ -6,6 +6,7 @@ import { TenantStore } from '@/tenant/tenant.store';
 import { ProviderStore } from '@/provider/provider.store';
 import { CryptoService } from '@/crypto/crypto';
 import { AuditStore } from '@/audit/audit.store';
+import { MetricsStore } from '@/engine/observability/metrics';
 import { Elysia } from 'elysia';
 import { chatRoutePlugin } from '@/chat/chat.routes';
 import { adminRoutePlugin } from '@/admin/admin.routes';
@@ -33,8 +34,9 @@ export function createTestContext() {
   const tenantStore = new TenantStore(db);
   const providerStore = new ProviderStore(db);
   const auditStore = new AuditStore(db);
+  const metricsStore = new MetricsStore();
 
-  return { db, tenantStore, providerStore, auditStore };
+  return { db, tenantStore, providerStore, auditStore, metricsStore };
 }
 
 export function seedTestTenantAndProvider(tenantStore: TenantStore, providerStore: ProviderStore) {
@@ -93,9 +95,9 @@ export function seedTestTenantWithMultipleModels(tenantStore: TenantStore, provi
   return { tenant, rawApiKey, providerA, providerB, modelA, modelB };
 }
 
-export function createTestApp(tenantStore: TenantStore, providerStore: ProviderStore, cryptoService: CryptoService, auditStore: AuditStore) {
+export function createTestApp(tenantStore: TenantStore, providerStore: ProviderStore, auditStore: AuditStore, metricsStore: MetricsStore, cryptoService: CryptoService) {
   return new Elysia()
-    .use(chatRoutePlugin(tenantStore, cryptoService, auditStore))
+    .use(chatRoutePlugin(tenantStore, auditStore, metricsStore, cryptoService))
     .use(adminRoutePlugin(tenantStore, providerStore, cryptoService, auditStore));
 }
 

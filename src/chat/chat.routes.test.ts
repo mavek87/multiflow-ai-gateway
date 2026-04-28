@@ -8,10 +8,10 @@ describe('chatPlugin E2E', () => {
   let rawApiKey: string;
 
   beforeEach(() => {
-    const { tenantStore, providerStore, auditStore } = createTestContext();
+    const { tenantStore, providerStore, auditStore, metricsStore } = createTestContext();
     const seeded = seedTestTenantAndProvider(tenantStore, providerStore);
     rawApiKey = seeded.rawApiKey;
-    app = createTestApp(tenantStore, providerStore, new CryptoService(), auditStore);
+    app = createTestApp(tenantStore, providerStore, auditStore, metricsStore, new CryptoService());
   });
 
   afterEach(() => {
@@ -125,10 +125,10 @@ describe('chatPlugin E2E', () => {
     let multiApp: ReturnType<typeof createTestApp>;
 
     beforeEach(() => {
-      const { tenantStore, providerStore, auditStore } = createTestContext();
+      const { tenantStore, providerStore, auditStore, metricsStore } = createTestContext();
       const seeded = seedTestTenantWithMultipleModels(tenantStore, providerStore);
       multiRawApiKey = seeded.rawApiKey;
-      multiApp = createTestApp(tenantStore, providerStore, new CryptoService(), auditStore);
+      multiApp = createTestApp(tenantStore, providerStore, auditStore, metricsStore, new CryptoService());
     });
 
     test('returns 200 when models array contains valid models', async () => {
@@ -180,9 +180,9 @@ describe('chatPlugin E2E', () => {
 
   describe('error responses', () => {
     test('returns 422 when tenant has no providers configured', async () => {
-      const { tenantStore, providerStore, auditStore: localAuditStore } = createTestContext();
+      const { tenantStore, providerStore, auditStore: localAuditStore, metricsStore: localMetricsStore } = createTestContext();
       const emptyTenant = tenantStore.createTenant('Empty');
-      const emptyApp = createTestApp(tenantStore, providerStore, new CryptoService(), localAuditStore);
+      const emptyApp = createTestApp(tenantStore, providerStore, localAuditStore, localMetricsStore, new CryptoService());
 
       const res = await sendRequest(emptyApp, '/v1/chat/completions', {
         method: 'POST',
@@ -194,11 +194,11 @@ describe('chatPlugin E2E', () => {
     });
 
     test('returns 429 when tenant daily rate limit is exhausted', async () => {
-      const { tenantStore, providerStore, auditStore: localAuditStore } = createTestContext();
+      const { tenantStore, providerStore, auditStore: localAuditStore, metricsStore: localMetricsStore } = createTestContext();
       const { tenant, rawApiKey: limitedKey } = tenantStore.createTenant('RateLimited');
       tenantStore.updateTenant(tenant.id, { rateLimitDailyRequests: 0 });
 
-      const limitedApp = createTestApp(tenantStore, providerStore, new CryptoService(), localAuditStore);
+      const limitedApp = createTestApp(tenantStore, providerStore, localAuditStore, localMetricsStore, new CryptoService());
 
       const res = await sendRequest(limitedApp, '/v1/chat/completions', {
         method: 'POST',
