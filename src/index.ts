@@ -55,7 +55,8 @@ new Elysia()
             tags: [
                 {name: 'Health', description: 'Liveness and readiness probes'},
                 {name: 'Chat', description: 'OpenAI-compatible chat completions endpoint'},
-                {name: 'Admin', description: 'Tenant and provider management (master key required)'},
+                {name: 'Admin - Management', description: 'Tenant and provider management (master key required)'},
+                {name: 'Admin - Observability', description: 'Routing metrics and circuit breaker state (master key required)'},
             ],
             components: {
                 securitySchemes: {

@@ -24,7 +24,7 @@ export function adminRoutePlugin(
 
     // --- Tenants ---
     .get('/tenants', () => tenantStore.listTenants(), {
-      detail: { summary: 'List all tenants', tags: ['Admin'] },
+      detail: { summary: 'List all tenants', tags: ['Admin - Management'] },
     })
     .post('/tenants', async ({ body }) => {
       const name = body.name?.trim();
@@ -33,7 +33,7 @@ export function adminRoutePlugin(
       return createdResponse({ tenantId: tenant.id, name: tenant.name, apiKey: rawApiKey });
     }, {
       body: t.Object({ name: t.String({ minLength: 1 }) }),
-      detail: { summary: 'Create a tenant', description: 'Creates a tenant and returns a gateway API key. The key is shown once only.', tags: ['Admin'] },
+      detail: { summary: 'Create a tenant', description: 'Creates a tenant and returns a gateway API key. The key is shown once only.', tags: ['Admin - Management'] },
     })
     .patch('/tenants/:id', ({ params, body }) => {
       const tenant = tenantStore.getTenantById(params.id);
@@ -50,7 +50,7 @@ export function adminRoutePlugin(
         forceAiProviderId: t.Optional(t.Union([t.String({ minLength: 1 }), t.Null()])),
         rateLimitDailyRequests: t.Optional(t.Union([t.Integer({ minimum: 0 }), t.Null()])),
       }),
-      detail: { summary: 'Update tenant settings (forceAiProviderId, rateLimitDailyRequests). Pass null to remove a limit.', tags: ['Admin'] },
+      detail: { summary: 'Update tenant settings (forceAiProviderId, rateLimitDailyRequests). Pass null to remove a limit.', tags: ['Admin - Management'] },
     })
     .get('/tenants/:id', ({ params }) => {
       const tenant = tenantStore.getTenantById(params.id);
@@ -61,19 +61,19 @@ export function adminRoutePlugin(
         modelConfigs: tenantStore.listTenantAiModelPriorities(tenant.id),
       });
     }, {
-      detail: { summary: 'Get tenant details', tags: ['Admin'] },
+      detail: { summary: 'Get tenant details', tags: ['Admin - Management'] },
     })
     .delete('/tenants/:id', ({ params }) => {
       const deleted = tenantStore.deleteTenant(params.id);
       if (!deleted) return notFoundResponse('Tenant not found');
       return new Response(null, { status: 204 });
     }, {
-      detail: { summary: 'Delete a tenant (hard delete, cascades to keys and models)', tags: ['Admin'] },
+      detail: { summary: 'Delete a tenant (hard delete, cascades to keys and models)', tags: ['Admin - Management'] },
     })
 
     // --- Global providers ---
     .get('/providers', () => providerStore.listProviders(), {
-      detail: { summary: 'List all global providers', tags: ['Admin'] },
+      detail: { summary: 'List all global providers', tags: ['Admin - Management'] },
     })
     .post('/providers', ({ body }) => {
       const result = providerStore.createProvider({ name: body.name, type: body.type, baseUrl: body.baseUrl });
@@ -87,7 +87,7 @@ export function adminRoutePlugin(
       }),
       detail: {
         summary: 'Create a global provider',
-        tags: ['Admin'],
+        tags: ['Admin - Management'],
         responses: {
           201: { description: 'Provider created' },
           409: { description: 'Provider name already exists' },
@@ -103,14 +103,14 @@ export function adminRoutePlugin(
         type: t.Optional(t.String({ minLength: 1 })),
         baseUrl: t.Optional(t.String({ minLength: 1 })),
       }),
-      detail: { summary: 'Update a provider', tags: ['Admin'] },
+      detail: { summary: 'Update a provider', tags: ['Admin - Management'] },
     })
     .delete('/providers/:providerId', ({ params }) => {
       const deleted = providerStore.deleteProvider(params.providerId);
       if (!deleted) return notFoundResponse('Provider not found');
       return new Response(null, { status: 204 });
     }, {
-      detail: { summary: 'Delete a provider (hard delete, cascades)', tags: ['Admin'] },
+      detail: { summary: 'Delete a provider (hard delete, cascades)', tags: ['Admin - Management'] },
     })
 
     // --- Provider models ---
@@ -118,7 +118,7 @@ export function adminRoutePlugin(
       if (!providerStore.getProviderById(params.providerId)) return notFoundResponse('Provider not found');
       return providerStore.listProviderModels(params.providerId);
     }, {
-      detail: { summary: 'List models for a provider', tags: ['Admin'] },
+      detail: { summary: 'List models for a provider', tags: ['Admin - Management'] },
     })
     .post('/providers/:providerId/models', ({ params, body }) => {
       if (!providerStore.getProviderById(params.providerId)) return notFoundResponse('Provider not found');
@@ -129,7 +129,7 @@ export function adminRoutePlugin(
       body: t.Object({ modelName: t.String({ minLength: 1 }) }),
       detail: {
         summary: 'Add a model to a provider',
-        tags: ['Admin'],
+        tags: ['Admin - Management'],
         responses: {
           201: { description: 'Model created' },
           404: { description: 'Provider not found' },
@@ -144,7 +144,7 @@ export function adminRoutePlugin(
       return updated;
     }, {
       body: t.Object({ enabled: t.Optional(t.Boolean()) }),
-      detail: { summary: 'Update a provider model (toggle enabled)', tags: ['Admin'] },
+      detail: { summary: 'Update a provider model (toggle enabled)', tags: ['Admin - Management'] },
     })
     .delete('/providers/:providerId/models/:modelId', ({ params }) => {
       if (!providerStore.getProviderById(params.providerId)) return notFoundResponse('Provider not found');
@@ -152,7 +152,7 @@ export function adminRoutePlugin(
       if (!deleted) return notFoundResponse('Provider model not found');
       return new Response(null, { status: 204 });
     }, {
-      detail: { summary: 'Delete a provider model (hard delete, cascades)', tags: ['Admin'] },
+      detail: { summary: 'Delete a provider model (hard delete, cascades)', tags: ['Admin - Management'] },
     })
 
     // --- Tenant AI provider keys ---
@@ -160,7 +160,7 @@ export function adminRoutePlugin(
       if (!tenantStore.getTenantById(params.id)) return notFoundResponse('Tenant not found');
       return tenantStore.listTenantAiProviderKeys(params.id);
     }, {
-      detail: { summary: 'List tenant AI provider keys (raw keys are never returned)', tags: ['Admin'] },
+      detail: { summary: 'List tenant AI provider keys (raw keys are never returned)', tags: ['Admin - Management'] },
     })
     .post('/tenants/:id/credentials', ({ params, body }) => {
       if (!tenantStore.getTenantById(params.id)) return notFoundResponse('Tenant not found');
@@ -176,7 +176,7 @@ export function adminRoutePlugin(
         aiProviderId: t.String({ minLength: 1 }),
         apiKey: t.Optional(t.String()),
       }),
-      detail: { summary: 'Assign an AI provider key to a tenant. API key is encrypted at rest.', tags: ['Admin'] },
+      detail: { summary: 'Assign an AI provider key to a tenant. API key is encrypted at rest.', tags: ['Admin - Management'] },
     })
     .patch('/tenants/:id/credentials/:credentialId', ({ params, body }) => {
       if (!tenantStore.getTenantById(params.id)) return notFoundResponse('Tenant not found');
@@ -186,7 +186,7 @@ export function adminRoutePlugin(
       return safe;
     }, {
       body: t.Object({ enabled: t.Optional(t.Boolean()) }),
-      detail: { summary: 'Update a tenant AI provider key (toggle enabled)', tags: ['Admin'] },
+      detail: { summary: 'Update a tenant AI provider key (toggle enabled)', tags: ['Admin - Management'] },
     })
     .delete('/tenants/:id/credentials/:credentialId', ({ params }) => {
       if (!tenantStore.getTenantById(params.id)) return notFoundResponse('Tenant not found');
@@ -194,7 +194,7 @@ export function adminRoutePlugin(
       if (!deleted) return notFoundResponse('Tenant credential not found');
       return new Response(null, { status: 204 });
     }, {
-      detail: { summary: 'Delete a tenant AI provider key (hard delete)', tags: ['Admin'] },
+      detail: { summary: 'Delete a tenant AI provider key (hard delete)', tags: ['Admin - Management'] },
     })
 
     // --- Tenant AI model priorities ---
@@ -202,7 +202,7 @@ export function adminRoutePlugin(
       if (!tenantStore.getTenantById(params.id)) return notFoundResponse('Tenant not found');
       return tenantStore.listTenantAiModelPriorities(params.id);
     }, {
-      detail: { summary: 'List AI model priorities for tenant', tags: ['Admin'] },
+      detail: { summary: 'List AI model priorities for tenant', tags: ['Admin - Management'] },
     })
     .post('/tenants/:id/models', ({ params, body }) => {
       if (!tenantStore.getTenantById(params.id)) return notFoundResponse('Tenant not found');
@@ -218,7 +218,7 @@ export function adminRoutePlugin(
         aiProviderModelId: t.String({ minLength: 1 }),
         priority: t.Optional(t.Number()),
       }),
-      detail: { summary: 'Assign an AI model priority entry to a tenant', tags: ['Admin'] },
+      detail: { summary: 'Assign an AI model priority entry to a tenant', tags: ['Admin - Management'] },
     })
     .patch('/tenants/:id/models/:entryId', ({ params, body }) => {
       if (!tenantStore.getTenantById(params.id)) return notFoundResponse('Tenant not found');
@@ -230,7 +230,7 @@ export function adminRoutePlugin(
         priority: t.Optional(t.Number()),
         enabled: t.Optional(t.Boolean()),
       }),
-      detail: { summary: 'Update an AI model priority entry for a tenant', tags: ['Admin'] },
+      detail: { summary: 'Update an AI model priority entry for a tenant', tags: ['Admin - Management'] },
     })
     .delete('/tenants/:id/models/:entryId', ({ params }) => {
       if (!tenantStore.getTenantById(params.id)) return notFoundResponse('Tenant not found');
@@ -238,7 +238,7 @@ export function adminRoutePlugin(
       if (!deleted) return notFoundResponse('Model priority entry not found');
       return new Response(null, { status: 204 });
     }, {
-      detail: { summary: 'Delete an AI model priority entry for a tenant', tags: ['Admin'] },
+      detail: { summary: 'Delete an AI model priority entry for a tenant', tags: ['Admin - Management'] },
     })
 
     // --- Tenant Gateway API keys ---
@@ -246,14 +246,14 @@ export function adminRoutePlugin(
       if (!tenantStore.getTenantById(params.id)) return notFoundResponse('Tenant not found');
       return tenantStore.listGatewayApiKeys(params.id);
     }, {
-      detail: { summary: 'List gateway API keys for a tenant', tags: ['Admin'] },
+      detail: { summary: 'List gateway API keys for a tenant', tags: ['Admin - Management'] },
     })
     .post('/tenants/:id/api-keys', ({ params }) => {
       const result = tenantStore.createGatewayApiKey(params.id);
       if (!result) return notFoundResponse('Tenant not found');
       return createdResponse(result);
     }, {
-      detail: { summary: 'Create a new gateway API key for a tenant', tags: ['Admin'] },
+      detail: { summary: 'Create a new gateway API key for a tenant', tags: ['Admin - Management'] },
     })
     .delete('/tenants/:id/api-keys/:keyId', ({ params }) => {
       if (!tenantStore.getTenantById(params.id)) return notFoundResponse('Tenant not found');
@@ -261,15 +261,15 @@ export function adminRoutePlugin(
       if (!deleted) return notFoundResponse('API key not found');
       return new Response(null, { status: 204 });
     }, {
-      detail: { summary: 'Delete a gateway API key', tags: ['Admin'] },
+      detail: { summary: 'Delete a gateway API key', tags: ['Admin - Management'] },
     })
 
     // --- Observability ---
     .get('/metrics', () => Object.fromEntries(metricsStore.all()), {
-      detail: { summary: 'Get routing metrics snapshot', tags: ['Admin'] },
+      detail: { summary: 'Get routing metrics snapshot', tags: ['Admin - Observability'] },
     })
     .get('/circuit-breakers', () => circuitBreaker.all(), {
-      detail: { summary: 'Get circuit breakers snapshot', tags: ['Admin'] },
+      detail: { summary: 'Get circuit breakers snapshot', tags: ['Admin - Observability'] },
     })
 
     // --- Audit log ---
@@ -287,6 +287,6 @@ export function adminRoutePlugin(
         limit: t.Optional(t.String()),
         offset: t.Optional(t.String()),
       }),
-      detail: { summary: 'Query audit log. Filters: tenantId, from/to (ISO date strings), limit (max 1000), offset.', tags: ['Admin'] },
+      detail: { summary: 'Query audit log. Filters: tenantId, from/to (ISO date strings), limit (max 1000), offset.', tags: ['Admin - Management'] },
     });
 }
