@@ -1,16 +1,13 @@
 import { describe, test, expect, beforeEach } from 'bun:test';
-import { createTestContext, createTestApp, sendRequest } from '@test/test-setup';
-import { CryptoService } from '@/crypto/crypto';
+import { createTestAppEmpty, sendRequest } from '@test/test-setup';
 import type { TenantStore } from '@/tenant/tenant.store';
 
 describe('chat auth guard', () => {
-  let app: ReturnType<typeof createTestApp>;
+  let app: ReturnType<typeof createTestAppEmpty>['app'];
   let tenantStore: TenantStore;
 
   beforeEach(() => {
-    const context = createTestContext();
-    tenantStore = context.tenantStore;
-    app = createTestApp(tenantStore, context.providerStore, context.auditStore, context.metricsStore, new CryptoService());
+    ({ app, tenantStore } = createTestAppEmpty());
   });
 
   const VALID_BODY = { messages: [{ role: 'user', content: 'hi' }] };

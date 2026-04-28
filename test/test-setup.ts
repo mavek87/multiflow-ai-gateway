@@ -97,6 +97,7 @@ export function seedTestTenantWithMultipleModels(tenantStore: TenantStore, provi
 
 export function createTestApp(tenantStore: TenantStore, providerStore: ProviderStore, auditStore: AuditStore, metricsStore: MetricsStore, cryptoService: CryptoService) {
   return new Elysia()
+    .get('/health', () => ({ status: 'ok', timestamp: new Date().toISOString() }))
     .use(chatRoutePlugin(tenantStore, auditStore, metricsStore, cryptoService))
     .use(adminRoutePlugin(tenantStore, providerStore, cryptoService, auditStore));
 }
@@ -127,4 +128,31 @@ export function mockSseResponse(content: string | string[]) {
   const tokens = Array.isArray(content) ? content : [content];
   const sse = tokens.map(t => `data: ${JSON.stringify({ choices: [{ delta: { content: t } }] })}\n\n`).join('') + `data: [DONE]\n\n`;
   return new Response(sse, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+}
+
+export function mockFetch(mockResponse: Response | ((...args: any[]) => Response)) {
+  const originalFetch = globalThis.fetch;
+  const fn = typeof mockResponse === 'function' ? mockResponse : () => mockResponse;
+  globalThis.fetch = fn as unknown as typeof globalThis.fetch;
+  return () => { globalThis.fetch = originalFetch; };
+}
+
+export function createTestAppEmpty() {
+  const { tenantStore, providerStore, auditStore, metricsStore } = createTestContext();
+  const app = createTestApp(tenantStore, providerStore, auditStore, metricsStore, new CryptoService());
+  return { app, tenantStore, providerStore, auditStore, metricsStore };
+}
+
+export function createTestAppWithTenantAndProvider() {
+  const { tenantStore, providerStore, auditStore, metricsStore } = createTestContext();
+  const seeded = seedTestTenantAndProvider(tenantStore, providerStore);
+  const app = createTestApp(tenantStore, providerStore, auditStore, metricsStore, new CryptoService());
+  return { app, rawApiKey: seeded.rawApiKey, tenant: seeded.tenant };
+}
+
+export function createTestAppWithMultipleModels() {
+  const { tenantStore, providerStore, auditStore, metricsStore } = createTestContext();
+  const seeded = seedTestTenantWithMultipleModels(tenantStore, providerStore);
+  const app = createTestApp(tenantStore, providerStore, auditStore, metricsStore, new CryptoService());
+  return { app, rawApiKey: seeded.rawApiKey, tenant: seeded.tenant };
 }

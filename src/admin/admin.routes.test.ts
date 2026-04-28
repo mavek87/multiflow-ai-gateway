@@ -1,15 +1,13 @@
 import { describe, test, expect, beforeEach } from 'bun:test';
-import { createTestContext, createTestApp, sendRequest } from '@test/test-setup';
-import { CryptoService } from '@/crypto/crypto';
+import { createTestAppEmpty, sendRequest } from '@test/test-setup';
 import { config } from '@/config/config';
 
 describe('Admin Routes', () => {
-  let app: ReturnType<typeof createTestApp>;
+  let app: ReturnType<typeof createTestAppEmpty>['app'];
   const MASTER_KEY = config.masterKey;
 
   beforeEach(() => {
-    const { tenantStore, providerStore, auditStore, metricsStore } = createTestContext();
-    app = createTestApp(tenantStore, providerStore, auditStore, metricsStore, new CryptoService());
+    ({ app } = createTestAppEmpty());
   });
 
   test('GET /admin/tenants returns 403 without master key', async () => {
@@ -98,9 +96,7 @@ describe('Admin Routes', () => {
   });
 
   test('GET /admin/audit returns logged entries', async () => {
-    const { auditStore } = createTestContext();
-    const { tenantStore, providerStore, auditStore: localAuditStore, metricsStore: localMetricsStore } = createTestContext();
-    const localApp = createTestApp(tenantStore, providerStore, localAuditStore, localMetricsStore, new CryptoService());
+    const { app: localApp, auditStore: localAuditStore } = createTestAppEmpty();
 
     localAuditStore.log({
       tenantId: 'test-tenant',
@@ -120,8 +116,7 @@ describe('Admin Routes', () => {
   });
 
   test('GET /admin/audit filters by tenantId', async () => {
-    const { tenantStore, providerStore, auditStore: localAuditStore, metricsStore: localMetricsStore } = createTestContext();
-    const localApp = createTestApp(tenantStore, providerStore, localAuditStore, localMetricsStore, new CryptoService());
+    const { app: localApp, auditStore: localAuditStore } = createTestAppEmpty();
 
     localAuditStore.log({ tenantId: 'tenant-a', aiProvider: { id: 'p1', name: 'Groq' }, model: 'llama3', latencyMs: 100, success: true, statusCode: 200 });
     localAuditStore.log({ tenantId: 'tenant-b', aiProvider: { id: 'p1', name: 'Groq' }, model: 'gpt-4', latencyMs: 200, success: true, statusCode: 200 });

@@ -1,10 +1,10 @@
-import { describe, test, expect } from 'bun:test';
+import { describe, test, expect, afterEach } from 'bun:test';
 import { AIRouter } from './ai-router';
 import { MetricsStore } from '@/engine/observability/metrics';
 import { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
 import { UCB1TunedSelector } from '@/engine/selection/algorithms/ucb1-tuned';
 import { HttpProviderClient } from '@/engine/client/http-provider-client';
-import { mockSseResponse, setupTestDb } from '@test/test-setup';
+import { mockSseResponse, mockFetch, setupTestDb } from '@test/test-setup';
 import { AuditStore } from '@/audit/audit.store';
 
 const model = (name: string) => ({
@@ -31,19 +31,13 @@ function createAIRouter(models: any[]) {
   return new AIRouter(clients, metrics, circuitBreaker, selector, aiProviderIds, auditStore);
 }
 
-function mockFetchOk(content = '') {
-  // @ts-ignore
-  globalThis.fetch = async () => mockSseResponse(content);
-}
-
-function mockFetchFail(status = 500) {
-  // @ts-ignore
-  globalThis.fetch = async () => new Response('', { status });
-}
-
 describe('AIRouter - chatStream()', () => {
+  let undoFetch: () => void;
+
+  afterEach(() => undoFetch());
+
   test('returns body and model info on success', async () => {
-    mockFetchOk();
+    undoFetch = mockFetch(() => mockSseResponse(''));
     const router = createAIRouter([model('m1')]);
     const result = await router.chatStream('system', [{ role: 'user', content: 'hi' }]);
     expect(result).not.toBeNull();
@@ -52,7 +46,7 @@ describe('AIRouter - chatStream()', () => {
   });
 
   test('returns null when all providers fail', async () => {
-    mockFetchFail(500);
+    undoFetch = mockFetch(() => new Response('', { status: 500 }));
     const router = createAIRouter([model('m1'), model('m2')]);
     const result = await router.chatStream('system', [{ role: 'user', content: 'hi' }]);
     expect(result).toBeNull();
@@ -60,12 +54,11 @@ describe('AIRouter - chatStream()', () => {
 
   test('falls back to second provider if first returns HTTP error', async () => {
     let calls = 0;
-    // @ts-ignore
-    globalThis.fetch = async () => {
+    undoFetch = mockFetch(() => {
       calls++;
       if (calls === 1) return new Response('', { status: 500 });
       return mockSseResponse('');
-    };
+    });
     const m1 = { ...model('m1'), priority: 0 };
     const m2 = { ...model('m2'), priority: 1 };
     const router = createAIRouter([m1, m2]);
@@ -76,7 +69,7 @@ describe('AIRouter - chatStream()', () => {
   });
 
   test('returns aiProvider from model config', async () => {
-    mockFetchOk();
+    undoFetch = mockFetch(() => mockSseResponse(''));
     const config = { ...model('m1'), aiProviderId: 'groq-id' };
     const router = createAIRouter([config]);
     const result = await router.chatStream('system', [{ role: 'user', content: 'hi' }]);
