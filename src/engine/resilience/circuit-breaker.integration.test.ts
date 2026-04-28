@@ -5,6 +5,8 @@ import { MetricsStore } from '@/engine/observability/metrics';
 import { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
 import { ChatService } from '@/chat/chat.service';
 import type { ModelConfig } from '@/engine/client/client.types';
+import { AuditStore } from '@/audit/audit.store';
+import { setupTestDb } from '@test/test-setup';
 
 describe('Circuit Breaker Persistence', () => {
   let originalFetch = globalThis.fetch;
@@ -18,7 +20,8 @@ describe('Circuit Breaker Persistence', () => {
     const metrics = new MetricsStore();
     const cb = new CircuitBreaker();
     const selector = createModelSelector('ucb1-tuned');
-    const factory = new AIRouterFactory(metrics, cb, selector);
+    const auditStore = new AuditStore(setupTestDb());
+    const factory = new AIRouterFactory(metrics, cb, selector, auditStore);
     const chatService = new ChatService(factory);
 
     const tenant = { id: 't1' } as any;

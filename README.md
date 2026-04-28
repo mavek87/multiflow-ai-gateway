@@ -13,7 +13,8 @@ A self-hosted, multi-tenant AI Gateway written in TypeScript/Bun. It sits betwee
 - **Multi-model fallback** - up to 10 attempts across different models per request
 - **Tool calling (Engine)** - up to 10 rounds of internal tool execution (not yet exposed via public API)
 - **Encrypted secrets** - provider API keys stored at rest with AES-256-GCM
-- **Audit logging** - append-only JSON lines trail per request
+- **Audit logging** - per-request trail stored in SQLite, queryable via Admin API with date and tenant filters
+- **Rate limiting** - configurable daily request cap per tenant, enforced via sliding window
 - **Admin API** - manage tenants and providers via REST, protected by master key
 - **Auto-generated Swagger UI** - available at `/docs`
 - **Modular Architecture** - clean Folder-by-Feature structure for high maintainability
@@ -50,7 +51,7 @@ cp .env.example .env
 | `ENCRYPTION_KEY` | yes | - | AES-256 key for provider API keys (64 hex chars) |
 | `PORT` | no | `3000` | HTTP server port |
 | `DB_PATH` | no | `./data/gateway.db` | SQLite database path |
-| `AUDIT_LOG_PATH` | no | `./logs/audit.jsonl` | Audit log file path |
+| `AUDIT_RETENTION_DAYS` | no | `90` | How many days to retain audit records in the database |
 | `SELECTOR_TYPE` | no | `ucb1-tuned` | Model selector algorithm: `ucb1-tuned`, `thompson`, `sw-ucb1-tuned` |
 | `LOG_LEVEL` | no | `info` | Log level: `trace`, `debug`, `info`, `warn`, `error` |
 | `FIRST_TOKEN_TIMEOUT_MS` | no | `30000` | Max wait for first token from a provider (ms) |
@@ -209,14 +210,13 @@ The Dockerfile uses a 2-stage build:
 
 **Persistence:**
 
-SQLite and audit logs are stored outside the container via mounted volumes:
+SQLite is stored outside the container via a mounted volume:
 
 | Volume | Container path | Description |
 |---|---|---|
-| `./data` | `/app/data` | SQLite database file |
-| `./logs` | `/app/logs` | Audit log (`audit.jsonl`) |
+| `./data` | `/app/data` | SQLite database file (includes audit records) |
 
-Both directories are created automatically on first start. Do not delete `./data` unless you want to wipe the database.
+The directory is created automatically on first start. Do not delete `./data` unless you want to wipe the database.
 
 ---
 
@@ -246,7 +246,7 @@ AIRouter (src/engine/routing/ai-router.ts)
   |-- HttpProviderClient    (low-level HTTP to OpenAI-compatible endpoint)
   |   |-- ToolCallOrchestrator (handles multi-turn tool execution loop)
   |-- MetricsStore          (updates latency/success EMA after each chat)
-  |-- Audit Log (src/audit/audit.log.ts)
+  |-- AuditStore (src/audit/audit.store.ts)
 ```
 
 ### Routing and retry loop
@@ -293,6 +293,7 @@ SQLite via Drizzle ORM. Schema defined in `src/db/schema.ts`. Migrations in `dri
 | `ai_provider_models` | Models available per provider |
 | `tenant_ai_provider_keys` | Per-tenant API key for each provider (AES-256-GCM encrypted) |
 | `tenant_ai_model_priorities` | Which models a tenant can use, with priority order |
+| `request_log` | Per-request audit trail (used for rate limiting and export via Admin API) |
 
 ```mermaid
 erDiagram
@@ -506,7 +507,10 @@ All admin endpoints require the `X-Master-Key` header.
 - `GET /admin/tenants` - List all tenants
 - `POST /admin/tenants` - Create tenant
 - `GET /admin/tenants/:id` - Get details (includes credentials/models)
-- `PATCH /admin/tenants/:id` - Update settings (e.g. `forceAiProviderId`)
+- `PATCH /admin/tenants/:id` - Update settings (`forceAiProviderId`, `rateLimitDailyRequests`; pass null to remove a limit)
+
+**Audit**
+- `GET /admin/audit` - Query audit log (filters: `tenantId`, `from`, `to` as ISO dates, `limit`, `offset`)
 
 **Global Providers**
 - `GET /admin/providers` - List global providers
@@ -526,6 +530,7 @@ All admin endpoints require the `X-Master-Key` header.
 |---|---|
 | `400` | `messages` is missing or empty; requested `model` not available for this tenant |
 | `401` | Missing, malformed, or invalid `Authorization: Bearer` header |
+| `429` | Tenant has exceeded its daily rate limit (`rateLimitDailyRequests`) |
 | `403` | Wrong or missing `X-Master-Key` on admin endpoints |
 | `404` | Tenant or resource not found |
 | `422` | Tenant has no provider models configured |
@@ -555,7 +560,7 @@ The project follows a **Modular Architecture (Folder-by-Feature)**. Each feature
 ```
 src/
   admin/                    # Admin API routes
-  audit/                    # Audit logging and decorator
+  audit/                    # Audit store (SQLite-backed request log, rate limit check)
   auth/                     # Authentication (Tenant & Admin)
   bootstrap/                # Declarative seed file bootstrap (seed.yaml)
   chat/                     # Chat Completions feature (core)
@@ -571,6 +576,7 @@ src/
     |-- tools/              # Tool-calling (function calling) orchestration
   provider/                 # Global provider registry
   tenant/                   # Tenant management and resolution
+  housekeeping/             # Periodic cleanup of expired audit records
   crypto/                   # Envelope encryption service (AES-256-GCM)
   utils/                    # Shared utilities (http, logger)
   index.ts                  # Entry point
@@ -587,7 +593,7 @@ Full details and feature descriptions in [`docs/study.md`](docs/study.md).
 | # | Feature | Priority | Area |
 |---|---------|----------|------|
 | 1 | Prometheus metrics endpoint | Critical | Observability |
-| 2 | Rate limiting / sub-users per tenant | High | Multi-tenancy |
+| 2 | ~~Rate limiting / sub-users per tenant~~ - per-tenant daily rate limit shipped | done | Multi-tenancy |
 | 3 | Proactive health checks | High | Routing |
 | 4 | Exact-match prompt caching | High | Performance |
 | 5 | Additional provider adapters (Groq, Gemini, Claude native) | Medium | Providers |

@@ -73,12 +73,18 @@ export function runSeed(db: DrizzleDb, cryptoService: CryptoService, seedFilePat
       continue;
     }
 
-    const { tenant, rawApiKey, isNew: tenantIsNew } = tenantStore.upsertTenant(entry.name);
+    const { tenant: upsertedTenant, rawApiKey, isNew: tenantIsNew } = tenantStore.upsertTenant(entry.name);
     if (tenantIsNew) {
       log.info(`seed: created tenant "${entry.name}" - gateway API key: ${rawApiKey} (save this key, it will not be shown again)`);
     } else {
       log.info(`seed: tenant "${entry.name}" already exists, skipping creation`);
     }
+
+    if (entry.rateLimitDailyRequests !== undefined) {
+      tenantStore.updateTenant(upsertedTenant.id, { rateLimitDailyRequests: entry.rateLimitDailyRequests ?? null });
+    }
+
+    const tenant = tenantStore.getTenantById(upsertedTenant.id)!;
 
     for (const providerEntry of entry.providers ?? []) {
       const provider = providerStore.getProviderByName(providerEntry.name);

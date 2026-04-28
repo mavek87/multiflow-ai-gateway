@@ -18,6 +18,7 @@ export type SeedTenantProviderEntry = {
 
 export type SeedTenantEntry = {
   name: string;
+  rateLimitDailyRequests?: number | null;
   providers: SeedTenantProviderEntry[];
 };
 

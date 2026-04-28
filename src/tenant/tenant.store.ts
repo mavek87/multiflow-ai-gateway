@@ -20,7 +20,7 @@ export class TenantStore {
   constructor(private db: DrizzleDb) {}
 
   createTenant(name: string): { tenant: Tenant; rawApiKey: string } {
-    const tenant: Tenant = { id: randomUUID(), name, forceAiProviderId: null, createdAt: Date.now() };
+    const tenant: Tenant = { id: randomUUID(), name, forceAiProviderId: null, rateLimitDailyRequests: null, createdAt: Date.now() };
     const rawKey = generateApiKey();
     const keyHash = hashApiKey(rawKey);
     const keyId = randomUUID();
@@ -45,6 +45,7 @@ export class TenantStore {
         id: tenants.id,
         name: tenants.name,
         forceAiProviderId: tenants.forceAiProviderId,
+        rateLimitDailyRequests: tenants.rateLimitDailyRequests,
         createdAt: tenants.createdAt,
         keyId: gatewayApiKeys.id,
       })
@@ -61,24 +62,28 @@ export class TenantStore {
       .where(eq(gatewayApiKeys.id, row.keyId))
       .run();
 
-    return { id: row.id, name: row.name, forceAiProviderId: row.forceAiProviderId ?? null, createdAt: row.createdAt };
+    return { id: row.id, name: row.name, forceAiProviderId: row.forceAiProviderId ?? null, rateLimitDailyRequests: row.rateLimitDailyRequests ?? null, createdAt: row.createdAt };
   }
 
   getTenantById(id: string): Tenant | null {
     const row = this.db.select().from(tenants).where(eq(tenants.id, id)).get();
     if (!row) return null;
-    return { ...row, forceAiProviderId: row.forceAiProviderId ?? null };
+    return { ...row, forceAiProviderId: row.forceAiProviderId ?? null, rateLimitDailyRequests: row.rateLimitDailyRequests ?? null };
   }
 
   updateTenant(id: string, input: UpdateTenantInput): Tenant | null {
     if (!this.getTenantById(id)) return null;
     this.db.update(tenants).set(input).where(eq(tenants.id, id)).run();
-    log.info(`Updated tenant ${id}: forceAiProviderId=${input.forceAiProviderId ?? null}`);
+    log.info(`Updated tenant ${id}`);
     return this.getTenantById(id);
   }
 
   listTenants(): Tenant[] {
-    return this.db.select().from(tenants).orderBy(desc(tenants.createdAt)).all();
+    return this.db.select().from(tenants).orderBy(desc(tenants.createdAt)).all().map(row => ({
+      ...row,
+      forceAiProviderId: row.forceAiProviderId ?? null,
+      rateLimitDailyRequests: row.rateLimitDailyRequests ?? null,
+    }));
   }
 
   // --- Tenant AI provider key management ---
@@ -141,7 +146,7 @@ export class TenantStore {
   getTenantByName(name: string): Tenant | null {
     const row = this.db.select().from(tenants).where(eq(tenants.name, name)).get();
     if (!row) return null;
-    return { ...row, forceAiProviderId: row.forceAiProviderId ?? null };
+    return { ...row, forceAiProviderId: row.forceAiProviderId ?? null, rateLimitDailyRequests: row.rateLimitDailyRequests ?? null };
   }
 
   upsertTenant(name: string): { tenant: Tenant; rawApiKey: string | null; isNew: boolean } {

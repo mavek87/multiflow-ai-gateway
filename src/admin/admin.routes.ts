@@ -4,8 +4,9 @@ import type { ProviderStore } from '@/provider/provider.store';
 import { badRequestResponse, notFoundResponse, createdResponse, conflictResponse } from '@/utils/http';
 import { checkMasterKey } from '@/auth/auth.middleware';
 import type { CryptoService } from '@/crypto/crypto';
+import type { AuditStore } from '@/audit/audit.store';
 
-export function adminRoutePlugin(tenantStore: TenantStore, providerStore: ProviderStore, cryptoService: CryptoService) {
+export function adminRoutePlugin(tenantStore: TenantStore, providerStore: ProviderStore, cryptoService: CryptoService, auditStore: AuditStore) {
   return new Elysia({ prefix: '/admin' })
     .guard({
       beforeHandle: ({ headers }) => checkMasterKey(headers as Record<string, string | undefined>),
@@ -31,12 +32,16 @@ export function adminRoutePlugin(tenantStore: TenantStore, providerStore: Provid
       if (body.forceAiProviderId !== undefined && body.forceAiProviderId !== null) {
         if (!providerStore.getProviderById(body.forceAiProviderId)) return notFoundResponse('Provider not found');
       }
-      return tenantStore.updateTenant(params.id, { forceAiProviderId: body.forceAiProviderId });
+      const updates: Parameters<typeof tenantStore.updateTenant>[1] = {};
+      if (body.forceAiProviderId !== undefined) updates.forceAiProviderId = body.forceAiProviderId;
+      if (body.rateLimitDailyRequests !== undefined) updates.rateLimitDailyRequests = body.rateLimitDailyRequests;
+      return tenantStore.updateTenant(params.id, updates);
     }, {
       body: t.Object({
-        forceAiProviderId: t.Union([t.String({ minLength: 1 }), t.Null()]),
+        forceAiProviderId: t.Optional(t.Union([t.String({ minLength: 1 }), t.Null()])),
+        rateLimitDailyRequests: t.Optional(t.Union([t.Integer({ minimum: 0 }), t.Null()])),
       }),
-      detail: { summary: 'Update tenant settings. Set forceAiProviderId to restrict routing to a single provider (null to remove the lock).', tags: ['Admin'] },
+      detail: { summary: 'Update tenant settings (forceAiProviderId, rateLimitDailyRequests). Pass null to remove a limit.', tags: ['Admin'] },
     })
     .get('/tenants/:id', ({ params }) => {
       const tenant = tenantStore.getTenantById(params.id);
@@ -145,5 +150,23 @@ export function adminRoutePlugin(tenantStore: TenantStore, providerStore: Provid
         priority: t.Optional(t.Number()),
       }),
       detail: { summary: 'Assign an AI model priority entry to a tenant', tags: ['Admin'] },
+    })
+
+    // --- Audit log ---
+    .get('/audit', ({ query }) => {
+      const from = query.from ? new Date(query.from).getTime() : undefined;
+      const to = query.to ? new Date(query.to).getTime() : undefined;
+      const limit = query.limit ? Math.min(parseInt(query.limit, 10), 1000) : 100;
+      const offset = query.offset ? parseInt(query.offset, 10) : 0;
+      return auditStore.query({ tenantId: query.tenantId, from, to, limit, offset });
+    }, {
+      query: t.Object({
+        tenantId: t.Optional(t.String()),
+        from: t.Optional(t.String()),
+        to: t.Optional(t.String()),
+        limit: t.Optional(t.String()),
+        offset: t.Optional(t.String()),
+      }),
+      detail: { summary: 'Query audit log. Filters: tenantId, from/to (ISO date strings), limit (max 1000), offset.', tags: ['Admin'] },
     });
 }

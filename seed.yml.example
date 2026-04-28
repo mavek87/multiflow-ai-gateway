@@ -24,6 +24,7 @@ providers:
 
 tenants:
   - name: matteo
+    rateLimitDailyRequests: 1000   # optional: null or omit for unlimited
     providers:
       - name: Groq
         apiKeyEnv: GROQ_API_KEY

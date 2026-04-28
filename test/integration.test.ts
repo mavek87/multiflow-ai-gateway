@@ -4,20 +4,16 @@ import { CryptoService } from '@/crypto/crypto';
 import { Elysia } from 'elysia';
 import { adminRoutePlugin } from '@/admin/admin.routes';
 import { chatRoutePlugin } from '@/chat/chat.routes';
-import { existsSync, readFileSync, unlinkSync } from 'node:fs';
-import { config } from '@/config/config';
 
 const originalFetch = globalThis.fetch;
-const TEST_AUDIT_LOG = './test-audit.log';
 
-// Custom app factory for integration tests to match src/index.ts exactly
 function createFullApp(context: ReturnType<typeof createTestContext>) {
-  const { tenantStore, providerStore } = context;
+  const { tenantStore, providerStore, auditStore } = context;
   const cryptoService = new CryptoService();
   return new Elysia()
     .get('/health', () => ({ status: 'ok', timestamp: new Date().toISOString() }))
-    .use(adminRoutePlugin(tenantStore, providerStore, cryptoService))
-    .use(chatRoutePlugin(tenantStore, cryptoService));
+    .use(adminRoutePlugin(tenantStore, providerStore, cryptoService, auditStore))
+    .use(chatRoutePlugin(tenantStore, cryptoService, auditStore));
 }
 
 describe('Full System Integration', () => {
@@ -28,13 +24,10 @@ describe('Full System Integration', () => {
   beforeEach(() => {
     context = createTestContext();
     app = createFullApp(context);
-    (config as any).auditLogPath = TEST_AUDIT_LOG;
-    if (existsSync(TEST_AUDIT_LOG)) unlinkSync(TEST_AUDIT_LOG);
   });
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
-    if (existsSync(TEST_AUDIT_LOG)) unlinkSync(TEST_AUDIT_LOG);
   });
 
   test('Health check works', async () => {
@@ -45,22 +38,19 @@ describe('Full System Integration', () => {
   });
 
   test('Security: Unauthorized access is blocked', async () => {
-    // Admin blocked (returns 403 Forbidden when master key is missing/wrong)
     const adminRes = await sendRequest(app as any, '/admin/tenants', { method: 'GET' });
     expect(adminRes.status).toBe(403);
 
-    // Chat blocked (no key - returns 401 Unauthorized)
-    const chatRes1 = await sendRequest(app as any, '/v1/chat/completions', { 
-      method: 'POST', 
-      body: { messages: [{ role: 'user', content: 'hi' }] } 
+    const chatRes1 = await sendRequest(app as any, '/v1/chat/completions', {
+      method: 'POST',
+      body: { messages: [{ role: 'user', content: 'hi' }] }
     });
     expect(chatRes1.status).toBe(401);
 
-    // Chat blocked (invalid key - returns 401 Unauthorized)
-    const chatRes2 = await sendRequest(app as any, '/v1/chat/completions', { 
-      method: 'POST', 
+    const chatRes2 = await sendRequest(app as any, '/v1/chat/completions', {
+      method: 'POST',
       apiKey: 'invalid-key',
-      body: { messages: [{ role: 'user', content: 'hi' }] } 
+      body: { messages: [{ role: 'user', content: 'hi' }] }
     });
     expect(chatRes2.status).toBe(401);
   });
@@ -116,24 +106,22 @@ describe('Full System Integration', () => {
     const chatRes = await sendRequest(app as any, '/v1/chat/completions', {
       method: 'POST',
       apiKey: apiKey,
-      body: { 
+      body: {
         model: 'gpt-4o',
-        messages: [{ role: 'user', content: 'hello' }] 
+        messages: [{ role: 'user', content: 'hello' }]
       }
     });
-    
+
     expect(chatRes.status).toBe(200);
     const chatBody = await chatRes.json() as any;
     expect(chatBody.choices[0].message.content).toBe('Integration success');
 
-    // 7. Verify Audit Log
-    expect(existsSync(TEST_AUDIT_LOG)).toBe(true);
-    const logContent = readFileSync(TEST_AUDIT_LOG, 'utf8');
-    const firstLine = logContent.split('\n')[0];
-    expect(firstLine).toBeDefined();
-    const logEntry = JSON.parse(firstLine!);
-    expect(logEntry.tenantId).toBe(tenantId);
-    expect(logEntry.aiProvider).toBe('OpenAI');
-    expect(logEntry.success).toBe(true);
+    // 7. Verify Audit Log via DB
+    const auditRes = await sendRequest(app as any, `/admin/audit?tenantId=${tenantId}`, { masterKey });
+    expect(auditRes.status).toBe(200);
+    const auditEntries = await auditRes.json() as any[];
+    expect(auditEntries.length).toBeGreaterThan(0);
+    expect(auditEntries[0]!.tenantId).toBe(tenantId);
+    expect(auditEntries[0]!.success).toBe(true);
   });
 });

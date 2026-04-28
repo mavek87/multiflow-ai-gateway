@@ -25,7 +25,7 @@ import type {ModelSelector} from '@/engine/selection/model-selector.types';
 import {MetricsStore} from '@/engine/observability/metrics';
 import {CircuitBreaker} from '@/engine/resilience/circuit-breaker';
 import {createLogger} from '@/utils/logger';
-import {logAudit} from '@/audit/audit.log';
+import type {AuditStore} from '@/audit/audit.store';
 
 const log = createLogger('ROUTING');
 const MAX_ATTEMPTS_CAP = 10;
@@ -38,7 +38,8 @@ export class AIRouter {
         private readonly metrics: MetricsStore,
         private readonly circuitBreaker: CircuitBreaker,
         private readonly modelSelector: ModelSelector,
-        private readonly aiProviderIds: Map<string, { name: string; baseUrl: string; modelName: string }>
+        private readonly aiProviderIds: Map<string, { name: string; baseUrl: string; modelName: string }>,
+        private readonly auditStore: AuditStore,
     ) {
     }
 
@@ -135,10 +136,10 @@ export class AIRouter {
             const model = (result as any)?.model || 'unknown';
             const aiProvider = {id: (result as any)?.aiProviderId || 'unknown', name: (result as any)?.aiProvider || 'unknown'};
             const isFailure = result === null || model === 'unknown';
-            logAudit({tenantId, latencyMs, success: !isFailure, statusCode: isFailure ? 503 : 200, model, aiProvider});
+            this.auditStore.log({tenantId, latencyMs, success: !isFailure, statusCode: isFailure ? 503 : 200, model, aiProvider});
             return result;
         } catch (error) {
-            logAudit({tenantId, latencyMs: Date.now() - startedAt, success: false, statusCode: 500, model: 'unknown', aiProvider: {id: 'unknown', name: 'unknown'}});
+            this.auditStore.log({tenantId, latencyMs: Date.now() - startedAt, success: false, statusCode: 500, model: 'unknown', aiProvider: {id: 'unknown', name: 'unknown'}});
             throw error;
         }
     }

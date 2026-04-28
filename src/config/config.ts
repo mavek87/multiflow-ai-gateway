@@ -24,7 +24,7 @@ export const config = {
   port: parseInt(optional('PORT', '3000'), 10),
   masterKey: required('MASTER_KEY'),
   dbPath: optional('DB_PATH', './data/gateway.db'),
-  auditLogPath: optional('AUDIT_LOG_PATH', './logs/audit.jsonl'),
+  auditRetentionDays: parseInt(optional('AUDIT_RETENTION_DAYS', '90'), 10),
   selectorType: selectorType(),
   firstTokenTimeoutMs: parseInt(optional('FIRST_TOKEN_TIMEOUT_MS', '30000'), 10),
   streamWatchdogMs: parseInt(optional('STREAM_WATCHDOG_MS', '120000'), 10),

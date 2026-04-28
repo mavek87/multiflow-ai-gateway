@@ -14,6 +14,7 @@ export type Tenant = {
   id: string;
   name: string;
   forceAiProviderId: string | null;
+  rateLimitDailyRequests: number | null;
   createdAt: number;
 };
 
@@ -61,4 +62,5 @@ export type AssignAiModelPriorityInput = {
 
 export type UpdateTenantInput = {
   forceAiProviderId?: string | null;
+  rateLimitDailyRequests?: number | null;
 };

@@ -1,6 +1,6 @@
 import {Elysia} from 'elysia';
 import type {TenantStore} from '@/tenant/tenant.store';
-import {badRequestResponse, internalErrorResponse, unprocessableResponse} from '@/utils/http';
+import {badRequestResponse, internalErrorResponse, tooManyRequestsResponse, unprocessableResponse} from '@/utils/http';
 import {ChatService} from './chat.service';
 import {AIRouterFactory} from '@/engine/routing/ai-router.factory';
 import {createModelSelector} from '@/engine/selection/model-selector.factory';
@@ -11,12 +11,14 @@ import {config} from '@/config/config';
 import type {CryptoService} from '@/crypto/crypto';
 import {MetricsStore} from '@/engine/observability/metrics';
 import {CircuitBreaker} from '@/engine/resilience/circuit-breaker';
+import type {AuditStore} from '@/audit/audit.store';
 
-export function chatRoutePlugin(tenantStore: TenantStore, cryptoService: CryptoService) {
+export function chatRoutePlugin(tenantStore: TenantStore, cryptoService: CryptoService, auditStore: AuditStore) {
     const aiRouterFactory = new AIRouterFactory(
         new MetricsStore(),
         new CircuitBreaker(),
-        createModelSelector(config.selectorType)
+        createModelSelector(config.selectorType),
+        auditStore,
     );
     const chatService = new ChatService(aiRouterFactory);
     const tenantModelConfResolver = new TenantModelConfigResolver(tenantStore, cryptoService);
@@ -111,6 +113,11 @@ export function chatRoutePlugin(tenantStore: TenantStore, cryptoService: CryptoS
                 });
             }
         }, {
+            beforeHandle: ({ tenant }) => {
+                if (tenant?.rateLimitDailyRequests != null && !auditStore.isAllowed(tenant.id, tenant.rateLimitDailyRequests)) {
+                    return tooManyRequestsResponse('Daily rate limit exceeded for this tenant');
+                }
+            },
             body: ChatRequestSchema,
             detail: {
                 summary: 'Chat completions',

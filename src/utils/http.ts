@@ -29,3 +29,7 @@ export function conflictResponse(message?: string): Response {
 export function createdResponse(data: unknown): Response {
   return Response.json(data, { status: 201 });
 }
+
+export function tooManyRequestsResponse(message?: string): Response {
+  return Response.json({ error: message ?? 'Too Many Requests' }, { status: 429 });
+}

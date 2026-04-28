@@ -5,13 +5,11 @@ import * as schema from '@/db/schema';
 import { TenantStore } from '@/tenant/tenant.store';
 import { ProviderStore } from '@/provider/provider.store';
 import { CryptoService } from '@/crypto/crypto';
+import { AuditStore } from '@/audit/audit.store';
 import { Elysia } from 'elysia';
 import { chatRoutePlugin } from '@/chat/chat.routes';
 import { adminRoutePlugin } from '@/admin/admin.routes';
 
-/**
- * Sets up a fresh in-memory SQLite database with migrations applied.
- */
 export function setupTestDb() {
   const sqlite = new Database(':memory:');
   sqlite.run('PRAGMA foreign_keys=ON');
@@ -20,9 +18,6 @@ export function setupTestDb() {
   return db;
 }
 
-/**
- * Ensures ENCRYPTION_KEY and MASTER_KEY are set for tests.
- */
 export function ensureTestEncryptionKey() {
   if (!process.env['ENCRYPTION_KEY']) {
     process.env['ENCRYPTION_KEY'] = 'c'.repeat(64);
@@ -32,52 +27,44 @@ export function ensureTestEncryptionKey() {
   }
 }
 
-/**
- * Creates a standard test context with a db and stores.
- */
 export function createTestContext() {
   ensureTestEncryptionKey();
   const db = setupTestDb();
   const tenantStore = new TenantStore(db);
   const providerStore = new ProviderStore(db);
-  
-  return { db, tenantStore, providerStore };
+  const auditStore = new AuditStore(db);
+
+  return { db, tenantStore, providerStore, auditStore };
 }
 
-/**
- * Seeds a test tenant and a provider for common test scenarios.
- */
 export function seedTestTenantAndProvider(tenantStore: TenantStore, providerStore: ProviderStore) {
   const { tenant, rawApiKey } = tenantStore.createTenant('TestTenant');
   const cryptoService = new CryptoService();
-  
-  const provider = providerStore.createProvider({ 
-    name: 'OpenAI', 
-    type: 'openai', 
-    baseUrl: 'https://api.openai.com/v1' 
+
+  const provider = providerStore.createProvider({
+    name: 'OpenAI',
+    type: 'openai',
+    baseUrl: 'https://api.openai.com/v1'
   })._unsafeUnwrap();
-  
-  const providerModel = providerStore.createProviderModel({ 
-    aiProviderId: provider.id, 
-    modelName: 'gpt-4o' 
+
+  const providerModel = providerStore.createProviderModel({
+    aiProviderId: provider.id,
+    modelName: 'gpt-4o'
   })._unsafeUnwrap();
-  
-  tenantStore.assignAiProviderKey(tenant.id, { 
-    aiProviderId: provider.id, 
+
+  tenantStore.assignAiProviderKey(tenant.id, {
+    aiProviderId: provider.id,
     aiProviderApiKeyEncrypted: cryptoService.encrypt('sk-fake-key')
   });
-  
-  tenantStore.assignAiModelPriority(tenant.id, { 
-    aiProviderModelId: providerModel.id, 
-    priority: 10 
+
+  tenantStore.assignAiModelPriority(tenant.id, {
+    aiProviderModelId: providerModel.id,
+    priority: 10
   });
-  
+
   return { tenant, rawApiKey, provider, providerModel };
 }
 
-/**
- * Seeds a tenant with two providers and two models for multi-model routing tests.
- */
 export function seedTestTenantWithMultipleModels(tenantStore: TenantStore, providerStore: ProviderStore) {
   const { tenant, rawApiKey } = tenantStore.createTenant('MultiModelTenant');
   const cryptoService = new CryptoService();
@@ -106,18 +93,12 @@ export function seedTestTenantWithMultipleModels(tenantStore: TenantStore, provi
   return { tenant, rawApiKey, providerA, providerB, modelA, modelB };
 }
 
-/**
- * Creates an Elysia app with all routes for testing.
- */
-export function createTestApp(tenantStore: TenantStore, providerStore: ProviderStore, cryptoService: CryptoService) {
+export function createTestApp(tenantStore: TenantStore, providerStore: ProviderStore, cryptoService: CryptoService, auditStore: AuditStore) {
   return new Elysia()
-    .use(chatRoutePlugin(tenantStore, cryptoService))
-    .use(adminRoutePlugin(tenantStore, providerStore, cryptoService));
+    .use(chatRoutePlugin(tenantStore, cryptoService, auditStore))
+    .use(adminRoutePlugin(tenantStore, providerStore, cryptoService, auditStore));
 }
 
-/**
- * Helper to send requests to the test app.
- */
 export async function sendRequest(app: ReturnType<typeof createTestApp>, path: string, options: {
   method?: string;
   body?: any;
@@ -140,12 +121,8 @@ export async function sendRequest(app: ReturnType<typeof createTestApp>, path: s
   }));
 }
 
-/**
- * Mocks an SSE response for fetch.
- */
 export function mockSseResponse(content: string | string[]) {
   const tokens = Array.isArray(content) ? content : [content];
   const sse = tokens.map(t => `data: ${JSON.stringify({ choices: [{ delta: { content: t } }] })}\n\n`).join('') + `data: [DONE]\n\n`;
   return new Response(sse, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
 }
-

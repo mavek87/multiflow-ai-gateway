@@ -4,7 +4,8 @@ import { MetricsStore } from '@/engine/observability/metrics';
 import { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
 import { UCB1TunedSelector } from '@/engine/selection/algorithms/ucb1-tuned';
 import { HttpProviderClient } from '@/engine/client/http-provider-client';
-import { mockSseResponse } from '@test/test-setup';
+import { mockSseResponse, setupTestDb } from '@test/test-setup';
+import { AuditStore } from '@/audit/audit.store';
 
 const model = (name: string) => ({
   url: 'http://fake/v1/chat/completions',
@@ -20,13 +21,14 @@ function createAIRouter(models: any[]) {
   const selector = new UCB1TunedSelector();
   const clients = new Map();
   const aiProviderIds = new Map();
+  const auditStore = new AuditStore(setupTestDb());
 
   for (const m of models) {
     clients.set(m.model, new HttpProviderClient(m, 10000, 60000, false));
     aiProviderIds.set(m.model, { name: m.aiProviderId ?? '', baseUrl: m.aiProviderBaseUrl ?? '' });
   }
 
-  return new AIRouter(clients, metrics, circuitBreaker, selector, aiProviderIds);
+  return new AIRouter(clients, metrics, circuitBreaker, selector, aiProviderIds, auditStore);
 }
 
 function mockFetchOk(content = '') {

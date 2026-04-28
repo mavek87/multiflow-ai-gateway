@@ -35,6 +35,7 @@ export const tenants = sqliteTable('tenants', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   forceAiProviderId: text('force_ai_provider_id').references(() => aiProviders.id, { onDelete: 'set null' }),
+  rateLimitDailyRequests: integer('rate_limit_daily_requests'),
   createdAt: integer('created_at').notNull(),
 }, t => [uniqueIndex('tenants_name_unique').on(t.name)]);
 

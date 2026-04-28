@@ -9,12 +9,16 @@ import { config } from '@/config/config';
 import { createLogger } from '@/utils/logger';
 import { CryptoService } from '@/crypto/crypto';
 import { runSeed } from '@/bootstrap/seed.service';
+import { AuditStore } from '@/audit/audit.store';
+import { startHousekeeping } from '@/housekeeping/housekeeping';
 
 const log = createLogger('SERVER');
 
 const cryptoService = new CryptoService();
+const auditStore = new AuditStore(db);
 
 runSeed(db, cryptoService, config.seedFile);
+startHousekeeping(auditStore, config.auditRetentionDays);
 
 const tenantStore = new TenantStore(db);
 const providerStore = new ProviderStore(db);
@@ -97,8 +101,8 @@ new Elysia()
     },
   }))
   .get('/health', () => ({ status: 'ok', timestamp: new Date().toISOString() }))
-  .use(adminRoutePlugin(tenantStore, providerStore, cryptoService))
-  .use(chatRoutePlugin(tenantStore, cryptoService))
+  .use(adminRoutePlugin(tenantStore, providerStore, cryptoService, auditStore))
+  .use(chatRoutePlugin(tenantStore, cryptoService, auditStore))
   .listen(config.port);
 
 log.info(`multiflow-ai-gateway listening on port ${config.port}`);

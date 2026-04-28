@@ -5,12 +5,14 @@ import {CircuitBreaker} from '@/engine/resilience/circuit-breaker';
 import type {ModelSelector} from '@/engine/selection/model-selector.types';
 import {HttpProviderClient} from '@/engine/client/http-provider-client';
 import {config} from '@/config/config';
+import type {AuditStore} from '@/audit/audit.store';
 
 export class AIRouterFactory {
     constructor(
         private readonly metrics: MetricsStore,
         private readonly circuitBreaker: CircuitBreaker,
         private readonly modelSelector: ModelSelector,
+        private readonly auditStore: AuditStore,
     ) {
     }
 
@@ -37,6 +39,7 @@ export class AIRouterFactory {
             this.circuitBreaker,
             this.modelSelector,
             aiProviderIds,
+            this.auditStore,
         );
     }
 }

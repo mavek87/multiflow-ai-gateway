@@ -2,15 +2,17 @@ import { describe, test, expect } from 'bun:test';
 import { AIRouterFactory } from './ai-router.factory';
 import { createModelSelector } from '@/engine/selection/model-selector.factory';
 import type { ModelConfig } from '@/engine/client/client.types';
-import { mockSseResponse } from '@test/test-setup';
+import { mockSseResponse, setupTestDb } from '@test/test-setup';
 import { MetricsStore } from '@/engine/observability/metrics';
 import { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
+import { AuditStore } from '@/audit/audit.store';
 
 function createTestFactory() {
   const metrics = new MetricsStore();
   const cb = new CircuitBreaker();
   const selector = createModelSelector('ucb1-tuned');
-  return new AIRouterFactory(metrics, cb, selector);
+  const auditStore = new AuditStore(setupTestDb());
+  return new AIRouterFactory(metrics, cb, selector, auditStore);
 }
 
 describe('Routing Integration', () => {
@@ -67,7 +69,8 @@ describe('Routing Integration', () => {
     const metrics = new MetricsStore();
     const cb = new CircuitBreaker();
     const selector = createModelSelector('ucb1-tuned');
-    const factory = new AIRouterFactory(metrics, cb, selector);
+    const auditStore = new AuditStore(setupTestDb());
+    const factory = new AIRouterFactory(metrics, cb, selector, auditStore);
 
     const configs: ModelConfig[] = [
       {
