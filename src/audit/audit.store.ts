@@ -2,35 +2,7 @@ import { and, asc, count, desc, eq, gt, lt, gte, lte } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import type { DrizzleDb } from '@/db/database';
 import { requestLog } from '@/db/schema';
-
-export type AuditLogEntry = {
-  tenantId: string;
-  aiProvider: { id: string; name: string };
-  model: string;
-  latencyMs: number;
-  success: boolean;
-  statusCode: number;
-};
-
-export type AuditRecord = {
-  id: string;
-  tenantId: string;
-  ts: number;
-  model: string;
-  aiProviderId: string;
-  aiProviderName: string;
-  latencyMs: number;
-  success: boolean;
-  statusCode: number;
-};
-
-export type AuditQueryParams = {
-  tenantId?: string;
-  from?: number;
-  to?: number;
-  limit?: number;
-  offset?: number;
-};
+import type { AuditLogEntry, AuditQueryParams, AuditRecord } from './audit.types';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
