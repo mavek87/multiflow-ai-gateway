@@ -57,6 +57,7 @@ cp .env.example .env
 | `FIRST_TOKEN_TIMEOUT_MS` | no | `30000` | Max wait for first token from a provider (ms) |
 | `STREAM_WATCHDOG_MS` | no | `120000` | Max total streaming duration per request (ms) |
 | `SEED_FILE` | no | `./seed.yaml` | Path to the declarative seed file applied at startup. Both `.yaml` and `.yml` extensions are accepted. |
+| `METRICS_WARM_UP_WINDOW_MS` | no | `3600000` | How far back (in ms) to look in the audit log to warm up routing metrics on startup. Default is 1 hour. Set to `0` to always start cold. |
 
 Generate the required secret values:
 
@@ -408,7 +409,9 @@ Models each provider as a Beta distribution over success/failure counts and draw
 
 ### Routing state is in-memory only
 
-The `AIRouterFactory` -- which owns the `MetricsStore`, `CircuitBreaker`, and `ModelSelector` instances -- is created once when the chat plugin initializes. A new `AIRouter` is built per request via `factory.create()`, but it shares these stateful components across all requests. This means routing metrics and circuit breaker statuses persist across requests but are **in-memory only and reset to zero on every server restart**. After a restart, all models start fresh with no learned preferences or failure counts.
+The `AIRouterFactory` -- which owns the `MetricsStore`, `CircuitBreaker`, and `ModelSelector` instances -- is created once when the chat plugin initializes. A new `AIRouter` is built per request via `factory.create()`, but it shares these stateful components across all requests. This means routing metrics and circuit breaker statuses persist across requests but are **in-memory only**.
+
+On every restart, the `MetricsStore` is automatically warmed up from the audit log: all `request_log` records within the last hour (configurable via `METRICS_WARM_UP_WINDOW_MS`) are replayed in chronological order so the selector starts with meaningful latency and success-rate estimates rather than a blank slate. If no records exist within the window (e.g. after a long downtime), the store starts cold and UCB1 explores all models uniformly until it converges. Circuit breaker state is always reset on restart.
 
 ### Back up ENCRYPTION_KEY separately from the database
 

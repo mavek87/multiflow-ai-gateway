@@ -14,8 +14,12 @@ import {CircuitBreaker} from '@/engine/resilience/circuit-breaker';
 import type {AuditStore} from '@/audit/audit.store';
 
 export function chatRoutePlugin(tenantStore: TenantStore, cryptoService: CryptoService, auditStore: AuditStore) {
+    const metricsStore = new MetricsStore();
+    const recentRecords = auditStore.getRecentRecords(Date.now() - config.metricsWarmUpWindowMs);
+    metricsStore.warmUp(recentRecords);
+
     const aiRouterFactory = new AIRouterFactory(
-        new MetricsStore(),
+        metricsStore,
         new CircuitBreaker(),
         createModelSelector(config.selectorType),
         auditStore,

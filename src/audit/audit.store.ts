@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gt, lt, gte, lte } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, lt, gte, lte } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import type { DrizzleDb } from '@/db/database';
 import { requestLog } from '@/db/schema';
@@ -80,6 +80,15 @@ export class AuditStore {
       .orderBy(desc(requestLog.ts))
       .limit(limit)
       .offset(offset)
+      .all();
+  }
+
+  getRecentRecords(sinceMs: number): { model: string; latencyMs: number; success: boolean }[] {
+    return this.db
+      .select({ model: requestLog.model, latencyMs: requestLog.latencyMs, success: requestLog.success })
+      .from(requestLog)
+      .where(gte(requestLog.ts, sinceMs))
+      .orderBy(asc(requestLog.ts))
       .all();
   }
 

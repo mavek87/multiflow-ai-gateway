@@ -84,6 +84,12 @@ export class MetricsStore {
     });
   }
 
+  warmUp(records: { model: string; latencyMs: number; success: boolean }[]): void {
+    for (const r of records) {
+      this.record(r.model, { latencyMs: r.latencyMs, ttftMs: 0, success: r.success });
+    }
+  }
+
   all(): Map<string, ModelMetrics> {
     return this.store;
   }

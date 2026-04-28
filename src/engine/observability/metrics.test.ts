@@ -91,6 +91,56 @@ describe('MetricsStore', () => {
     expect(store.get('m').rewardVariance).toBe(0);
   });
 
+  describe('warmUp()', () => {
+    test('with empty array does nothing', () => {
+      const store = new MetricsStore();
+      store.warmUp([]);
+      expect(store.get('any').calls).toBe(0);
+    });
+
+    test('warms the store with provided records', () => {
+      const store = new MetricsStore();
+      store.warmUp([
+        { model: 'model-a', latencyMs: 500, success: true },
+        { model: 'model-a', latencyMs: 1000, success: true },
+        { model: 'model-a', latencyMs: 750, success: false },
+      ]);
+      const m = store.get('model-a');
+      expect(m.calls).toBe(3);
+      expect(m.successCount).toBe(2);
+      expect(m.failureCount).toBe(1);
+      expect(m.ttftEma).toBe(0);
+    });
+
+    test('processes records in order so EMA is sequential', () => {
+      const store1 = new MetricsStore();
+      store1.warmUp([
+        { model: 'm', latencyMs: 100, success: true },
+        { model: 'm', latencyMs: 900, success: true },
+      ]);
+
+      const store2 = new MetricsStore();
+      store2.warmUp([
+        { model: 'm', latencyMs: 900, success: true },
+        { model: 'm', latencyMs: 100, success: true },
+      ]);
+
+      expect(store1.get('m').latencyEma).not.toBe(store2.get('m').latencyEma);
+    });
+
+    test('handles multiple models independently', () => {
+      const store = new MetricsStore();
+      store.warmUp([
+        { model: 'fast', latencyMs: 100, success: true },
+        { model: 'slow', latencyMs: 2000, success: false },
+        { model: 'fast', latencyMs: 200, success: true },
+      ]);
+      expect(store.get('fast').calls).toBe(2);
+      expect(store.get('slow').calls).toBe(1);
+      expect(store.get('fast').successRate).toBeGreaterThan(store.get('slow').successRate);
+    });
+  });
+
   test('rewardVariance increases with mixed outcomes', () => {
     const store = new MetricsStore();
     for (let i = 0; i < 10; i++) store.record('m', { latencyMs: 100, ttftMs: 10, success: i % 2 === 0 });

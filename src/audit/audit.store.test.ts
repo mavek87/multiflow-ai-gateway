@@ -107,6 +107,38 @@ describe('AuditStore', () => {
     });
   });
 
+  describe('getRecentRecords()', () => {
+    test('returns records within the window', () => {
+      store.log(entry('t1'));
+      const rows = store.getRecentRecords(Date.now() - 60_000);
+      expect(rows.length).toBe(1);
+      expect(rows[0]!.model).toBe('llama3');
+      expect(rows[0]!.latencyMs).toBe(100);
+      expect(rows[0]!.success).toBe(true);
+    });
+
+    test('excludes records outside the window', () => {
+      store.log(entry('t1'));
+      const rows = store.getRecentRecords(Date.now() + 60_000);
+      expect(rows.length).toBe(0);
+    });
+
+    test('returns results ordered by ts ASC', async () => {
+      store.log({ ...entry('t1'), latencyMs: 100 });
+      await Bun.sleep(5);
+      store.log({ ...entry('t1'), latencyMs: 200 });
+      const rows = store.getRecentRecords(Date.now() - 60_000);
+      expect(rows.length).toBe(2);
+      expect(rows[0]!.latencyMs).toBe(100);
+      expect(rows[1]!.latencyMs).toBe(200);
+    });
+
+    test('returns empty array when no records in window', () => {
+      const rows = store.getRecentRecords(Date.now() - 60_000);
+      expect(rows.length).toBe(0);
+    });
+  });
+
   describe('deleteOlderThan()', () => {
     test('removes records older than the given timestamp', () => {
       store.log(entry());
