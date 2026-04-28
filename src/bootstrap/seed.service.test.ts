@@ -1,15 +1,11 @@
-import { describe, test, expect, beforeAll, afterEach } from 'bun:test';
+import { describe, test, expect, afterEach } from 'bun:test';
 import { writeFileSync, unlinkSync, existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import { createTestContext, ensureTestEncryptionKey } from '@test/test-setup';
+import { createTestContext } from '@test/test-setup';
 import { CryptoService } from '@/crypto/crypto';
 import { TenantStore } from '@/tenant/tenant.store';
 import { ProviderStore } from '@/provider/provider.store';
 import { runSeed } from './seed.service';
-
-beforeAll(() => {
-  ensureTestEncryptionKey();
-});
 
 describe('runSeed', () => {
   const tempFiles: string[] = [];

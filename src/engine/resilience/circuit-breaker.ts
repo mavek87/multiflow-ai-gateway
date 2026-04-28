@@ -73,6 +73,19 @@ export class CircuitBreaker {
     return this.getBreaker(model).state;
   }
 
+  all(): Record<string, Omit<BreakerState, 'halfOpenSuccesses'>> {
+    const result: Record<string, Omit<BreakerState, 'halfOpenSuccesses'>> = {};
+    for (const [model, state] of this.breakers.entries()) {
+      result[model] = {
+        state: state.state,
+        consecutiveHardFailures: state.consecutiveHardFailures,
+        consecutiveSoftFailures: state.consecutiveSoftFailures,
+        openedAt: state.openedAt,
+      };
+    }
+    return result;
+  }
+
   private getBreaker(model: string): BreakerState {
     if (!this.breakers.has(model)) {
       this.breakers.set(model, {

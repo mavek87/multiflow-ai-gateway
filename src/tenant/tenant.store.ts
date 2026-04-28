@@ -78,6 +78,12 @@ export class TenantStore {
     return this.getTenantById(id);
   }
 
+  deleteTenant(id: string): boolean {
+    this.db.delete(tenants).where(eq(tenants.id, id)).run();
+    log.info(`Deleted tenant ${id}`);
+    return true;
+  }
+
   listTenants(): Tenant[] {
     return this.db.select().from(tenants).orderBy(desc(tenants.createdAt)).all().map(row => ({
       ...row,
@@ -116,6 +122,23 @@ export class TenantStore {
       .all();
   }
 
+  getTenantAiProviderKeyById(id: string): TenantAiProviderKey | null {
+    return this.db.select().from(tenantAiProviderKeys).where(eq(tenantAiProviderKeys.id, id)).get() ?? null;
+  }
+
+  updateTenantAiProviderKey(id: string, input: import('./tenant.types').UpdateTenantAiProviderKeyInput): TenantAiProviderKey | null {
+    if (!this.getTenantAiProviderKeyById(id)) return null;
+    this.db.update(tenantAiProviderKeys).set(input).where(eq(tenantAiProviderKeys.id, id)).run();
+    log.info(`Updated tenant AI provider key ${id}`);
+    return this.getTenantAiProviderKeyById(id);
+  }
+
+  deleteTenantAiProviderKey(id: string): boolean {
+    this.db.delete(tenantAiProviderKeys).where(eq(tenantAiProviderKeys.id, id)).run();
+    log.info(`Deleted tenant AI provider key ${id}`);
+    return true;
+  }
+
   // --- Tenant AI model priority management ---
 
   assignAiModelPriority(tenantId: string, input: AssignAiModelPriorityInput): TenantAiModelPriority {
@@ -139,6 +162,62 @@ export class TenantStore {
       .where(eq(tenantAiModelPriorities.tenantId, tenantId))
       .orderBy(tenantAiModelPriorities.priority)
       .all();
+  }
+
+  getTenantAiModelPriorityById(id: string): TenantAiModelPriority | null {
+    return this.db.select().from(tenantAiModelPriorities).where(eq(tenantAiModelPriorities.id, id)).get() ?? null;
+  }
+
+  updateTenantAiModelPriority(id: string, input: import('./tenant.types').UpdateTenantAiModelPriorityInput): TenantAiModelPriority | null {
+    if (!this.getTenantAiModelPriorityById(id)) return null;
+    this.db.update(tenantAiModelPriorities).set(input).where(eq(tenantAiModelPriorities.id, id)).run();
+    log.info(`Updated tenant AI model priority ${id}`);
+    return this.getTenantAiModelPriorityById(id);
+  }
+
+  deleteTenantAiModelPriority(id: string): boolean {
+    this.db.delete(tenantAiModelPriorities).where(eq(tenantAiModelPriorities.id, id)).run();
+    log.info(`Deleted tenant AI model priority ${id}`);
+    return true;
+  }
+
+  // --- Gateway API key management ---
+
+  listGatewayApiKeys(tenantId: string): import('./tenant.types').GatewayApiKeyListOutput[] {
+    return this.db
+      .select({
+        id: gatewayApiKeys.id,
+        createdAt: gatewayApiKeys.createdAt,
+        lastUsedAt: gatewayApiKeys.lastUsedAt,
+      })
+      .from(gatewayApiKeys)
+      .where(eq(gatewayApiKeys.tenantId, tenantId))
+      .orderBy(desc(gatewayApiKeys.createdAt))
+      .all();
+  }
+
+  createGatewayApiKey(tenantId: string): { keyId: string; rawApiKey: string } | null {
+    if (!this.getTenantById(tenantId)) return null;
+    
+    const rawApiKey = generateApiKey();
+    const keyHash = hashApiKey(rawApiKey);
+    const keyId = randomUUID();
+
+    this.db.insert(gatewayApiKeys).values({
+      id: keyId,
+      tenantId,
+      keyHash,
+      createdAt: Date.now(),
+    }).run();
+
+    log.info(`Created new gateway API key ${keyId} for tenant ${tenantId}`);
+    return { keyId, rawApiKey };
+  }
+
+  deleteGatewayApiKey(id: string): boolean {
+    this.db.delete(gatewayApiKeys).where(eq(gatewayApiKeys.id, id)).run();
+    log.info(`Deleted gateway API key ${id}`);
+    return true;
   }
 
   // --- Upsert methods for seed bootstrap ---

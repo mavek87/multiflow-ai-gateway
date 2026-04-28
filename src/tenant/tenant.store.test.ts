@@ -1,12 +1,8 @@
-import { describe, test, expect, beforeEach, beforeAll } from 'bun:test';
+import { describe, test, expect, beforeEach } from 'bun:test';
 import { TenantStore } from './tenant.store';
 import { ProviderStore } from '@/provider/provider.store';
-import { createTestContext, ensureTestEncryptionKey } from '@test/test-setup';
+import { createTestContext } from '@test/test-setup';
 import { CryptoService } from '@/crypto/crypto';
-
-beforeAll(() => {
-  ensureTestEncryptionKey();
-});
 
 describe('TenantStore', () => {
   let tenantStore: TenantStore;
@@ -160,6 +156,70 @@ describe('TenantStore', () => {
       tenantStore.upsertAiModelPriority(tenant.id, { aiProviderModelId: m.id, priority: 5 });
       tenantStore.upsertAiModelPriority(tenant.id, { aiProviderModelId: m.id, priority: 10 });
       expect(tenantStore.listTenantAiModelPriorities(tenant.id)).toHaveLength(1);
+    });
+  });
+
+  describe('Phase A/B newly added methods', () => {
+    test('deleteTenant deletes the tenant', () => {
+      const { tenant } = tenantStore.createTenant('ToDelete');
+      expect(tenantStore.getTenantById(tenant.id)).not.toBeNull();
+      const deleted = tenantStore.deleteTenant(tenant.id);
+      expect(deleted).toBe(true);
+      expect(tenantStore.getTenantById(tenant.id)).toBeNull();
+    });
+
+    test('updateTenantAiProviderKey updates enabled status', () => {
+      const { tenant } = tenantStore.createTenant('Acme');
+      const p = providerStore.createProvider({ name: 'P1', type: 't1', baseUrl: 'b1' })._unsafeUnwrap();
+      const key = tenantStore.assignAiProviderKey(tenant.id, { aiProviderId: p.id });
+      const updated = tenantStore.updateTenantAiProviderKey(key.id, { enabled: false });
+      expect(updated?.enabled).toBe(false);
+      const found = tenantStore.getTenantAiProviderKeyById(key.id);
+      expect(found?.enabled).toBe(false);
+    });
+
+    test('deleteTenantAiProviderKey deletes the key', () => {
+      const { tenant } = tenantStore.createTenant('Acme');
+      const p = providerStore.createProvider({ name: 'P1', type: 't1', baseUrl: 'b1' })._unsafeUnwrap();
+      const key = tenantStore.assignAiProviderKey(tenant.id, { aiProviderId: p.id });
+      tenantStore.deleteTenantAiProviderKey(key.id);
+      expect(tenantStore.getTenantAiProviderKeyById(key.id)).toBeNull();
+    });
+
+    test('updateTenantAiModelPriority updates priority and enabled', () => {
+      const { tenant } = tenantStore.createTenant('Acme');
+      const p = providerStore.createProvider({ name: 'P1', type: 't1', baseUrl: 'b1' })._unsafeUnwrap();
+      const m = providerStore.createProviderModel({ aiProviderId: p.id, modelName: 'm1' })._unsafeUnwrap();
+      const priority = tenantStore.assignAiModelPriority(tenant.id, { aiProviderModelId: m.id, priority: 1 });
+      const updated = tenantStore.updateTenantAiModelPriority(priority.id, { priority: 2, enabled: false });
+      expect(updated?.priority).toBe(2);
+      expect(updated?.enabled).toBe(false);
+    });
+
+    test('deleteTenantAiModelPriority deletes the priority', () => {
+      const { tenant } = tenantStore.createTenant('Acme');
+      const p = providerStore.createProvider({ name: 'P1', type: 't1', baseUrl: 'b1' })._unsafeUnwrap();
+      const m = providerStore.createProviderModel({ aiProviderId: p.id, modelName: 'm1' })._unsafeUnwrap();
+      const priority = tenantStore.assignAiModelPriority(tenant.id, { aiProviderModelId: m.id, priority: 1 });
+      tenantStore.deleteTenantAiModelPriority(priority.id);
+      expect(tenantStore.getTenantAiModelPriorityById(priority.id)).toBeNull();
+    });
+
+    test('Gateway API Keys lifecycle', () => {
+      const { tenant } = tenantStore.createTenant('Acme');
+      const initialKeys = tenantStore.listGatewayApiKeys(tenant.id);
+      expect(initialKeys).toHaveLength(1); // One created by default
+
+      const newKey = tenantStore.createGatewayApiKey(tenant.id);
+      expect(newKey).not.toBeNull();
+      
+      const keys = tenantStore.listGatewayApiKeys(tenant.id);
+      expect(keys).toHaveLength(2);
+      expect(keys.map(k => k.id)).toContain(newKey!.keyId);
+
+      tenantStore.deleteGatewayApiKey(newKey!.keyId);
+      const keysAfterDelete = tenantStore.listGatewayApiKeys(tenant.id);
+      expect(keysAfterDelete).toHaveLength(1);
     });
   });
 });

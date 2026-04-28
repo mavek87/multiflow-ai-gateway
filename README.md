@@ -15,7 +15,8 @@ A self-hosted, multi-tenant AI Gateway written in TypeScript/Bun. It sits betwee
 - **Encrypted secrets** - provider API keys stored at rest with AES-256-GCM
 - **Audit logging** - per-request trail stored in SQLite, queryable via Admin API with date and tenant filters
 - **Rate limiting** - configurable daily request cap per tenant, enforced via sliding window
-- **Admin API** - manage tenants and providers via REST, protected by master key
+- **Admin API** - full CRUD management of tenants, providers, models, credentials, and gateway API keys via REST, protected by master key
+- **Observability endpoints** - live snapshots of routing metrics and circuit breaker states via Admin API
 - **Auto-generated Swagger UI** - available at `/docs`
 - **Modular Architecture** - clean Folder-by-Feature structure for high maintainability
 
@@ -409,7 +410,7 @@ Models each provider as a Beta distribution over success/failure counts and draw
 
 ### Routing state is in-memory only
 
-The `AIRouterFactory` -- which owns the `MetricsStore`, `CircuitBreaker`, and `ModelSelector` instances -- is created once when the chat plugin initializes. A new `AIRouter` is built per request via `factory.create()`, but it shares these stateful components across all requests. This means routing metrics and circuit breaker statuses persist across requests but are **in-memory only**.
+The `AIRouterFactory` -- which owns the `MetricsStore`, `CircuitBreaker`, and `ModelSelector` instances -- is created once at startup and shared between the chat plugin and the admin plugin. A new `AIRouter` is built per request via `factory.create()`, but it shares these stateful components across all requests. This means routing metrics and circuit breaker statuses persist across requests but are **in-memory only**.
 
 On every restart, the `MetricsStore` is automatically warmed up from the audit log: all `request_log` records within the last hour (configurable via `METRICS_WARM_UP_WINDOW_MS`) are replayed in chronological order so the selector starts with meaningful latency and success-rate estimates rather than a blank slate. If no records exist within the window (e.g. after a long downtime), the store starts cold and UCB1 explores all models uniformly until it converges. Circuit breaker state is always reset on restart.
 
@@ -511,6 +512,7 @@ All admin endpoints require the `X-Master-Key` header.
 - `POST /admin/tenants` - Create tenant
 - `GET /admin/tenants/:id` - Get details (includes credentials/models)
 - `PATCH /admin/tenants/:id` - Update settings (`forceAiProviderId`, `rateLimitDailyRequests`; pass null to remove a limit)
+- `DELETE /admin/tenants/:id` - Hard delete tenant (cascades to keys and model assignments)
 
 **Audit**
 - `GET /admin/audit` - Query audit log (filters: `tenantId`, `from`, `to` as ISO dates, `limit`, `offset`)
@@ -518,12 +520,29 @@ All admin endpoints require the `X-Master-Key` header.
 **Global Providers**
 - `GET /admin/providers` - List global providers
 - `POST /admin/providers` - Create provider
-- `GET /admin/providers/:id/models` - List models for a provider
-- `POST /admin/providers/:id/models` - Add model to provider
+- `PATCH /admin/providers/:providerId` - Update provider (`type`, `baseUrl`)
+- `DELETE /admin/providers/:providerId` - Hard delete provider (cascades)
+- `GET /admin/providers/:providerId/models` - List models for a provider
+- `POST /admin/providers/:providerId/models` - Add model to provider
+- `PATCH /admin/providers/:providerId/models/:modelId` - Update model (toggle `enabled`)
+- `DELETE /admin/providers/:providerId/models/:modelId` - Hard delete model (cascades)
 
 **Tenant assignments**
 - `POST /admin/tenants/:id/credentials` - Assign provider API key to tenant
+- `PATCH /admin/tenants/:id/credentials/:credentialId` - Update credential (toggle `enabled`)
+- `DELETE /admin/tenants/:id/credentials/:credentialId` - Hard delete credential
 - `POST /admin/tenants/:id/models` - Assign model priority to tenant
+- `PATCH /admin/tenants/:id/models/:entryId` - Update model priority entry (`priority`, `enabled`)
+- `DELETE /admin/tenants/:id/models/:entryId` - Hard delete model priority entry
+
+**Gateway API keys**
+- `GET /admin/tenants/:id/api-keys` - List gateway API keys for a tenant
+- `POST /admin/tenants/:id/api-keys` - Issue a new gateway API key for a tenant
+- `DELETE /admin/tenants/:id/api-keys/:keyId` - Revoke a gateway API key
+
+**Observability**
+- `GET /admin/metrics` - Live snapshot of routing metrics (latency, success rates per model)
+- `GET /admin/circuit-breakers` - Live snapshot of circuit breaker states per model
 
 ---
 
@@ -597,6 +616,8 @@ Full details and feature descriptions in [`docs/study.md`](docs/study.md).
 |---|---------|----------|------|
 | 1 | Prometheus metrics endpoint | Critical | Observability |
 | 2 | ~~Rate limiting / sub-users per tenant~~ - per-tenant daily rate limit shipped | done | Multi-tenancy |
+| - | ~~Full CRUD Admin API~~ - delete/update for tenants, providers, models, credentials, model priorities, gateway API keys shipped | done | Admin |
+| - | ~~Observability endpoints~~ - `/admin/metrics` and `/admin/circuit-breakers` snapshots shipped | done | Observability |
 | 3 | Proactive health checks | High | Routing |
 | 4 | Exact-match prompt caching | High | Performance |
 | 5 | Additional provider adapters (Groq, Gemini, Claude native) | Medium | Providers |

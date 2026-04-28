@@ -64,3 +64,18 @@ export type UpdateTenantInput = {
   forceAiProviderId?: string | null;
   rateLimitDailyRequests?: number | null;
 };
+
+export type UpdateTenantAiProviderKeyInput = {
+  enabled?: boolean;
+};
+
+export type UpdateTenantAiModelPriorityInput = {
+  priority?: number;
+  enabled?: boolean;
+};
+
+export type GatewayApiKeyListOutput = {
+  id: string;
+  createdAt: number;
+  lastUsedAt: number | null;
+};

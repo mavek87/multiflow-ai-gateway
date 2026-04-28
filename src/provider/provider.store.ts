@@ -47,6 +47,19 @@ export class ProviderStore {
     return ok(provider);
   }
 
+  updateProvider(id: string, input: import('./provider.types').UpdateProviderInput): AiProvider | null {
+    if (!this.getProviderById(id)) return null;
+    this.db.update(aiProviders).set(input).where(eq(aiProviders.id, id)).run();
+    log.info(`Updated provider ${id}`);
+    return this.getProviderById(id);
+  }
+
+  deleteProvider(id: string): boolean {
+    this.db.delete(aiProviders).where(eq(aiProviders.id, id)).run();
+    log.info(`Deleted provider ${id}`);
+    return true;
+  }
+
   // --- Provider model management ---
 
   listProviderModels(aiProviderId: string): AiProviderModel[] {
@@ -78,6 +91,19 @@ export class ProviderStore {
     }
     log.info(`Created model: ${model.modelName} for provider ${model.aiProviderId}`);
     return ok(model);
+  }
+
+  updateProviderModel(id: string, input: import('./provider.types').UpdateProviderModelInput): AiProviderModel | null {
+    if (!this.getProviderModelById(id)) return null;
+    this.db.update(aiProviderModels).set(input).where(eq(aiProviderModels.id, id)).run();
+    log.info(`Updated provider model ${id}`);
+    return this.getProviderModelById(id);
+  }
+
+  deleteProviderModel(id: string): boolean {
+    this.db.delete(aiProviderModels).where(eq(aiProviderModels.id, id)).run();
+    log.info(`Deleted provider model ${id}`);
+    return true;
   }
 
   // --- Upsert methods for seed bootstrap ---

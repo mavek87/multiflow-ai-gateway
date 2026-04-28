@@ -13,13 +13,19 @@ import {MetricsStore} from '@/engine/observability/metrics';
 import {CircuitBreaker} from '@/engine/resilience/circuit-breaker';
 import type {AuditStore} from '@/audit/audit.store';
 
-export function chatRoutePlugin(tenantStore: TenantStore, auditStore: AuditStore, metricsStore: MetricsStore, cryptoService: CryptoService) {
+export function chatRoutePlugin(
+    tenantStore: TenantStore,
+    auditStore: AuditStore,
+    metricsStore: MetricsStore,
+    cryptoService: CryptoService,
+    circuitBreaker: CircuitBreaker
+) {
     const recentRecords = auditStore.getRecentRecords(Date.now() - config.metricsWarmUpWindowMs);
     metricsStore.warmUp(recentRecords);
 
     const aiRouterFactory = new AIRouterFactory(
         metricsStore,
-        new CircuitBreaker(),
+        circuitBreaker,
         createModelSelector(config.selectorType),
         auditStore,
     );

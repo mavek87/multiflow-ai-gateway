@@ -24,3 +24,12 @@ export type CreateProviderModelInput = {
   aiProviderId: string;
   modelName: string;
 };
+
+export type UpdateProviderInput = {
+  type?: string;
+  baseUrl?: string;
+};
+
+export type UpdateProviderModelInput = {
+  enabled?: boolean;
+};

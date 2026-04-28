@@ -1,14 +1,10 @@
-import { describe, test, expect, beforeAll, beforeEach } from 'bun:test';
+import { describe, test, expect, beforeEach } from 'bun:test';
 import { TenantModelConfigResolver } from './tenant-model-config.resolver';
-import { createTestContext, seedTestTenantAndProvider, seedTestTenantWithMultipleModels, ensureTestEncryptionKey } from '@test/test-setup';
+import { createTestContext, seedTestTenantAndProvider, seedTestTenantWithMultipleModels } from '@test/test-setup';
 import type { TenantStore } from '@/tenant/tenant.store';
 import type { ProviderStore } from '@/provider/provider.store';
 import type { Tenant } from '@/tenant/tenant.types';
 import { CryptoService } from '@/crypto/crypto';
-
-beforeAll(() => {
-  ensureTestEncryptionKey();
-});
 
 describe('TenantModelConfigResolver', () => {
   let store: TenantStore;

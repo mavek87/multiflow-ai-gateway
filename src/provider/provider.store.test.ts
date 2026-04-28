@@ -1,10 +1,6 @@
-import { describe, test, expect, beforeEach, beforeAll } from 'bun:test';
+import { describe, test, expect, beforeEach } from 'bun:test';
 import { ProviderStore } from './provider.store';
-import { createTestContext, ensureTestEncryptionKey } from '@test/test-setup';
-
-beforeAll(() => {
-  ensureTestEncryptionKey();
-});
+import { createTestContext } from '@test/test-setup';
 
 describe('ProviderStore', () => {
   let store: ProviderStore;
@@ -136,6 +132,39 @@ describe('ProviderStore', () => {
       const { model: first } = store.upsertProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' });
       const { model: second } = store.upsertProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' });
       expect(second.id).toBe(first.id);
+    });
+  });
+
+  describe('Phase A/B newly added methods', () => {
+    test('updateProvider updates provider fields', () => {
+      const p = store.createProvider({ name: 'P1', type: 'openai', baseUrl: 'b1' })._unsafeUnwrap();
+      const updated = store.updateProvider(p.id, { baseUrl: 'b2', type: 'custom' });
+      expect(updated?.baseUrl).toBe('b2');
+      expect(updated?.type).toBe('custom');
+      const found = store.getProviderById(p.id);
+      expect(found?.baseUrl).toBe('b2');
+    });
+
+    test('deleteProvider deletes the provider', () => {
+      const p = store.createProvider({ name: 'P1', type: 'openai', baseUrl: 'b1' })._unsafeUnwrap();
+      store.deleteProvider(p.id);
+      expect(store.getProviderById(p.id)).toBeNull();
+    });
+
+    test('updateProviderModel updates model fields', () => {
+      const p = store.createProvider({ name: 'P1', type: 'openai', baseUrl: 'b1' })._unsafeUnwrap();
+      const m = store.createProviderModel({ aiProviderId: p.id, modelName: 'm1' })._unsafeUnwrap();
+      const updated = store.updateProviderModel(m.id, { enabled: false });
+      expect(updated?.enabled).toBe(false);
+      const found = store.getProviderModelById(m.id);
+      expect(found?.enabled).toBe(false);
+    });
+
+    test('deleteProviderModel deletes the model', () => {
+      const p = store.createProvider({ name: 'P1', type: 'openai', baseUrl: 'b1' })._unsafeUnwrap();
+      const m = store.createProviderModel({ aiProviderId: p.id, modelName: 'm1' })._unsafeUnwrap();
+      store.deleteProviderModel(m.id);
+      expect(store.getProviderModelById(m.id)).toBeNull();
     });
   });
 });

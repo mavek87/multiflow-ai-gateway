@@ -10,6 +10,7 @@ import { MetricsStore } from '@/engine/observability/metrics';
 import { Elysia } from 'elysia';
 import { chatRoutePlugin } from '@/chat/chat.routes';
 import { adminRoutePlugin } from '@/admin/admin.routes';
+import { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
 
 export function setupTestDb() {
   const sqlite = new Database(':memory:');
@@ -19,24 +20,15 @@ export function setupTestDb() {
   return db;
 }
 
-export function ensureTestEncryptionKey() {
-  if (!process.env['ENCRYPTION_KEY']) {
-    process.env['ENCRYPTION_KEY'] = 'c'.repeat(64);
-  }
-  if (!process.env['MASTER_KEY']) {
-    process.env['MASTER_KEY'] = 'test-master-key';
-  }
-}
-
 export function createTestContext() {
-  ensureTestEncryptionKey();
   const db = setupTestDb();
   const tenantStore = new TenantStore(db);
   const providerStore = new ProviderStore(db);
   const auditStore = new AuditStore(db);
   const metricsStore = new MetricsStore();
+  const circuitBreaker = new CircuitBreaker();
 
-  return { db, tenantStore, providerStore, auditStore, metricsStore };
+  return { db, tenantStore, providerStore, auditStore, metricsStore, circuitBreaker };
 }
 
 export function seedTestTenantAndProvider(tenantStore: TenantStore, providerStore: ProviderStore) {
@@ -95,11 +87,11 @@ export function seedTestTenantWithMultipleModels(tenantStore: TenantStore, provi
   return { tenant, rawApiKey, providerA, providerB, modelA, modelB };
 }
 
-export function createTestApp(tenantStore: TenantStore, providerStore: ProviderStore, auditStore: AuditStore, metricsStore: MetricsStore, cryptoService: CryptoService) {
+export function createTestApp(tenantStore: TenantStore, providerStore: ProviderStore, auditStore: AuditStore, metricsStore: MetricsStore, circuitBreaker: CircuitBreaker, cryptoService: CryptoService) {
   return new Elysia()
     .get('/health', () => ({ status: 'ok', timestamp: new Date().toISOString() }))
-    .use(chatRoutePlugin(tenantStore, auditStore, metricsStore, cryptoService))
-    .use(adminRoutePlugin(tenantStore, providerStore, cryptoService, auditStore));
+    .use(chatRoutePlugin(tenantStore, auditStore, metricsStore, cryptoService, circuitBreaker))
+    .use(adminRoutePlugin(tenantStore, providerStore, cryptoService, auditStore, metricsStore, circuitBreaker));
 }
 
 export async function sendRequest(app: ReturnType<typeof createTestApp>, path: string, options: {
@@ -138,21 +130,21 @@ export function mockFetch(mockResponse: Response | ((...args: any[]) => Response
 }
 
 export function createTestAppEmpty() {
-  const { tenantStore, providerStore, auditStore, metricsStore } = createTestContext();
-  const app = createTestApp(tenantStore, providerStore, auditStore, metricsStore, new CryptoService());
-  return { app, tenantStore, providerStore, auditStore, metricsStore };
+  const { tenantStore, providerStore, auditStore, metricsStore, circuitBreaker } = createTestContext();
+  const app = createTestApp(tenantStore, providerStore, auditStore, metricsStore, circuitBreaker, new CryptoService());
+  return { app, tenantStore, providerStore, auditStore, metricsStore, circuitBreaker };
 }
 
 export function createTestAppWithTenantAndProvider() {
-  const { tenantStore, providerStore, auditStore, metricsStore } = createTestContext();
+  const { tenantStore, providerStore, auditStore, metricsStore, circuitBreaker } = createTestContext();
   const seeded = seedTestTenantAndProvider(tenantStore, providerStore);
-  const app = createTestApp(tenantStore, providerStore, auditStore, metricsStore, new CryptoService());
+  const app = createTestApp(tenantStore, providerStore, auditStore, metricsStore, circuitBreaker, new CryptoService());
   return { app, rawApiKey: seeded.rawApiKey, tenant: seeded.tenant };
 }
 
 export function createTestAppWithMultipleModels() {
-  const { tenantStore, providerStore, auditStore, metricsStore } = createTestContext();
+  const { tenantStore, providerStore, auditStore, metricsStore, circuitBreaker } = createTestContext();
   const seeded = seedTestTenantWithMultipleModels(tenantStore, providerStore);
-  const app = createTestApp(tenantStore, providerStore, auditStore, metricsStore, new CryptoService());
+  const app = createTestApp(tenantStore, providerStore, auditStore, metricsStore, circuitBreaker, new CryptoService());
   return { app, rawApiKey: seeded.rawApiKey, tenant: seeded.tenant };
 }
