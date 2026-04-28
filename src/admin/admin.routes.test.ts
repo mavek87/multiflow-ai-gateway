@@ -256,6 +256,9 @@ describe('Admin Routes', () => {
     test('GET /admin/metrics', async () => {
       const res = await sendRequest(app, '/admin/metrics', { masterKey: MASTER_KEY });
       expect(res.status).toBe(200);
+      const body = await res.json() as any;
+      expect(typeof body).toBe('object');
+      expect(Array.isArray(body)).toBe(false);
     });
 
     test('GET /admin/circuit-breakers', async () => {

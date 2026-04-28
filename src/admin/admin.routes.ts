@@ -265,7 +265,7 @@ export function adminRoutePlugin(
     })
 
     // --- Observability ---
-    .get('/metrics', () => metricsStore.all(), {
+    .get('/metrics', () => Object.fromEntries(metricsStore.all()), {
       detail: { summary: 'Get routing metrics snapshot', tags: ['Admin'] },
     })
     .get('/circuit-breakers', () => circuitBreaker.all(), {
