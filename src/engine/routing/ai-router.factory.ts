@@ -25,7 +25,7 @@ export class AIRouterFactory {
         for (const modelConfig of sortedModelConfigs) {
             const clientKey = modelConfig.aiProviderModelId!;
 
-            aiProviderClients.set(clientKey, new HttpProviderClient(modelConfig, config.firstTokenTimeoutMs, config.streamWatchdogMs, false));
+            aiProviderClients.set(clientKey, new HttpProviderClient(modelConfig, config.providerStreamFirstTokenTimeoutMs, config.providerStreamWatchdogMs, config.providerRequestTimeoutMs, false));
             aiProviderIds.set(clientKey, {
                 name: modelConfig.aiProviderName ?? modelConfig.aiProviderId ?? '',
                 baseUrl: modelConfig.aiProviderBaseUrl ?? '',

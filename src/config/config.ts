@@ -26,8 +26,9 @@ export const config = {
   dbPath: optional('DB_PATH', './data/gateway.db'),
   auditRetentionDays: parseInt(optional('AUDIT_RETENTION_DAYS', '90'), 10),
   selectorType: selectorType(),
-  firstTokenTimeoutMs: parseInt(optional('FIRST_TOKEN_TIMEOUT_MS', '30000'), 10),
-  streamWatchdogMs: parseInt(optional('STREAM_WATCHDOG_MS', '120000'), 10),
+  providerStreamFirstTokenTimeoutMs: parseInt(optional('PROVIDER_STREAM_FIRST_TOKEN_TIMEOUT_MS', '30000'), 10),
+  providerStreamWatchdogMs: parseInt(optional('PROVIDER_STREAM_WATCHDOG_MS', '120000'), 10),
+  providerRequestTimeoutMs: parseInt(optional('PROVIDER_REQUEST_TIMEOUT_MS', '30000'), 10),
   seedFile: optional('SEED_FILE', './seed.yaml'),
   metricsWarmUpWindowMs: parseInt(optional('METRICS_WARM_UP_WINDOW_MS', '3600000'), 10),
 } as const;

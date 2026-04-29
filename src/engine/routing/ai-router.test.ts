@@ -24,7 +24,7 @@ function createAIRouter(models: any[]) {
   const auditStore = new AuditStore(setupTestDb());
 
   for (const m of models) {
-    clients.set(m.model, new HttpProviderClient(m, 10000, 60000, false));
+    clients.set(m.model, new HttpProviderClient(m, 10000, 60000, 10000, false));
     aiProviderIds.set(m.model, { name: m.aiProviderId ?? '', baseUrl: m.aiProviderBaseUrl ?? '' });
   }
 

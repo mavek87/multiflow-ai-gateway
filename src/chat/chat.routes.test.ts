@@ -2,6 +2,10 @@ import { describe, test, expect, afterEach, beforeEach } from 'bun:test';
 import { createTestContext, createTestApp, createTestAppWithTenantAndProvider, createTestAppWithMultipleModels, sendRequest, mockSseResponse, mockJsonResponse, mockFetch } from '@test/test-setup';
 import { CryptoService } from '@/crypto/crypto';
 
+function mockChatJson(content: string) {
+  return mockJsonResponse({ choices: [{ message: { content } }], usage: { prompt_tokens: 5, completion_tokens: 3, total_tokens: 8 } });
+}
+
 describe('chatPlugin E2E', () => {
   let app: ReturnType<typeof createTestAppWithTenantAndProvider>['app'];
   let rawApiKey: string;
@@ -20,7 +24,7 @@ describe('chatPlugin E2E', () => {
 
   test('returns 200 OK with correct response format for standard chat', async () => {
     undoFetch();
-    undoFetch = mockFetch(() => mockSseResponse('Hello from gateway'));
+    undoFetch = mockFetch(() => mockChatJson('Hello from gateway'));
 
     const res = await sendRequest(app, '/v1/chat/completions', {
       method: 'POST',
@@ -62,7 +66,7 @@ describe('chatPlugin E2E', () => {
   describe('model field routing', () => {
     test('routes correctly when model is omitted (uses all tenant providers)', async () => {
       undoFetch();
-      undoFetch = mockFetch(() => mockSseResponse('ok'));
+      undoFetch = mockFetch(() => mockChatJson('ok'));
 
       const res = await sendRequest(app, '/v1/chat/completions', {
         method: 'POST',
@@ -75,7 +79,7 @@ describe('chatPlugin E2E', () => {
 
     test('routes correctly with provider/model format', async () => {
       undoFetch();
-      undoFetch = mockFetch(() => mockSseResponse('ok'));
+      undoFetch = mockFetch(() => mockChatJson('ok'));
 
       const res = await sendRequest(app, '/v1/chat/completions', {
         method: 'POST',
@@ -108,7 +112,7 @@ describe('chatPlugin E2E', () => {
 
     test('routes correctly with provider-only format (no model specified after slash)', async () => {
       undoFetch();
-      undoFetch = mockFetch(() => mockSseResponse('ok'));
+      undoFetch = mockFetch(() => mockChatJson('ok'));
 
       const res = await sendRequest(app, '/v1/chat/completions', {
         method: 'POST',
@@ -121,7 +125,7 @@ describe('chatPlugin E2E', () => {
 
     test('routes across all tenant models when model is "multiflow-ai-gateway-auto-model"', async () => {
       undoFetch();
-      undoFetch = mockFetch(() => mockSseResponse('ok'));
+      undoFetch = mockFetch(() => mockChatJson('ok'));
 
       const res = await sendRequest(app, '/v1/chat/completions', {
         method: 'POST',
@@ -155,7 +159,7 @@ describe('chatPlugin E2E', () => {
 
     test('returns 200 when models array contains valid models', async () => {
       undoFetch();
-      undoFetch = mockFetch(() => mockSseResponse('ok'));
+      undoFetch = mockFetch(() => mockChatJson('ok'));
 
       const res = await sendRequest(multiApp, '/v1/chat/completions', {
         method: 'POST',
@@ -168,7 +172,7 @@ describe('chatPlugin E2E', () => {
 
     test('returns 200 with provider/model format in models array', async () => {
       undoFetch();
-      undoFetch = mockFetch(() => mockSseResponse('ok'));
+      undoFetch = mockFetch(() => mockChatJson('ok'));
 
       const res = await sendRequest(multiApp, '/v1/chat/completions', {
         method: 'POST',
@@ -281,7 +285,7 @@ describe('chatPlugin E2E', () => {
 
     test('accepts assistant message with null content (tool call history)', async () => {
       undoFetch();
-      undoFetch = mockFetch(() => mockSseResponse('done'));
+      undoFetch = mockFetch(() => mockChatJson('done'));
 
       const res = await sendRequest(app, '/v1/chat/completions', {
         method: 'POST',
@@ -300,7 +304,7 @@ describe('chatPlugin E2E', () => {
 
     test('accepts arguments as JSON string (OpenAI spec)', async () => {
       undoFetch();
-      undoFetch = mockFetch(() => mockSseResponse('ok'));
+      undoFetch = mockFetch(() => mockChatJson('ok'));
 
       const res = await sendRequest(app, '/v1/chat/completions', {
         method: 'POST',

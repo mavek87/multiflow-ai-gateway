@@ -7,15 +7,17 @@ const log = createLogger('MODEL-CLIENT');
 type StreamReader = { read(): Promise<{ done: boolean; value?: Uint8Array }> };
 type OpenAIChatCompletion = {
   choices?: Array<{ message?: { content?: string; tool_calls?: ToolCall[] } }>;
+  usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
 };
 type OpenAISseChunk = {
   choices?: Array<{ delta?: { content?: string } }>;
 };
 type SseStreamResult = { content: string; ttftMs: number };
-type JsonResponseResult = { content: string; toolCalls: ToolCall[] | undefined };
+type JsonResponseResult = { content: string; toolCalls: ToolCall[] | undefined; usage?: UsageMetrics };
 
 // External types
-export type OpenAIResponse = { content: string; ttftMs: number; toolCalls?: ToolCall[] };
+export type UsageMetrics = { promptTokens: number; completionTokens: number; totalTokens: number };
+export type OpenAIResponse = { content: string; ttftMs: number; toolCalls?: ToolCall[]; usage?: UsageMetrics };
 
 export interface OpenAIResponseParser {
   readonly firstTokenTimeoutMs: number | null;
@@ -110,17 +112,24 @@ export class JsonResponseParser implements OpenAIResponseParser {
 
   async parse(res: Response, start: number): Promise<OpenAIResponse> {
     const json = await res.json() as OpenAIChatCompletion;
-    const { content, toolCalls } = this.parseJsonResponse(json);
+    const { content, toolCalls, usage } = this.parseJsonResponse(json);
     log.debug({ preview: JSON.stringify(json).slice(0, 200) }, 'non-stream response');
     if (toolCalls) log.debug({ toolCalls }, 'tool_calls received');
-    return { content, ttftMs: Date.now() - start, toolCalls };
+    if (usage) log.debug({ usage }, 'usage metrics received');
+    return { content, ttftMs: Date.now() - start, toolCalls, usage };
   }
 
   parseJsonResponse(json: OpenAIChatCompletion): JsonResponseResult {
     const message = json.choices?.[0]?.message;
+    const usage = json.usage ? {
+      promptTokens: json.usage.prompt_tokens,
+      completionTokens: json.usage.completion_tokens,
+      totalTokens: json.usage.total_tokens,
+    } : undefined;
     return {
       content: message?.content ?? '',
       toolCalls: message?.tool_calls,
+      usage,
     };
   }
 }

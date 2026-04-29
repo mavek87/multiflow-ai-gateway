@@ -2,7 +2,7 @@ import { describe, test, expect } from 'bun:test';
 import { AIRouterFactory } from './ai-router.factory';
 import { createModelSelector } from '@/engine/selection/model-selector.factory';
 import type { ModelConfig } from '@/engine/client/client.types';
-import { mockSseResponse, setupTestDb } from '@test/test-setup';
+import { mockSseResponse, mockJsonResponse, setupTestDb } from '@test/test-setup';
 import { MetricsStore } from '@/engine/observability/metrics';
 import { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
 import { AuditStore } from '@/audit/audit.store';
@@ -48,7 +48,7 @@ describe('Routing Integration', () => {
 
   test('should return the correct model name even when using unique internal IDs', async () => {
     // @ts-ignore
-    globalThis.fetch = async () => mockSseResponse('hi');
+    globalThis.fetch = async () => mockJsonResponse({ choices: [{ message: { content: 'hi' } }] });
 
     const factory = createTestFactory();
     const configs: ModelConfig[] = [{

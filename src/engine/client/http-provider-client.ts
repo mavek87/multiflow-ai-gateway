@@ -12,13 +12,13 @@ import type { AIChatMessage, ModelConfig, ToolCall, ChatOptions } from '@/engine
 import type { ToolDefinition, ToolDispatcher } from '@/engine/tools/tools.types';
 import { createLogger } from '@/utils/logger';
 import { ToolCallOrchestrator } from '@/engine/tools/tools-call-orchestrator';
-import { SseResponseParser, JsonResponseParser, type OpenAIResponseParser } from './openai-response-parser';
+import { JsonResponseParser, type OpenAIResponseParser, type UsageMetrics } from './openai-response-parser';
 import { stripThinkTags } from '@/utils/text';
 
 const log = createLogger('HTTP-PROVIDER-CLIENT');
 
 export type CallProviderError = { kind: 'soft' | 'hard'; error: unknown };
-export type CallProviderSuccess = { content: string; toolCalls?: ToolCall[]; ttftMs: number; latencyMs: number };
+export type CallProviderSuccess = { content: string; toolCalls?: ToolCall[]; ttftMs: number; latencyMs: number; usage?: UsageMetrics };
 export type CallProviderResult = Result<CallProviderSuccess, CallProviderError>;
 export type CallProviderStreamSuccess = { body: ReadableStream<Uint8Array>; ttftMs: number };
 export type CallProviderStreamResult = Result<CallProviderStreamSuccess, CallProviderError>;
@@ -28,20 +28,18 @@ export class HttpProviderClient {
     private config: ModelConfig,
     private firstTokenTimeoutMs = 30000,
     private streamWatchdogMs = 120000,
+    private providerRequestTimeoutMs = 30000,
     private enableThinking = false,
   ) {}
 
   /**
    * Executes a non-streaming chat completion request.
-   * When opts.tools is provided, uses JSON response (not SSE) to capture tool_calls.
+   * Always uses JSON (stream: false) for maximum provider compatibility and to capture usage metrics.
    */
   async chat(systemPrompt: string, messages: AIChatMessage[], opts?: ChatOptions): Promise<CallProviderResult> {
     const history: AIChatMessage[] = [{ role: 'system', content: systemPrompt }, ...messages];
     const hasTools = (opts?.tools?.length ?? 0) > 0;
-    const parser: OpenAIResponseParser = hasTools
-      ? new JsonResponseParser()
-      : new SseResponseParser(this.firstTokenTimeoutMs, this.streamWatchdogMs);
-    const result = await this.callProvider(history, parser, undefined, opts);
+    const result = await this.callProvider(history, new JsonResponseParser(), undefined, opts);
     if (hasTools) return result;
     return result.map((r) => ({ ...r, content: stripThinkTags(r.content) }));
   }
@@ -110,7 +108,10 @@ export class HttpProviderClient {
     const abortController = new AbortController();
     const stream = responseParser.firstTokenTimeoutMs !== null;
 
-    const totalTimeout = setTimeout(() => abortController.abort(), this.streamWatchdogMs);
+    const totalTimeout = setTimeout(
+      () => abortController.abort(),
+      stream ? this.streamWatchdogMs : this.providerRequestTimeoutMs,
+    );
     const firstTokenTimeout = responseParser.firstTokenTimeoutMs
       ? setTimeout(() => abortController.abort(), responseParser.firstTokenTimeoutMs)
       : null;
@@ -130,7 +131,7 @@ export class HttpProviderClient {
         return err({ kind: 'hard', error: new Error(`HTTP ${response.status}`) });
       }
 
-      const { content, ttftMs, toolCalls } = await responseParser.parse(
+      const { content, ttftMs, toolCalls, usage } = await responseParser.parse(
         response,
         startTime,
         () => { if (firstTokenTimeout) clearTimeout(firstTokenTimeout); },
@@ -140,7 +141,7 @@ export class HttpProviderClient {
         return err({ kind: 'hard', error: new Error('empty response') });
       }
 
-      return ok({ content, toolCalls, ttftMs, latencyMs: Date.now() - startTime });
+      return ok({ content, toolCalls, ttftMs, latencyMs: Date.now() - startTime, usage });
     } catch (e) {
       if (e instanceof Error && e.name === 'AbortError') {
         return err({ kind: 'soft', error: e });
