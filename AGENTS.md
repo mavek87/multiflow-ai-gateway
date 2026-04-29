@@ -33,7 +33,6 @@ If you need details about the project, always refer to: [README.md](README.md)
 
 ### File Operations
 - **Use English:** All content written into files MUST be in English.
-- **No Symbol —:** DO NOT use the `—` symbol anywhere within the content of generated or modified files.
 
 ## Agent code rules
 

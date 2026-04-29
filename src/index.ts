@@ -74,6 +74,7 @@ new Elysia()
             },
         },
     }))
+    .get('/', ({redirect}) => redirect('/docs'))
     .get('/liveness', () => ({status: 'ok', timestamp: new Date().toISOString()}), {
         detail: {summary: 'Liveness probe', tags: ['Health']},
     })
@@ -132,6 +133,7 @@ function patchSwaggerExamples({request, responseValue}: { request: Request; resp
                 messages: [{role: 'user', content: 'Tell me a joke'}],
                 temperature: 0.9,
                 max_tokens: 256,
+                seed: 42,
             },
         },
         'streaming': {
