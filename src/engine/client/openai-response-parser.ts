@@ -13,11 +13,11 @@ type OpenAISseChunk = {
   choices?: Array<{ delta?: { content?: string } }>;
 };
 type SseStreamResult = { content: string; ttftMs: number };
-type JsonResponseResult = { content: string; toolCalls: ToolCall[] | undefined; usage?: UsageMetrics };
+type JsonResponseResult = { content: string; toolCalls: ToolCall[] | undefined; usage?: UsageMetrics; rawBody: Record<string, unknown> };
 
 // External types
 export type UsageMetrics = { promptTokens: number; completionTokens: number; totalTokens: number };
-export type OpenAIResponse = { content: string; ttftMs: number; toolCalls?: ToolCall[]; usage?: UsageMetrics };
+export type OpenAIResponse = { content: string; ttftMs: number; toolCalls?: ToolCall[]; usage?: UsageMetrics; rawBody?: Record<string, unknown> };
 
 export interface OpenAIResponseParser {
   readonly firstTokenTimeoutMs: number | null;
@@ -112,11 +112,11 @@ export class JsonResponseParser implements OpenAIResponseParser {
 
   async parse(res: Response, start: number): Promise<OpenAIResponse> {
     const json = await res.json() as OpenAIChatCompletion;
-    const { content, toolCalls, usage } = this.parseJsonResponse(json);
+    const { content, toolCalls, usage, rawBody } = this.parseJsonResponse(json);
     log.debug({ preview: JSON.stringify(json).slice(0, 200) }, 'non-stream response');
     if (toolCalls) log.debug({ toolCalls }, 'tool_calls received');
     if (usage) log.debug({ usage }, 'usage metrics received');
-    return { content, ttftMs: Date.now() - start, toolCalls, usage };
+    return { content, ttftMs: Date.now() - start, toolCalls, usage, rawBody };
   }
 
   parseJsonResponse(json: OpenAIChatCompletion): JsonResponseResult {
@@ -130,6 +130,7 @@ export class JsonResponseParser implements OpenAIResponseParser {
       content: message?.content ?? '',
       toolCalls: message?.tool_calls,
       usage,
+      rawBody: json as Record<string, unknown>,
     };
   }
 }

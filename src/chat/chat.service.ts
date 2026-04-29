@@ -1,11 +1,10 @@
 import {ok, err, type Result} from 'neverthrow';
 import type {Tenant} from '@/tenant/tenant.types';
 import type {ModelConfig, ChatOptions} from '@/engine/client/client.types';
-import type {ToolCall, ChatCompletion, ChatHandlerResult} from '@/chat/chat.types';
+import type {ChatHandlerResult} from '@/chat/chat.types';
 import type {ChatServiceError, ChatServiceRequest} from '@/chat/chat.types';
 import {AIRouterFactory} from '@/engine/routing/ai-router.factory';
 import {createLogger} from '@/utils/logger';
-import {randomUUID} from 'node:crypto';
 
 const log = createLogger('CHAT_SVC');
 
@@ -43,7 +42,7 @@ export class ChatService {
 
             return ok({
                 isStream: false as const,
-                payload: this.buildChatResponsePayload(result.model, result.content, result.toolCalls),
+                payload: { ...result.rawBody, model: result.model },
                 model: result.model,
                 aiProvider: result.aiProvider || result.model,
                 aiProviderUrl: result.aiProviderUrl,
@@ -83,22 +82,4 @@ export class ChatService {
         return hasOpts ? opts : undefined;
     }
 
-    private buildChatResponsePayload(model: string, content: string, toolCalls?: ToolCall[]): ChatCompletion {
-        const hasToolCalls = toolCalls && toolCalls.length > 0;
-        return {
-            id: `chatcmpl-${randomUUID()}`,
-            object: 'chat.completion',
-            created: Math.floor(Date.now() / 1000),
-            model,
-            choices: [{
-                index: 0,
-                message: {
-                    role: 'assistant',
-                    content: hasToolCalls ? null : content,
-                    ...(hasToolCalls ? {tool_calls: toolCalls} : {}),
-                },
-                finish_reason: hasToolCalls ? 'tool_calls' : 'stop',
-            }],
-        };
-    }
 }

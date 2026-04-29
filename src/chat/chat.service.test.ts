@@ -20,8 +20,9 @@ describe('ChatService', () => {
   }
 
   test('handles standard chat request successfully', async () => {
+    const fakeRawBody = { id: 'chatcmpl-1', object: 'chat.completion', created: 1, model: 'gpt-4o', choices: [{ index: 0, message: { role: 'assistant', content: 'Mocked reply' }, finish_reason: 'stop' }] };
     const mockClient: Pick<AIRouter, 'chat' | 'chatStream'> = {
-      chat: async () => ({ model: 'gpt-4o', content: 'Mocked reply', aiProviderId: 'prov-1', aiProvider: 'openai', aiProviderUrl: 'https://api.openai.com' }),
+      chat: async () => ({ model: 'gpt-4o', content: 'Mocked reply', rawBody: fakeRawBody, aiProviderId: 'prov-1', aiProvider: 'openai', aiProviderUrl: 'https://api.openai.com' }),
       chatStream: async () => null,
     };
     const service = new ChatService(makeFactory(mockClient));
@@ -31,8 +32,9 @@ describe('ChatService', () => {
     const value = result._unsafeUnwrap();
     expect(value.isStream).toBe(false);
     if (!value.isStream) {
+      const payload = value.payload as typeof fakeRawBody;
       expect(value.model).toBe('gpt-4o');
-      expect(value.payload.choices[0]!.message.content).toBe('Mocked reply');
+      expect(payload.choices[0]!.message.content).toBe('Mocked reply');
     }
   });
 
@@ -117,10 +119,11 @@ describe('ChatService', () => {
       function: { name: 'get_weather', arguments: '{"city":"Rome"}' },
     };
 
-    test('sets finish_reason to tool_calls and content to null when provider returns tool_calls', async () => {
+    test('forwards finish_reason tool_calls from rawBody when provider returns tool_calls', async () => {
+      const fakeRawBody = { id: 'chatcmpl-2', object: 'chat.completion', created: 1, model: 'gpt-4o', choices: [{ index: 0, message: { role: 'assistant', content: null, tool_calls: [fakeToolCall] }, finish_reason: 'tool_calls' }] };
       const mockClient: Pick<AIRouter, 'chat' | 'chatStream'> = {
         chat: async () => ({
-          model: 'gpt-4o', content: '', toolCalls: [fakeToolCall],
+          model: 'gpt-4o', content: '', toolCalls: [fakeToolCall], rawBody: fakeRawBody,
           aiProviderId: 'p', aiProvider: 'a', aiProviderUrl: 'u',
         }),
         chatStream: async () => null,
@@ -135,16 +138,18 @@ describe('ChatService', () => {
       expect(result.isOk()).toBe(true);
       const value = result._unsafeUnwrap();
       if (!value.isStream) {
-        expect(value.payload.choices[0]!.finish_reason).toBe('tool_calls');
-        expect(value.payload.choices[0]!.message.content).toBeNull();
-        expect(value.payload.choices[0]!.message.tool_calls).toEqual([fakeToolCall]);
+        const payload = value.payload as typeof fakeRawBody;
+        expect(payload.choices[0]!.finish_reason).toBe('tool_calls');
+        expect(payload.choices[0]!.message.content).toBeNull();
+        expect(payload.choices[0]!.message.tool_calls).toEqual([fakeToolCall]);
       }
     });
 
-    test('sets finish_reason to stop and preserves content when no tool_calls', async () => {
+    test('forwards finish_reason stop from rawBody when no tool_calls', async () => {
+      const fakeRawBody = { id: 'chatcmpl-3', object: 'chat.completion', created: 1, model: 'gpt-4o', choices: [{ index: 0, message: { role: 'assistant', content: 'It is sunny.', tool_calls: undefined }, finish_reason: 'stop' }] };
       const mockClient: Pick<AIRouter, 'chat' | 'chatStream'> = {
         chat: async () => ({
-          model: 'gpt-4o', content: 'It is sunny.', toolCalls: undefined,
+          model: 'gpt-4o', content: 'It is sunny.', toolCalls: undefined, rawBody: fakeRawBody,
           aiProviderId: 'p', aiProvider: 'a', aiProviderUrl: 'u',
         }),
         chatStream: async () => null,
@@ -159,9 +164,10 @@ describe('ChatService', () => {
       expect(result.isOk()).toBe(true);
       const value = result._unsafeUnwrap();
       if (!value.isStream) {
-        expect(value.payload.choices[0]!.finish_reason).toBe('stop');
-        expect(value.payload.choices[0]!.message.content).toBe('It is sunny.');
-        expect(value.payload.choices[0]!.message.tool_calls).toBeUndefined();
+        const payload = value.payload as typeof fakeRawBody;
+        expect(payload.choices[0]!.finish_reason).toBe('stop');
+        expect(payload.choices[0]!.message.content).toBe('It is sunny.');
+        expect(payload.choices[0]!.message.tool_calls).toBeUndefined();
       }
     });
 

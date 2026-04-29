@@ -60,7 +60,7 @@ export class AIRouter {
                 const modelMeta = this.aiProviderIds.get(result.model);
                 const displayName = modelMeta?.modelName ?? result.model;
                 log.info({model: displayName, latencyMs: result.latencyMs, ttftMs: result.ttftMs}, 'model succeeded');
-                return {content: result.content, toolCalls: result.toolCalls, model: displayName, aiProviderId: result.aiProviderId, aiProvider: result.aiProvider, aiProviderUrl: result.aiProviderUrl};
+                return {content: result.content, toolCalls: result.toolCalls, rawBody: result.rawBody, model: displayName, aiProviderId: result.aiProviderId, aiProvider: result.aiProvider, aiProviderUrl: result.aiProviderUrl};
             }
 
             return null;

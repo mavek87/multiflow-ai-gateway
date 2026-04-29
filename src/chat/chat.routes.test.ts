@@ -3,7 +3,7 @@ import { createTestContext, createTestApp, createTestAppWithTenantAndProvider, c
 import { CryptoService } from '@/crypto/crypto';
 
 function mockChatJson(content: string) {
-  return mockJsonResponse({ choices: [{ message: { content } }], usage: { prompt_tokens: 5, completion_tokens: 3, total_tokens: 8 } });
+  return mockJsonResponse({ id: 'chatcmpl-test', object: 'chat.completion', created: 1, model: 'gpt-4o', choices: [{ index: 0, message: { role: 'assistant', content }, finish_reason: 'stop' }], usage: { prompt_tokens: 5, completion_tokens: 3, total_tokens: 8 } });
 }
 
 describe('chatPlugin E2E', () => {
@@ -263,7 +263,7 @@ describe('chatPlugin E2E', () => {
       const toolCall = { id: 'call_1', type: 'function', function: { name: 'get_weather', arguments: '{"city":"Rome"}' } };
       undoFetch();
       undoFetch = mockFetch(() => mockJsonResponse({
-        choices: [{ message: { content: null, tool_calls: [toolCall] } }],
+        choices: [{ index: 0, message: { role: 'assistant', content: null, tool_calls: [toolCall] }, finish_reason: 'tool_calls' }],
       }));
 
       const res = await sendRequest(app, '/v1/chat/completions', {

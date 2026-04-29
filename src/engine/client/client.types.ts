@@ -13,6 +13,7 @@ export interface AIBaseResponse {
 export interface AIChatResponse extends AIBaseResponse {
   content: string;
   toolCalls?: ToolCall[];
+  rawBody?: Record<string, unknown>;
 }
 
 export interface AIChatStreamResponse extends AIBaseResponse {

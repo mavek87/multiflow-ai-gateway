@@ -33,16 +33,4 @@ export interface ChatServiceRequest {
 
 export type ChatHandlerResult =
     | {isStream: true; payload: ReadableStream<Uint8Array>; model: string; aiProvider: string; aiProviderUrl: string}
-    | {isStream: false; payload: ChatCompletion; model: string; aiProvider: string; aiProviderUrl: string};
-
-export interface ChatCompletion {
-    id: string;
-    object: 'chat.completion';
-    created: number;
-    model: string;
-    choices: Array<{
-        index: number;
-        message: {role: 'assistant'; content: string | null; tool_calls?: ToolCall[]};
-        finish_reason: 'stop' | 'length' | 'tool_calls' | 'content_filter';
-    }>;
-}
+    | {isStream: false; payload: Record<string, unknown>; model: string; aiProvider: string; aiProviderUrl: string};

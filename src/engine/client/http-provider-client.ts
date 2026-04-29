@@ -18,7 +18,7 @@ import { stripThinkTags } from '@/utils/text';
 const log = createLogger('HTTP-PROVIDER-CLIENT');
 
 export type CallProviderError = { kind: 'soft' | 'hard'; error: unknown };
-export type CallProviderSuccess = { content: string; toolCalls?: ToolCall[]; ttftMs: number; latencyMs: number; usage?: UsageMetrics };
+export type CallProviderSuccess = { content: string; toolCalls?: ToolCall[]; ttftMs: number; latencyMs: number; usage?: UsageMetrics; rawBody?: Record<string, unknown> };
 export type CallProviderResult = Result<CallProviderSuccess, CallProviderError>;
 export type CallProviderStreamSuccess = { body: ReadableStream<Uint8Array>; ttftMs: number };
 export type CallProviderStreamResult = Result<CallProviderStreamSuccess, CallProviderError>;
@@ -131,7 +131,7 @@ export class HttpProviderClient {
         return err({ kind: 'hard', error: new Error(`HTTP ${response.status}`) });
       }
 
-      const { content, ttftMs, toolCalls, usage } = await responseParser.parse(
+      const { content, ttftMs, toolCalls, usage, rawBody } = await responseParser.parse(
         response,
         startTime,
         () => { if (firstTokenTimeout) clearTimeout(firstTokenTimeout); },
@@ -141,7 +141,7 @@ export class HttpProviderClient {
         return err({ kind: 'hard', error: new Error('empty response') });
       }
 
-      return ok({ content, toolCalls, ttftMs, latencyMs: Date.now() - startTime, usage });
+      return ok({ content, toolCalls, ttftMs, latencyMs: Date.now() - startTime, usage, rawBody });
     } catch (e) {
       if (e instanceof Error && e.name === 'AbortError') {
         return err({ kind: 'soft', error: e });
