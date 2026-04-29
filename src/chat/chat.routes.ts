@@ -1,5 +1,6 @@
 import {Elysia} from 'elysia';
 import type {TenantStore} from '@/tenant/tenant.store';
+import {MULTIFLOW_AUTO_MODEL} from '@/tenant/tenant.types';
 import {badRequestResponse, internalErrorResponse, tooManyRequestsResponse, unprocessableResponse} from '@/utils/http';
 import {ChatService} from './chat.service';
 import {AIRouterFactory} from '@/engine/routing/ai-router.factory';
@@ -112,7 +113,7 @@ export function chatRoutePlugin(
 Requires a gateway API key (\`Authorization: Bearer gw_xxx\`). Routes the request through the best available model using intelligent selection (UCB1-Tuned by default, configurable via \`SELECTOR_TYPE\`) and circuit breaker.
 
 **Model selection**
-- \`model\` (optional) - restricts routing to providers that expose a model with that exact name. Supports \`"provider/model"\` syntax to target a specific provider. Pass \`"multiflow-ai-gateway-auto-model"\` to let the gateway route freely across all tenant models (useful for clients that require a non-empty model field).
+- \`model\` (optional) - restricts routing to providers that expose a model with that exact name. Supports \`"provider/model"\` syntax to target a specific provider. Pass \`"${MULTIFLOW_AUTO_MODEL}"\` to let the gateway route freely across all tenant models (useful for clients that require a non-empty model field).
 - \`models\` (gateway extension, array) - restricts routing to an explicit subset of models. Takes precedence over \`model\`. Cannot be used together with \`model\`.
 
 **Tool calling pass-through**

@@ -3,7 +3,7 @@ import { TenantModelPoolResolver } from './tenant-model-pool.resolver';
 import { createTestContext, seedTestTenantAndProvider, seedTestTenantWithMultipleModels } from '@test/test-setup';
 import type { TenantStore } from '@/tenant/tenant.store';
 import type { ProviderStore } from '@/provider/provider.store';
-import type { Tenant } from '@/tenant/tenant.types';
+import { type Tenant, MULTIFLOW_AUTO_MODEL } from '@/tenant/tenant.types';
 import { CryptoService } from '@/crypto/crypto';
 
 describe('TenantModelPoolResolver', () => {
@@ -74,10 +74,10 @@ describe('TenantModelPoolResolver', () => {
       }
     });
 
-    test('routes across all tenant models when model is "multiflow-ai-gateway-auto-model"', () => {
+    test(`routes across all tenant models when model is "${MULTIFLOW_AUTO_MODEL}"`, () => {
       const result = resolver.resolve({
         tenantId: tenant.id,
-        model: 'multiflow-ai-gateway-auto-model'
+        model: MULTIFLOW_AUTO_MODEL
       });
 
       expect(result.isOk()).toBe(true);
@@ -309,7 +309,7 @@ describe('TenantModelPoolResolver', () => {
 
       const result = resolver.resolve({
         tenantId: seeded.tenant.id,
-        model: 'multiflow-ai-gateway-auto-model',
+        model: MULTIFLOW_AUTO_MODEL,
         forceAiProviderId: providerA.id
       });
 

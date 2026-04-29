@@ -1,9 +1,12 @@
 import { describe, test, expect, afterEach, beforeEach } from 'bun:test';
 import { createTestContext, createTestApp, createTestAppWithTenantAndProvider, createTestAppWithMultipleModels, sendRequest, mockSseResponse, mockJsonResponse, mockFetch } from '@test/test-setup';
 import { CryptoService } from '@/crypto/crypto';
+import { MULTIFLOW_AUTO_MODEL } from '@/tenant/tenant.types';
+
+import { createFakeChatCompletionResponse } from '@test/fixtures/chat-fixtures';
 
 function mockChatJson(content: string) {
-  return mockJsonResponse({ id: 'chatcmpl-test', object: 'chat.completion', created: 1, model: 'gpt-4o', choices: [{ index: 0, message: { role: 'assistant', content }, finish_reason: 'stop' }], usage: { prompt_tokens: 5, completion_tokens: 3, total_tokens: 8 } });
+  return mockJsonResponse(createFakeChatCompletionResponse(content));
 }
 
 describe('chatPlugin E2E', () => {
@@ -123,14 +126,14 @@ describe('chatPlugin E2E', () => {
       expect(res.status).toBe(200);
     });
 
-    test('routes across all tenant models when model is "multiflow-ai-gateway-auto-model"', async () => {
+    test(`routes across all tenant models when model is "${MULTIFLOW_AUTO_MODEL}"`, async () => {
       undoFetch();
       undoFetch = mockFetch(() => mockChatJson('ok'));
 
       const res = await sendRequest(app, '/v1/chat/completions', {
         method: 'POST',
         apiKey: rawApiKey,
-        body: { model: 'multiflow-ai-gateway-auto-model', messages: [{ role: 'user', content: 'hi' }] }
+        body: { model: MULTIFLOW_AUTO_MODEL, messages: [{ role: 'user', content: 'hi' }] }
       });
 
       expect(res.status).toBe(200);

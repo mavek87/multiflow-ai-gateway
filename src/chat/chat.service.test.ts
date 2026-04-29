@@ -1,12 +1,8 @@
 import { describe, test, expect, afterEach } from 'bun:test';
 import { ChatService } from './chat.service';
 import { AIRouterFactory } from '@/engine/routing/ai-router.factory';
-import type { Tenant } from '@/tenant/tenant.types';
-import type { ModelConfig } from '@/engine/client/client.types';
 import type { AIRouter } from '@/engine/routing/ai-router';
-
-const fakeTenant = { id: 'tenant-1', name: 'Test' } as Tenant;
-const fakeConfigs: ModelConfig[] = [{ url: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o', apiKey: 'sk-fake' }];
+import { fakeTenant, fakeModelConfigs, createFakeChatCompletionResponse } from '@test/fixtures/chat-fixtures';
 
 const originalFetch = globalThis.fetch;
 
@@ -20,15 +16,16 @@ describe('ChatService', () => {
   }
 
   test('handles standard chat request successfully', async () => {
-    const fakeRawBody = { id: 'chatcmpl-1', object: 'chat.completion', created: 1, model: 'gpt-4o', choices: [{ index: 0, message: { role: 'assistant', content: 'Mocked reply' }, finish_reason: 'stop' }] };
+    const fakeRawBody = createFakeChatCompletionResponse('Mocked reply');
     const mockClient: Pick<AIRouter, 'chat' | 'chatStream'> = {
       chat: async () => ({ model: 'gpt-4o', content: 'Mocked reply', rawBody: fakeRawBody, aiProviderId: 'prov-1', aiProvider: 'openai', aiProviderUrl: 'https://api.openai.com' }),
       chatStream: async () => null,
     };
     const service = new ChatService(makeFactory(mockClient));
 
-    const result = await service.handleChatRequest(fakeTenant, { messages: [{ role: 'user', content: 'Hello' }] }, fakeConfigs);
-    expect(result.isOk()).toBe(true);
+    const result = await service.handleChatRequest(fakeTenant, { messages: [{ role: 'user', content: 'Hello' }] }, fakeModelConfigs);
+    
+    expect(result).toSucceed();
     const value = result._unsafeUnwrap();
     expect(value.isStream).toBe(false);
     if (!value.isStream) {
@@ -46,8 +43,9 @@ describe('ChatService', () => {
     };
     const service = new ChatService(makeFactory(mockClient));
 
-    const result = await service.handleChatRequest(fakeTenant, { messages: [{ role: 'user', content: 'Hello' }], stream: true }, fakeConfigs);
-    expect(result.isOk()).toBe(true);
+    const result = await service.handleChatRequest(fakeTenant, { messages: [{ role: 'user', content: 'Hello' }], stream: true }, fakeModelConfigs);
+    
+    expect(result).toSucceed();
     const value = result._unsafeUnwrap();
     expect(value.isStream).toBe(true);
     if (value.isStream) {
@@ -62,9 +60,8 @@ describe('ChatService', () => {
     };
     const service = new ChatService(makeFactory(mockClient));
 
-    const result = await service.handleChatRequest(fakeTenant, { messages: [{ role: 'user', content: 'Hello' }], stream: true }, fakeConfigs);
-    expect(result.isErr()).toBe(true);
-    expect(result._unsafeUnwrapErr()).toEqual({ code: 'ai_unavailable' });
+    const result = await service.handleChatRequest(fakeTenant, { messages: [{ role: 'user', content: 'Hello' }], stream: true }, fakeModelConfigs);
+    expect(result).toFailWith({ code: 'ai_unavailable' });
   });
 
   describe('system prompt resolution', () => {
@@ -78,7 +75,7 @@ describe('ChatService', () => {
       await service.handleChatRequest(fakeTenant, {
         messages: [{ role: 'user', content: 'hi' }],
         system: 'You are a pirate.',
-      }, fakeConfigs);
+      }, fakeModelConfigs);
       expect(capturedSystemPrompt).toBe('You are a pirate.');
     });
 
@@ -99,7 +96,7 @@ describe('ChatService', () => {
           { role: 'system', content: 'You are helpful.' },
           { role: 'user', content: 'hi' },
         ],
-      }, fakeConfigs);
+      }, fakeModelConfigs);
       expect(capturedSystemPrompt).toBe('You are helpful.');
       expect(capturedMessages).toEqual([{ role: 'user', content: 'hi' }]);
     });
@@ -113,7 +110,7 @@ describe('ChatService', () => {
       const service = new ChatService(makeFactory(mockClient));
       await service.handleChatRequest(fakeTenant, {
         messages: [{ role: 'user', content: 'hi' }],
-      }, fakeConfigs);
+      }, fakeModelConfigs);
       expect(capturedSystemPrompt).toBe('');
     });
   });
@@ -139,9 +136,9 @@ describe('ChatService', () => {
       const result = await service.handleChatRequest(fakeTenant, {
         messages: [{ role: 'user', content: 'What is the weather in Rome?' }],
         tools: [{ type: 'function', function: { name: 'get_weather', description: 'Get weather', parameters: {} } }],
-      }, fakeConfigs);
+      }, fakeModelConfigs);
 
-      expect(result.isOk()).toBe(true);
+      expect(result).toSucceed();
       const value = result._unsafeUnwrap();
       if (!value.isStream) {
         const payload = value.payload as typeof fakeRawBody;
@@ -165,9 +162,9 @@ describe('ChatService', () => {
       const result = await service.handleChatRequest(fakeTenant, {
         messages: [{ role: 'user', content: 'What is the weather?' }],
         tools: [{ type: 'function', function: { name: 'get_weather', description: 'Get weather', parameters: {} } }],
-      }, fakeConfigs);
+      }, fakeModelConfigs);
 
-      expect(result.isOk()).toBe(true);
+      expect(result).toSucceed();
       const value = result._unsafeUnwrap();
       if (!value.isStream) {
         const payload = value.payload as typeof fakeRawBody;
@@ -193,7 +190,7 @@ describe('ChatService', () => {
         temperature: 0.2,
         max_tokens: 512,
         seed: 42,
-      }, fakeConfigs);
+      }, fakeModelConfigs);
 
       expect(capturedOpts).toMatchObject({ temperature: 0.2, max_tokens: 512, seed: 42 });
     });

@@ -1,9 +1,16 @@
 import {err, ok, type Result} from 'neverthrow';
 import type {TenantStore} from '@/tenant/tenant.store';
-import type {TenantModelConfigKey, TenantModelConfigError} from './tenant.types';
+import {
+    type TenantModelConfigKey,
+    type TenantModelConfigError,
+    type TenantModelConfig,
+    MULTIFLOW_AUTO_MODEL
+} from './tenant.types';
 import type {ModelConfig} from '@/engine/client/client.types';
 import {buildProviderUrl} from '@/provider/provider.utils';
 import type {CryptoService} from '@/crypto/crypto';
+
+type RequestedModel = { providerName?: string; model: string };
 
 export class TenantModelPoolResolver {
     constructor(
@@ -12,54 +19,68 @@ export class TenantModelPoolResolver {
     ) {
     }
 
-    public resolve({
-                       tenantId,
-                       model,
-                       models,
-                       forceAiProviderId
-                   }: TenantModelConfigKey): Result<ModelConfig[], TenantModelConfigError> {
+    public resolve(key: TenantModelConfigKey): Result<ModelConfig[], TenantModelConfigError> {
+        const {tenantId, model, models, forceAiProviderId} = key;
+
         if (model && models) {
             return err({code: 'model_ambiguous_selection'});
         }
 
-        const modelConfigs = this.tenantStore.getTenantModelConfigs(tenantId, forceAiProviderId);
-        if (modelConfigs.length === 0) return err({code: 'no_usable_model'});
+        const allModels = this.tenantStore.getTenantModelConfigs(tenantId, forceAiProviderId);
+        if (allModels.length === 0) {
+            return err({code: 'no_usable_model'});
+        }
 
-        let matchingConfigs;
+        const requestedModels = this.getRequestedModels(model, models);
+        const matchingModels = this.filterMatchingModels(allModels, requestedModels);
 
-        const effectiveModel = model === 'multiflow-ai-gateway-auto-model' ? undefined : model;
-        const requestedModelsAndProviders = models
-            ? models.map(this.parseModelString)
-            : effectiveModel
-                ? [this.parseModelString(effectiveModel)]
-                : undefined;
+        if (requestedModels && matchingModels.length === 0) {
+            return err({
+                code: 'model_not_found',
+                model: this.formatMissingModels(requestedModels)
+            });
+        }
 
-        if (requestedModelsAndProviders && requestedModelsAndProviders.length > 0) {
-            const seen = new Set<string>();
-            matchingConfigs = requestedModelsAndProviders.flatMap(({model: m, providerName}) => {
-                const results = modelConfigs.filter((mc) => {
+        return ok(this.mapToModelConfigs(matchingModels));
+    }
+
+    private getRequestedModels(model?: string, models?: string[]): RequestedModel[] | undefined {
+        if (models && models.length > 0) {
+            return models.map(m => this.parseModelString(m));
+        }
+
+        if (model && model !== MULTIFLOW_AUTO_MODEL) {
+            return [this.parseModelString(model)];
+        }
+
+        return undefined;
+    }
+
+    private filterMatchingModels(allModels: TenantModelConfig[], requestedModels?: RequestedModel[]): TenantModelConfig[] {
+        if (!requestedModels || requestedModels.length === 0) {
+            return allModels;
+        }
+
+        const seen = new Set<string>();
+        return requestedModels.flatMap(({model: m, providerName}) => {
+            return allModels
+                .filter((mc) => {
                     const modelMatch = m ? mc.modelName === m : true;
-                    const providerMatch = providerName ? mc.aiProviderName.toLowerCase() === providerName.toLowerCase() : true;
+                    const providerMatch = providerName
+                        ? mc.aiProviderName.toLowerCase() === providerName.toLowerCase()
+                        : true;
                     return modelMatch && providerMatch;
-                });
-                return results.filter((mc) => {
+                })
+                .filter((mc) => {
                     if (seen.has(mc.id)) return false;
                     seen.add(mc.id);
                     return true;
                 });
-            });
+        });
+    }
 
-            if (matchingConfigs.length === 0) {
-                return err({
-                    code: 'model_not_found',
-                    model: requestedModelsAndProviders.map(({providerName, model: m}) => [providerName, m].filter(Boolean).join('/')).join(', ')
-                });
-            }
-        } else {
-            matchingConfigs = modelConfigs;
-        }
-
-        const arrayOfModelConfig: ModelConfig[] = matchingConfigs.map((modelConfig) => ({
+    private mapToModelConfigs(configs: TenantModelConfig[]): ModelConfig[] {
+        return configs.map((modelConfig) => ({
             url: buildProviderUrl(modelConfig.baseUrl, modelConfig.aiProviderType),
             model: modelConfig.modelName,
             apiKey: modelConfig.aiProviderApiKeyEncrypted
@@ -71,11 +92,15 @@ export class TenantModelPoolResolver {
             aiProviderBaseUrl: modelConfig.baseUrl,
             aiProviderModelId: modelConfig.aiProviderModelId,
         }));
-
-        return ok(arrayOfModelConfig);
     }
 
-    private parseModelString(entry: string): { providerName?: string; model: string } {
+    private formatMissingModels(requested: RequestedModel[]): string {
+        return requested
+            .map(({providerName, model: m}) => [providerName, m].filter(Boolean).join('/'))
+            .join(', ');
+    }
+
+    private parseModelString(entry: string): RequestedModel {
         const slashIdx = entry.indexOf('/');
         if (slashIdx === -1) {
             return {model: entry};
