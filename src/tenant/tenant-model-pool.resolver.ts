@@ -5,24 +5,40 @@ import type {ModelConfig} from '@/engine/client/client.types';
 import {buildProviderUrl} from '@/provider/provider.utils';
 import type {CryptoService} from '@/crypto/crypto';
 
-export class TenantModelConfigResolver {
+export class TenantModelPoolResolver {
     constructor(
         private readonly tenantStore: TenantStore,
         private readonly cryptoService: CryptoService
     ) {
     }
 
-    public resolve({tenantId, requestedModel, requestedProviderName, requestedModelsAndProviders, forceAiProviderId}: TenantModelConfigKey): Result<ModelConfig[], TenantModelConfigError> {
+    public resolve({
+                       tenantId,
+                       model,
+                       models,
+                       forceAiProviderId
+                   }: TenantModelConfigKey): Result<ModelConfig[], TenantModelConfigError> {
+        if (model && models) {
+            return err({code: 'model_ambiguous_selection'});
+        }
+
         const modelConfigs = this.tenantStore.getTenantModelConfigs(tenantId, forceAiProviderId);
-        if (modelConfigs.length === 0) return err({code: 'no_providers'});
+        if (modelConfigs.length === 0) return err({code: 'no_usable_model'});
 
         let matchingConfigs;
 
+        const effectiveModel = model === 'multiflow-ai-gateway-auto-model' ? undefined : model;
+        const requestedModelsAndProviders = models
+            ? models.map(this.parseModelString)
+            : effectiveModel
+                ? [this.parseModelString(effectiveModel)]
+                : undefined;
+
         if (requestedModelsAndProviders && requestedModelsAndProviders.length > 0) {
             const seen = new Set<string>();
-            matchingConfigs = requestedModelsAndProviders.flatMap(({model, providerName}) => {
+            matchingConfigs = requestedModelsAndProviders.flatMap(({model: m, providerName}) => {
                 const results = modelConfigs.filter((mc) => {
-                    const modelMatch = model ? mc.modelName === model : true;
+                    const modelMatch = m ? mc.modelName === m : true;
                     const providerMatch = providerName ? mc.aiProviderName.toLowerCase() === providerName.toLowerCase() : true;
                     return modelMatch && providerMatch;
                 });
@@ -34,22 +50,13 @@ export class TenantModelConfigResolver {
             });
 
             if (matchingConfigs.length === 0) {
-                return err({code: 'model_not_found', model: requestedModelsAndProviders.map(({providerName, model}) => [providerName, model].filter(Boolean).join('/')).join(', ')});
+                return err({
+                    code: 'model_not_found',
+                    model: requestedModelsAndProviders.map(({providerName, model: m}) => [providerName, m].filter(Boolean).join('/')).join(', ')
+                });
             }
         } else {
-            matchingConfigs = requestedModel
-                ? modelConfigs.filter((modelConfig) => modelConfig.modelName === requestedModel)
-                : modelConfigs;
-
-            if (requestedProviderName) {
-                matchingConfigs = matchingConfigs.filter(
-                    (modelConfig) => modelConfig.aiProviderName.toLowerCase() === requestedProviderName.toLowerCase()
-                );
-            }
-
-            if ((requestedModel || requestedProviderName) && matchingConfigs.length === 0) {
-                return err({code: 'model_not_found', model: requestedModel ?? requestedProviderName ?? ''});
-            }
+            matchingConfigs = modelConfigs;
         }
 
         const arrayOfModelConfig: ModelConfig[] = matchingConfigs.map((modelConfig) => ({
@@ -66,5 +73,16 @@ export class TenantModelConfigResolver {
         }));
 
         return ok(arrayOfModelConfig);
+    }
+
+    private parseModelString(entry: string): { providerName?: string; model: string } {
+        const slashIdx = entry.indexOf('/');
+        if (slashIdx === -1) {
+            return {model: entry};
+        }
+        return {
+            providerName: entry.slice(0, slashIdx),
+            model: entry.slice(slashIdx + 1)
+        };
     }
 }

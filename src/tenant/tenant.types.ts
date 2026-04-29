@@ -1,12 +1,12 @@
 export type TenantModelConfigError =
-    | { code: 'no_providers' }
-    | { code: 'model_not_found'; model: string };
+    | { code: 'no_usable_model' }
+    | { code: 'model_not_found'; model: string }
+    | { code: 'model_ambiguous_selection' };
 
 export interface TenantModelConfigKey {
     tenantId: string;
-    requestedModel?: string;
-    requestedProviderName?: string;
-    requestedModelsAndProviders?: Array<{model?: string; providerName?: string}>;
+    model?: string;
+    models?: string[];
     forceAiProviderId?: string | null;
 }
 

@@ -241,7 +241,7 @@ Auth Module (src/auth/auth.middleware.ts)
 Chat Module (src/chat/chat.routes.ts)
   |
   v
-Tenant Resolver (src/tenant/tenant-model-config.resolver.ts)
+Tenant Resolver (src/tenant/tenant-model-pool.resolver.ts)
   |
   v
 AIRouter (src/engine/routing/ai-router.ts)

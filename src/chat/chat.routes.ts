@@ -4,7 +4,7 @@ import {badRequestResponse, internalErrorResponse, tooManyRequestsResponse, unpr
 import {ChatService} from './chat.service';
 import {AIRouterFactory} from '@/engine/routing/ai-router.factory';
 import {createModelSelector} from '@/engine/selection/model-selector.factory';
-import {TenantModelConfigResolver} from '@/tenant/tenant-model-config.resolver';
+import {TenantModelPoolResolver} from '@/tenant/tenant-model-pool.resolver';
 import {tenantAuthPlugin} from '@/auth/auth.middleware';
 import {ChatRequestSchema} from './chat.schema';
 import {config} from '@/config/config';
@@ -30,47 +30,26 @@ export function chatRoutePlugin(
         auditStore,
     );
     const chatService = new ChatService(aiRouterFactory);
-    const tenantModelConfResolver = new TenantModelConfigResolver(tenantStore, cryptoService);
-
-    function parseModelString(entry: string): { providerName?: string; model: string } {
-        const slashIdx = entry.indexOf('/');
-        if (slashIdx === -1) {
-            return {model: entry};
-        }
-        return {
-            providerName: entry.slice(0, slashIdx),
-            model: entry.slice(slashIdx + 1)
-        };
-    }
+    const tenantModelPoolResolver = new TenantModelPoolResolver(tenantStore, cryptoService);
 
     return new Elysia()
         .use(tenantAuthPlugin(tenantStore))
         .guard({detail: {security: [{GatewayApiKey: []}]}}) // This guard applies the security requirement for Swagger UI / OpenAPI docs
         .post('/v1/chat/completions', async ({body, tenant}) => {
 
-            if (body.model && body.models) {
-                return badRequestResponse("Cannot use both 'model' and 'models' fields simultaneously");
-            }
-
-            const effectiveModel = body.model === 'multiflow-ai-gateway-auto-model' ? undefined : body.model;
-            const {
-                providerName: requestedProviderName,
-                model: requestedModel
-            } = effectiveModel ? parseModelString(effectiveModel) : {providerName: undefined, model: undefined};
-
-            const requestedModelsAndProviders = body.models?.map(parseModelString);
-
-            const modelConfigsResult = tenantModelConfResolver.resolve({
+            const modelConfigsResult = tenantModelPoolResolver.resolve({
                 tenantId: tenant!.id,
-                requestedModel,
-                requestedProviderName,
-                requestedModelsAndProviders: requestedModelsAndProviders,
+                model: body.model,
+                models: body.models,
                 forceAiProviderId: tenant!.forceAiProviderId
             });
+
             if (modelConfigsResult.isErr()) {
                 switch (modelConfigsResult.error.code) {
-                    case 'no_providers':
-                        return unprocessableResponse('No providers configured for this tenant');
+                    case 'model_ambiguous_selection':
+                        return badRequestResponse("Cannot use both 'model' and 'models' fields simultaneously");
+                    case 'no_usable_model':
+                        return unprocessableResponse('No usable models configured for this tenant');
                     case 'model_not_found':
                         return badRequestResponse(`Model '${modelConfigsResult.error.model}' is not available for this tenant`);
                 }
@@ -101,22 +80,21 @@ export function chatRoutePlugin(
             const chat = chatResult.value;
             if (chat.isStream) {
                 return new Response(chat.payload, {
-                        headers: {
-                            'Content-Type': 'text/event-stream',
-                            'Cache-Control': 'no-cache',
-                            'Connection': 'keep-alive',
-                            'X-Model': chat.model,
-                            'X-AI-Provider': chat.aiProvider,
-                            'X-AI-Provider-URL': chat.aiProviderUrl,
-                        }
-                    }
-                );
+                    headers: {
+                        'Content-Type': 'text/event-stream',
+                        'Cache-Control': 'no-cache',
+                        'Connection': 'keep-alive',
+                        'X-Model': chat.model,
+                        'X-AI-Provider': chat.aiProvider,
+                        'X-AI-Provider-URL': chat.aiProviderUrl,
+                    },
+                });
             } else {
                 return Response.json(chat.payload, {
                     headers: {
                         'X-Model': chat.model,
                         'X-AI-Provider': chat.aiProvider,
-                        'X-AI-Provider-URL': chat.aiProviderUrl
+                        'X-AI-Provider-URL': chat.aiProviderUrl,
                     },
                 });
             }
