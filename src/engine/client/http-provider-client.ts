@@ -9,9 +9,7 @@
 
 import { ok, err, type Result } from 'neverthrow';
 import type { AIChatMessage, ModelConfig, ToolCall, ChatOptions } from '@/engine/client/client.types';
-import type { ToolDefinition, ToolDispatcher } from '@/engine/tools/tools.types';
 import { createLogger } from '@/utils/logger';
-import { ToolCallOrchestrator } from '@/engine/tools/tools-call-orchestrator';
 import { JsonResponseParser, type OpenAIResponseParser, type UsageMetrics } from './openai-response-parser';
 import { stripThinkTags } from '@/utils/text';
 
@@ -39,27 +37,12 @@ export class HttpProviderClient {
   async chat(systemPrompt: string, messages: AIChatMessage[], opts?: ChatOptions): Promise<CallProviderResult> {
     const history: AIChatMessage[] = [{ role: 'system', content: systemPrompt }, ...messages];
     const hasTools = (opts?.tools?.length ?? 0) > 0;
-    const result = await this.callProvider(history, new JsonResponseParser(), undefined, opts);
+    const result = await this.callProvider(history, new JsonResponseParser(), opts);
     if (hasTools) return result;
     return result.map((r) => ({ ...r, content: stripThinkTags(r.content) }));
   }
 
-  /**
-   * Executes a chat completion request with tool-calling capabilities.
-   * Orchestrates the loop of model responses and local tool executions until a final answer is reached.
-   */
-  async chatWithTools(
-      systemPrompt: string,
-      messages: AIChatMessage[],
-      tools: ToolDefinition[],
-      executeToolFn: (name: string, args: Record<string, unknown>) => Promise<string>,
-      // TODO: onFirstToolCall is unused by any caller - evaluate removal
-      onFirstToolCall?: () => Promise<void>,
-  ): Promise<CallProviderResult> {
-    const history: AIChatMessage[] = [{ role: 'system', content: systemPrompt }, ...messages];
-    const orchestrator = new ToolCallOrchestrator((msgs) => this.callProvider(msgs, new JsonResponseParser(), tools));
-    return orchestrator.applyTools(history, tools, executeToolFn, onFirstToolCall);
-  }
+
 
   /**
    * Opens a streaming connection to the provider and returns the raw Response body.
@@ -74,7 +57,7 @@ export class HttpProviderClient {
       const res = await fetch(this.config.url, {
         method: 'POST',
         headers: this.buildHeaders(),
-        body: JSON.stringify(this.buildBody([{ role: 'system', content: systemPrompt }, ...messages], true, undefined, opts)),
+        body: JSON.stringify(this.buildBody([{ role: 'system', content: systemPrompt }, ...messages], true, opts)),
         signal: controller.signal,
       });
 
@@ -101,7 +84,6 @@ export class HttpProviderClient {
   private async callProvider(
     messages: AIChatMessage[],
     responseParser: OpenAIResponseParser,
-    tools?: ToolDefinition[],
     opts?: ChatOptions,
   ): Promise<CallProviderResult> {
     const startTime = Date.now();
@@ -122,7 +104,7 @@ export class HttpProviderClient {
       const response = await fetch(this.config.url, {
         method: 'POST',
         headers: this.buildHeaders(),
-        body: JSON.stringify(this.buildBody(messages, stream, tools, opts)),
+        body: JSON.stringify(this.buildBody(messages, stream, opts)),
         signal: abortController.signal,
       });
 
@@ -154,10 +136,9 @@ export class HttpProviderClient {
     }
   }
 
-  private buildBody(messages: AIChatMessage[], stream: boolean, tools?: ToolDefinition[], opts?: ChatOptions): Record<string, unknown> {
+  private buildBody(messages: AIChatMessage[], stream: boolean, opts?: ChatOptions): Record<string, unknown> {
     const body: Record<string, unknown> = { model: this.config.model, messages, stream };
     if (this.enableThinking) body.think = true;
-    if (tools?.length) body.tools = tools;
 
     if (opts) {
       if (opts.tools?.length) body.tools = opts.tools;

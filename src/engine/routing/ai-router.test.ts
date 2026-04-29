@@ -2,6 +2,7 @@ import { describe, test, expect, afterEach } from 'bun:test';
 import { AIRouter } from './ai-router';
 import { MetricsStore } from '@/engine/observability/metrics';
 import { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
+import type { ModelSelector } from '@/engine/selection/model-selector.types';
 import { UCB1TunedSelector } from '@/engine/selection/algorithms/ucb1-tuned';
 import { HttpProviderClient } from '@/engine/client/http-provider-client';
 import { mockSseResponse, mockFetch, setupTestDb } from '@test/test-setup';
@@ -74,5 +75,25 @@ describe('AIRouter - chatStream()', () => {
     const router = createAIRouter([config]);
     const result = await router.chatStream('system', [{ role: 'user', content: 'hi' }]);
     expect(result!.aiProvider).toBe('groq-id');
+  });
+
+  test('calls selector.record if it is implemented', async () => {
+    undoFetch = mockFetch(() => mockSseResponse(''));
+    let recordCalled = false;
+    class MockSelector implements ModelSelector {
+      select() { return 'm1'; }
+      record() { recordCalled = true; }
+    }
+    const metrics = new MetricsStore();
+    const circuitBreaker = new CircuitBreaker();
+    const selector = new MockSelector();
+    const clients = new Map();
+    clients.set('m1', new HttpProviderClient(model('m1'), 10000, 60000, 10000, false));
+    const aiProviderIds = new Map();
+    const auditStore = new AuditStore(setupTestDb());
+    
+    const router = new AIRouter(clients, metrics, circuitBreaker, selector, aiProviderIds, auditStore);
+    await router.chatStream('system', [{ role: 'user', content: 'hi' }]);
+    expect(recordCalled).toBe(true);
   });
 });

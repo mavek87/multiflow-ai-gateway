@@ -1,5 +1,8 @@
 import type { AIChatMessage, ToolCall } from '@/chat/chat.types';
-import type { ToolContext, ToolDefinition, ToolDispatcher } from '@/engine/tools/tools.types';
+export interface TenantContext {
+  tenantId: string;
+  tenantName: string;
+}
 
 export type { AIChatMessage, ToolCall };
 

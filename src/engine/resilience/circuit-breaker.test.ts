@@ -62,6 +62,30 @@ describe('CircuitBreaker', () => {
     expect(cb.getState('primary-model')).toBe('CLOSED');
   });
 
+  test('HALF_OPEN limits concurrency to HALF_OPEN_SUCCESSES_REQUIRED', () => {
+    const cb = new CircuitBreaker();
+    for (let i = 0; i < 3; i++) cb.recordHardFailure('primary-model');
+    const breakerState = (cb as any).breakers.get('primary-model');
+    breakerState.openedAt = Date.now() - 31_000;
+
+    // Two probes allowed
+    expect(cb.isAvailable('primary-model')).toBe(true);
+    expect(cb.isAvailable('primary-model')).toBe(true);
+    
+    // Third probe blocked
+    expect(cb.isAvailable('primary-model')).toBe(false);
+
+    // One succeeds (decrements probesInFlight, halfOpenSuccesses = 1)
+    cb.recordSuccess('primary-model');
+    expect(cb.getState('primary-model')).toBe('HALF_OPEN');
+
+    // Room for another probe now
+    expect(cb.isAvailable('primary-model')).toBe(true);
+
+    // Blocked again
+    expect(cb.isAvailable('primary-model')).toBe(false);
+  });
+
   test('success in CLOSED resets failure counters', () => {
     const cb = new CircuitBreaker();
     cb.recordHardFailure('primary-model');

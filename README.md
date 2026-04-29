@@ -249,7 +249,6 @@ AIRouter (src/engine/routing/ai-router.ts)
   |-- ModelSelector          (pluggable strategy: UCB1-Tuned, Thompson Sampling, SW-UCB1-Tuned)
   |-- CircuitBreaker        (skips models in OPEN state)
   |-- HttpProviderClient    (low-level HTTP to OpenAI-compatible endpoint)
-  |   |-- ToolCallOrchestrator (server-side multi-turn tool loop - internal use only, not yet exposed via HTTP)
   |-- MetricsStore          (updates latency/success EMA after each chat)
   |-- AuditStore (src/audit/audit.store.ts)
 ```
@@ -383,7 +382,7 @@ stateDiagram-v2
 
     CLOSED --> OPEN: 3 consecutive hard failures\n(HTTP 4xx/5xx)\nor 5 consecutive soft failures\n(timeout)
 
-    OPEN --> HALF_OPEN: 30s elapsed\n(one probe allowed)
+    OPEN --> HALF_OPEN: 30s elapsed\n(limited probes allowed)
 
     HALF_OPEN --> CLOSED: 2 consecutive successes
     HALF_OPEN --> OPEN: any failure
@@ -674,7 +673,6 @@ src/
     |-- routing/            # Multi-model routing logic and factory
     |-- selection/          # Model selection: types and algorithm implementations
     |   |-- algorithms/     # UCB1-Tuned, SW-UCB1-Tuned, Thompson Sampling
-    |-- tools/              # Tool-calling (function calling) orchestration
   provider/                 # Global provider registry
   tenant/                   # Tenant management and resolution
   housekeeping/             # Periodic cleanup of expired audit records

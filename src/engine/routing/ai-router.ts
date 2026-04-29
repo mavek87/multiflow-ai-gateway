@@ -9,12 +9,8 @@ import type {
     AIChatStreamResponse,
     AIBaseResponse,
     ChatOptions,
+    TenantContext,
 } from '@/engine/client/client.types';
-import type {
-    ToolContext,
-    ToolDefinition,
-    ToolDispatcher,
-} from '@/engine/tools/tools.types';
 import type {
     CallProviderError,
     CallProviderSuccess,
@@ -44,15 +40,11 @@ export class AIRouter {
     ) {
     }
 
-    async chat(systemPrompt: string, messages: AIChatMessage[], ctx?: ToolContext, tools?: ToolDefinition[], toolDispatcher?: ToolDispatcher, opts?: ChatOptions): Promise<AIChatResponse | null> {
+    async chat(systemPrompt: string, messages: AIChatMessage[], ctx?: TenantContext, opts?: ChatOptions): Promise<AIChatResponse | null> {
         log.info({messages: messages.length, tenantId: ctx?.tenantId ?? 'unknown'}, 'new request');
 
         return this.executeWithAudit(ctx?.tenantId ?? 'unknown', async () => {
             const result = await this.executeWithRetry<CallProviderSuccess>((client) => {
-                if (tools && tools.length > 0 && toolDispatcher && ctx) {
-                    const executeToolFn = (name: string, args: Record<string, unknown>) => toolDispatcher(name, args, ctx);
-                    return client.chatWithTools(systemPrompt, messages, tools, executeToolFn);
-                }
                 return client.chat(systemPrompt, messages, opts);
             });
 
@@ -67,7 +59,7 @@ export class AIRouter {
         });
     }
 
-    async chatStream(systemPrompt: string, messages: AIChatMessage[], ctx?: ToolContext, opts?: ChatOptions): Promise<AIChatStreamResponse | null> {
+    async chatStream(systemPrompt: string, messages: AIChatMessage[], ctx?: TenantContext, opts?: ChatOptions): Promise<AIChatStreamResponse | null> {
         log.info({messages: messages.length, tenantId: ctx?.tenantId ?? 'unknown'}, 'new stream request');
 
         return this.executeWithAudit(ctx?.tenantId ?? 'unknown', async () => {
@@ -149,10 +141,16 @@ export class AIRouter {
     private onSuccess(model: string, latencyMs: number, ttftMs: number): void {
         this.circuitBreaker.recordSuccess(model);
         this.metrics.record(model, {latencyMs, ttftMs, success: true});
+        if (this.modelSelector.record) {
+            this.modelSelector.record(model, { success: true, latencyMs });
+        }
     }
 
     private onFailure(model: string, kind: 'soft' | 'hard'): void {
         this.metrics.record(model, {latencyMs: 0, ttftMs: 0, success: false});
+        if (this.modelSelector.record) {
+            this.modelSelector.record(model, { success: false, latencyMs: 0 });
+        }
         if (kind === 'soft') {
             this.circuitBreaker.recordSoftFailure(model);
         } else {

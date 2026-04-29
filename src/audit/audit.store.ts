@@ -3,6 +3,9 @@ import { randomUUID } from 'node:crypto';
 import type { DrizzleDb } from '@/db/database';
 import { requestLog } from '@/db/schema';
 import type { AuditLogEntry, AuditQueryParams, AuditRecord } from './audit.types';
+import { createLogger } from '@/utils/logger';
+
+const logger = createLogger('AUDIT');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -22,8 +25,9 @@ export class AuditStore {
         success: entry.success,
         statusCode: entry.statusCode,
       }).run();
-    } catch {
+    } catch (err) {
       // Non-fatal: audit failure must not break the request
+      logger.error({ err }, 'Audit log insert failed');
     }
   }
 

@@ -9,7 +9,7 @@
  *
  * - CLOSED    : normal operation, all calls go through.
  * - OPEN      : model is skipped - isAvailable() returns false immediately.
- * - HALF_OPEN : one probe is allowed; 2 consecutive successes restore to CLOSED.
+ * - HALF_OPEN : limited probes are allowed; 2 consecutive successes restore to CLOSED.
  *
  * Failure types:
  * - Hard failure (HTTP 4xx/5xx): opens after 3 consecutive.
@@ -28,6 +28,7 @@ type BreakerState = {
   consecutiveHardFailures: number;
   consecutiveSoftFailures: number;
   halfOpenSuccesses: number;
+  probesInFlight: number;
   openedAt: number | null;
 };
 
@@ -37,11 +38,26 @@ export class CircuitBreaker {
   isAvailable(model: string): boolean {
     const breaker = this.getBreaker(model);
     this.tryRecoverFromOpen(breaker);
-    return breaker.state === 'CLOSED' || breaker.state === 'HALF_OPEN';
+
+    if (breaker.state === 'CLOSED') {
+      return true;
+    }
+
+    if (breaker.state === 'HALF_OPEN') {
+      if (breaker.probesInFlight >= HALF_OPEN_SUCCESSES_REQUIRED) {
+        return false;
+      }
+      breaker.probesInFlight += 1;
+      return true;
+    }
+
+    return false;
   }
 
   recordSuccess(model: string): void {
     const breaker = this.getBreaker(model);
+    breaker.probesInFlight = Math.max(0, breaker.probesInFlight - 1);
+
     if (breaker.state === 'HALF_OPEN') {
       breaker.halfOpenSuccesses += 1;
       if (breaker.halfOpenSuccesses >= HALF_OPEN_SUCCESSES_REQUIRED) {
@@ -54,6 +70,7 @@ export class CircuitBreaker {
 
   recordHardFailure(model: string): void {
     const breaker = this.getBreaker(model);
+    breaker.probesInFlight = Math.max(0, breaker.probesInFlight - 1);
     breaker.consecutiveHardFailures += 1;
     breaker.consecutiveSoftFailures = 0;
     if (breaker.state !== 'OPEN' && breaker.consecutiveHardFailures >= HARD_FAILURE_THRESHOLD) {
@@ -63,6 +80,7 @@ export class CircuitBreaker {
 
   recordSoftFailure(model: string): void {
     const breaker = this.getBreaker(model);
+    breaker.probesInFlight = Math.max(0, breaker.probesInFlight - 1);
     breaker.consecutiveSoftFailures += 1;
     if (breaker.state !== 'OPEN' && breaker.consecutiveSoftFailures >= SOFT_FAILURE_THRESHOLD) {
       this.openCircuit(breaker);
@@ -73,8 +91,8 @@ export class CircuitBreaker {
     return this.getBreaker(model).state;
   }
 
-  all(): Record<string, Omit<BreakerState, 'halfOpenSuccesses'>> {
-    const result: Record<string, Omit<BreakerState, 'halfOpenSuccesses'>> = {};
+  all(): Record<string, Omit<BreakerState, 'halfOpenSuccesses' | 'probesInFlight'>> {
+    const result: Record<string, Omit<BreakerState, 'halfOpenSuccesses' | 'probesInFlight'>> = {};
     for (const [model, state] of this.breakers.entries()) {
       result[model] = {
         state: state.state,
@@ -93,6 +111,7 @@ export class CircuitBreaker {
         consecutiveHardFailures: 0,
         consecutiveSoftFailures: 0,
         halfOpenSuccesses: 0,
+        probesInFlight: 0,
         openedAt: null,
       });
     }
@@ -108,17 +127,20 @@ export class CircuitBreaker {
     if (breaker.openedAt !== null && Date.now() - breaker.openedAt >= OPEN_TIMEOUT_MS) {
       breaker.state = 'HALF_OPEN';
       breaker.halfOpenSuccesses = 0;
+      breaker.probesInFlight = 0;
     }
   }
 
   private openCircuit(breaker: BreakerState): void {
     breaker.state = 'OPEN';
     breaker.openedAt = Date.now();
+    breaker.probesInFlight = 0;
   }
 
   private closeCircuit(breaker: BreakerState): void {
     breaker.state = 'CLOSED';
     breaker.halfOpenSuccesses = 0;
+    breaker.probesInFlight = 0;
     breaker.openedAt = null;
     this.resetFailureCounters(breaker);
   }

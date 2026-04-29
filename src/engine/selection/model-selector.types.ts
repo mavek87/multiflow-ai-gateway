@@ -10,6 +10,8 @@ export interface ModelSelector {
     metrics: MetricsStore,
     circuitBreaker: CircuitBreaker,
   ): string | null;
+
+  record?(modelId: string, obs: { success: boolean; latencyMs: number }): void;
 }
 
 export type ModelSelectorType = 'thompson' | 'ucb1-tuned' | 'sw-ucb1-tuned';

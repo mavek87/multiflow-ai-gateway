@@ -82,10 +82,15 @@ describe('ChatService', () => {
       expect(capturedSystemPrompt).toBe('You are a pirate.');
     });
 
-    test('uses system message from messages array when no explicit system field', async () => {
+    test('uses system message from messages array when no explicit system field and strips it', async () => {
       let capturedSystemPrompt = '';
+      let capturedMessages: any[] = [];
       const mockClient: Pick<AIRouter, 'chat' | 'chatStream'> = {
-        chat: async (systemPrompt) => { capturedSystemPrompt = systemPrompt; return { model: 'gpt-4o', content: 'ok', aiProviderId: 'p', aiProvider: 'a', aiProviderUrl: 'u' }; },
+        chat: async (systemPrompt, messages) => { 
+          capturedSystemPrompt = systemPrompt; 
+          capturedMessages = messages;
+          return { model: 'gpt-4o', content: 'ok', aiProviderId: 'p', aiProvider: 'a', aiProviderUrl: 'u' }; 
+        },
         chatStream: async () => null,
       };
       const service = new ChatService(makeFactory(mockClient));
@@ -96,6 +101,7 @@ describe('ChatService', () => {
         ],
       }, fakeConfigs);
       expect(capturedSystemPrompt).toBe('You are helpful.');
+      expect(capturedMessages).toEqual([{ role: 'user', content: 'hi' }]);
     });
 
     test('uses empty string when no system field and no system message', async () => {
@@ -174,7 +180,7 @@ describe('ChatService', () => {
     test('passes sampling params (temperature, max_tokens) to the router', async () => {
       let capturedOpts: unknown;
       const mockClient: Pick<AIRouter, 'chat' | 'chatStream'> = {
-        chat: async (_sys, _msgs, _ctx, _tools, _dispatcher, opts) => {
+        chat: async (_sys, _msgs, _ctx, opts) => {
           capturedOpts = opts;
           return { model: 'gpt-4o', content: 'ok', aiProviderId: 'p', aiProvider: 'a', aiProviderUrl: 'u' };
         },

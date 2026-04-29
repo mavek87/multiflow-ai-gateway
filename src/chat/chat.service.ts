@@ -20,9 +20,10 @@ export class ChatService {
         log.info({tenantId: tenant.id, stream: isStream}, 'chat request starting');
 
         const tenantCtx = {tenantId: tenant.id, tenantName: tenant.name};
+        const filteredMessages = chatRequest.messages.filter(m => m.role !== 'system');
 
         if (isStream) {
-            const result = await aiRouter.chatStream(systemPrompt, chatRequest.messages, tenantCtx, opts);
+            const result = await aiRouter.chatStream(systemPrompt, filteredMessages, tenantCtx, opts);
             if (!result) {
                 return err({code: 'ai_unavailable'});
             }
@@ -35,7 +36,7 @@ export class ChatService {
                 aiProviderUrl: result.aiProviderUrl,
             });
         } else {
-            const result = await aiRouter.chat(systemPrompt, chatRequest.messages, tenantCtx, undefined, undefined, opts);
+            const result = await aiRouter.chat(systemPrompt, filteredMessages, tenantCtx, opts);
             if (!result) {
                 return err({code: 'ai_unavailable'});
             }
@@ -57,29 +58,21 @@ export class ChatService {
     }
 
     private extractChatOptions(chatRequest: ChatServiceRequest): ChatOptions | undefined {
-        const opts: ChatOptions = {};
-        let hasOpts = false;
+        const {
+            tools, tool_choice, parallel_tool_calls, temperature, top_p,
+            max_tokens, max_completion_tokens, presence_penalty, frequency_penalty,
+            seed, stop, response_format, stream_options, user
+        } = chatRequest;
 
-        const assign = <K extends keyof ChatOptions>(key: K, value: ChatOptions[K]) => {
-            if (value !== undefined) { opts[key] = value; hasOpts = true; }
+        const rawOpts = {
+            tools, tool_choice, parallel_tool_calls, temperature, top_p,
+            max_tokens, max_completion_tokens, presence_penalty, frequency_penalty,
+            seed, stop, response_format, stream_options, user
         };
 
-        assign('tools', chatRequest.tools as ChatOptions['tools']);
-        assign('tool_choice', chatRequest.tool_choice);
-        assign('parallel_tool_calls', chatRequest.parallel_tool_calls);
-        assign('temperature', chatRequest.temperature);
-        assign('top_p', chatRequest.top_p);
-        assign('max_tokens', chatRequest.max_tokens);
-        assign('max_completion_tokens', chatRequest.max_completion_tokens);
-        assign('presence_penalty', chatRequest.presence_penalty);
-        assign('frequency_penalty', chatRequest.frequency_penalty);
-        assign('seed', chatRequest.seed);
-        assign('stop', chatRequest.stop);
-        assign('response_format', chatRequest.response_format);
-        assign('stream_options', chatRequest.stream_options);
-        assign('user', chatRequest.user);
-
-        return hasOpts ? opts : undefined;
+        const opts = Object.fromEntries(Object.entries(rawOpts).filter(([_, v]) => v !== undefined));
+        
+        return Object.keys(opts).length > 0 ? opts as ChatOptions : undefined;
     }
 
 }
