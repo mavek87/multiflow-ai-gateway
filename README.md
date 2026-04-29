@@ -74,7 +74,7 @@ openssl rand -hex 32
 
 ### 3. Populate data
 
-Choose one of the two methods below. They are equivalent -- use whichever fits your workflow.
+Choose one of the two methods below. They are equivalent - use whichever fits your workflow.
 
 #### 3A. Seed file (recommended)
 
@@ -141,7 +141,7 @@ MODEL_ID=$(curl -sf -X POST $BASE/admin/providers/$PROVIDER_ID/models \
   -d '{"modelName":"llama3-70b-8192"}' \
   | jq -r '.id')
 
-# 3. Create the tenant -- save the returned apiKey, it is shown only once
+# 3. Create the tenant - save the returned apiKey, it is shown only once
 RESULT=$(curl -sf -X POST $BASE/admin/tenants \
   -H "x-master-key: $MASTER" -H "Content-Type: application/json" \
   -d '{"name":"Acme"}')
@@ -210,7 +210,7 @@ docker compose up --build -d
 The Dockerfile uses a 2-stage build:
 
 1. **builder** - installs all dependencies, pre-generates Drizzle SQL migrations, and compiles the app into a single self-contained binary
-2. **runner** - `gcr.io/distroless/cc-debian12` (pinned SHA), copies only the binary and the `drizzle/` migrations -- no `node_modules`, no source files
+2. **runner** - `gcr.io/distroless/cc-debian12` (pinned SHA), copies only the binary and the `drizzle/` migrations - no `node_modules`, no source files
 
 **Persistence:**
 
@@ -248,7 +248,7 @@ AIRouter (src/engine/routing/ai-router.ts)
   |-- ModelSelector          (pluggable strategy: UCB1-Tuned, Thompson Sampling, SW-UCB1-Tuned)
   |-- CircuitBreaker        (skips models in OPEN state)
   |-- HttpProviderClient    (low-level HTTP to OpenAI-compatible endpoint)
-  |   |-- ToolCallOrchestrator (server-side multi-turn tool loop -- internal use only, not yet exposed via HTTP)
+  |   |-- ToolCallOrchestrator (server-side multi-turn tool loop - internal use only, not yet exposed via HTTP)
   |-- MetricsStore          (updates latency/success EMA after each chat)
   |-- AuditStore (src/audit/audit.store.ts)
 ```
@@ -346,8 +346,8 @@ erDiagram
 
 Providers and their models are **global resources** managed by the admin. Tenants never share configurations directly: what makes a provider available to a tenant is the combination of:
 
-1. A **credential** (`POST /admin/tenants/:id/credentials`) -- the tenant's own API key for that provider, stored encrypted.
-2. A **model config** (`POST /admin/tenants/:id/models`) -- which specific model(s) the tenant is allowed to route to, with an optional priority.
+1. A **credential** (`POST /admin/tenants/:id/credentials`) - the tenant's own API key for that provider, stored encrypted.
+2. A **model config** (`POST /admin/tenants/:id/models`) - which specific model(s) the tenant is allowed to route to, with an optional priority.
 
 The gateway builds the routing candidate list per request by joining these tables for the calling tenant only. Two tenants that both use Groq have separate credentials and separate model lists; neither can see or affect the other.
 
@@ -398,7 +398,7 @@ Balances success rate and latency 50/50 into a reward score, then adds an explor
 
 Same algorithm as UCB1-Tuned but metrics are computed from the last W observations (default: 100) instead of full history. Reacts to provider degradations and recoveries within W calls.
 
-**Use when**: traffic is high enough to fill the window (hundreds or more calls per day per tenant) and fast reaction to provider quality changes matters more than stability. With very low traffic the window stays sparse and estimates become noisy -- UCB1-Tuned is safer in that case.
+**Use when**: traffic is high enough to fill the window (hundreds or more calls per day per tenant) and fast reaction to provider quality changes matters more than stability. With very low traffic the window stays sparse and estimates become noisy - UCB1-Tuned is safer in that case.
 
 ### Thompson Sampling
 
@@ -412,7 +412,7 @@ Models each provider as a Beta distribution over success/failure counts and draw
 
 ### Routing state is in-memory only
 
-The `AIRouterFactory` -- which owns the `MetricsStore`, `CircuitBreaker`, and `ModelSelector` instances -- is created once at startup and shared between the chat plugin and the admin plugin. A new `AIRouter` is built per request via `factory.create()`, but it shares these stateful components across all requests. This means routing metrics and circuit breaker statuses persist across requests but are **in-memory only**.
+The `AIRouterFactory` - which owns the `MetricsStore`, `CircuitBreaker`, and `ModelSelector` instances - is created once at startup and shared between the chat plugin and the admin plugin. A new `AIRouter` is built per request via `factory.create()`, but it shares these stateful components across all requests. This means routing metrics and circuit breaker statuses persist across requests but are **in-memory only**.
 
 On every restart, the `MetricsStore` is automatically warmed up from the audit log: all `request_log` records within the last hour (configurable via `METRICS_WARM_UP_WINDOW_MS`) are replayed in chronological order so the selector starts with meaningful latency and success-rate estimates rather than a blank slate. If no records exist within the window (e.g. after a long downtime), the store starts cold and UCB1 explores all models uniformly until it converges. Circuit breaker state is always reset on restart.
 
@@ -544,8 +544,8 @@ Note: agents that use the Anthropic API format natively (e.g. Claude Code via `A
 
 The `model` field is optional and supports two formats. If your client requires a non-empty model name, use the special value `"multiflow-ai-gateway-auto-model"`: the gateway treats it as if `model` were omitted and routes freely across all tenant models.
 
-- **`"model"`** -- matches all providers that have a model with that name. If multiple providers expose the same model name, all are routing candidates and the selector picks the best one. This is intentional: it enables transparent multi-provider fallback.
-- **`"provider/model"`** -- filters to a specific provider by name (case-insensitive) before applying model matching. Use this when you need to target a particular backend explicitly.
+- **`"model"`** - matches all providers that have a model with that name. If multiple providers expose the same model name, all are routing candidates and the selector picks the best one. This is intentional: it enables transparent multi-provider fallback.
+- **`"provider/model"`** - filters to a specific provider by name (case-insensitive) before applying model matching. Use this when you need to target a particular backend explicitly.
 
 ```jsonc
 // routes to any provider with model "llama-3-70b"
