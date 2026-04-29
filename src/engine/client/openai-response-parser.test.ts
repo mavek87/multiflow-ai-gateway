@@ -24,7 +24,7 @@ describe('JsonResponseParser - parseJsonResponse', () => {
   });
 
   test('extracts tool_calls when present', () => {
-    const toolCalls = [{ id: 'call_1', type: 'function' as const, function: { name: 'get_weather', arguments: {} } }];
+    const toolCalls = [{ id: 'call_1', type: 'function' as const, function: { name: 'get_weather', arguments: '{}' } }];
     const result = parser.parseJsonResponse({
       choices: [{ message: { content: '', tool_calls: toolCalls } }],
     });

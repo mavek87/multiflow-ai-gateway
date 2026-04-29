@@ -6,12 +6,14 @@ A self-hosted, multi-tenant AI Gateway written in TypeScript/Bun. It sits betwee
 
 ## Features
 
-- **OpenAI-compatible API** - drop-in replacement for `POST /v1/chat/completions` with SSE streaming support
+- **OpenAI-compatible API** - drop-in replacement for `POST /v1/chat/completions`
+- **SSE streaming** - when `stream: true`, the gateway acts as a pure proxy: it forwards the raw SSE stream from the upstream provider to the client without buffering or parsing. The client receives OpenAI-format chunks and is responsible for reassembling them.
+- **Tool calling pass-through** - `tools`, `tool_choice`, and all sampling parameters are forwarded transparently to the upstream provider. With `stream: false` the gateway returns the full `tool_calls` response; with `stream: true` the SSE chunks (including `delta.tool_calls`) are proxied raw to the client. In both cases the client (or agent) is responsible for executing tool calls and sending results back as `role: "tool"` messages in the next turn.
+- **Agent-compatible** - works with OpenCode, Cursor, and any OpenAI SDK-based client without configuration changes
 - **Multi-tenancy** - each tenant has isolated API keys and provider configurations
 - **Intelligent model selection** - UCB1-Tuned (default), Thompson Sampling, or SW-UCB1-Tuned, configurable via `SELECTOR_TYPE`
 - **Circuit breaker** - automatically skips failing providers and recovers gracefully
 - **Multi-model fallback** - up to 10 attempts across different models per request
-- **Tool calling (Engine)** - up to 10 rounds of internal tool execution (not yet exposed via public API)
 - **Encrypted secrets** - provider API keys stored at rest with AES-256-GCM
 - **Audit logging** - per-request trail stored in SQLite, queryable via Admin API with date and tenant filters
 - **Rate limiting** - configurable daily request cap per tenant, enforced via sliding window
@@ -246,7 +248,7 @@ AIRouter (src/engine/routing/ai-router.ts)
   |-- ModelSelector          (pluggable strategy: UCB1-Tuned, Thompson Sampling, SW-UCB1-Tuned)
   |-- CircuitBreaker        (skips models in OPEN state)
   |-- HttpProviderClient    (low-level HTTP to OpenAI-compatible endpoint)
-  |   |-- ToolCallOrchestrator (handles multi-turn tool execution loop)
+  |   |-- ToolCallOrchestrator (server-side multi-turn tool loop -- internal use only, not yet exposed via HTTP)
   |-- MetricsStore          (updates latency/success EMA after each chat)
   |-- AuditStore (src/audit/audit.store.ts)
 ```
@@ -464,7 +466,83 @@ OpenAI-compatible request body:
 }
 ```
 
-The `model` field is optional and supports two formats:
+**Sampling parameters** (all forwarded verbatim to the upstream provider):
+
+| Parameter | Type | Description |
+|---|---|---|
+| `temperature` | number | Sampling temperature |
+| `top_p` | number | Nucleus sampling |
+| `max_tokens` | integer | Max tokens in the response |
+| `max_completion_tokens` | integer | Alternative to `max_tokens` |
+| `presence_penalty` | number | Penalize repeated topics |
+| `frequency_penalty` | number | Penalize repeated tokens |
+| `seed` | integer | Reproducibility seed |
+| `stop` | string or string[] | Stop sequences |
+| `response_format` | object | e.g. `{"type":"json_object"}` |
+| `stream_options` | object | SSE stream options |
+| `user` | string | End-user identifier |
+| `parallel_tool_calls` | boolean | Allow parallel tool calls |
+
+**Tool calling**
+
+Pass `tools` and `tool_choice` in the body. They are forwarded as-is to the upstream provider. The client (agent) is responsible for executing tool calls and sending results back as `role: "tool"` messages.
+
+```json
+{
+  "messages": [{ "role": "user", "content": "What is the weather in Rome?" }],
+  "tools": [{
+    "type": "function",
+    "function": {
+      "name": "get_weather",
+      "description": "Get current weather for a city",
+      "parameters": {
+        "type": "object",
+        "properties": { "city": { "type": "string" } },
+        "required": ["city"]
+      }
+    }
+  }],
+  "tool_choice": "auto"
+}
+```
+
+When the model wants to call a tool, the gateway returns:
+
+```json
+{
+  "choices": [{
+    "finish_reason": "tool_calls",
+    "message": {
+      "role": "assistant",
+      "content": null,
+      "tool_calls": [{
+        "id": "call_abc",
+        "type": "function",
+        "function": { "name": "get_weather", "arguments": "{\"city\":\"Rome\"}" }
+      }]
+    }
+  }]
+}
+```
+
+**Using the gateway with agents (OpenCode, Cursor, any OpenAI-compatible client)**
+
+The gateway exposes an OpenAI-compatible API. Any agent or SDK that supports a custom OpenAI base URL can point to it directly:
+
+```python
+from openai import OpenAI
+client = OpenAI(base_url="http://localhost:3000/v1", api_key="gw_your_tenant_key")
+```
+
+```bash
+# OpenCode / Cursor: set the OpenAI base URL in the tool settings
+OPENAI_BASE_URL=http://localhost:3000/v1
+OPENAI_API_KEY=gw_your_tenant_key
+```
+
+Note: agents that use the Anthropic API format natively (e.g. Claude Code via `ANTHROPIC_BASE_URL`) are not directly compatible because the gateway speaks OpenAI format only (`/v1/chat/completions`), not the Anthropic Messages API (`/v1/messages`).
+
+The `model` field is optional and supports two formats. If your client requires a non-empty model name, use the special value `"multiflow-ai-gateway-auto-model"`: the gateway treats it as if `model` were omitted and routes freely across all tenant models.
 
 - **`"model"`** -- matches all providers that have a model with that name. If multiple providers expose the same model name, all are routing candidates and the selector picks the best one. This is intentional: it enables transparent multi-provider fallback.
 - **`"provider/model"`** -- filters to a specific provider by name (case-insensitive) before applying model matching. Use this when you need to target a particular backend explicitly.
@@ -610,8 +688,6 @@ File naming convention: `[feature].[type].ts` (e.g., `chat.routes.ts`, `tenant.s
 
 ## Roadmap
 
-Full details and feature descriptions in [`docs/study.md`](docs/study.md).
-
 | # | Feature | Priority | Area |
 |---|---------|----------|------|
 | 1 | Prometheus metrics endpoint | Critical | Observability |
@@ -623,3 +699,13 @@ Full details and feature descriptions in [`docs/study.md`](docs/study.md).
 | 5 | Additional provider adapters (Groq, Gemini, Claude native) | Medium | Providers |
 | 6 | BYOK per-request | Medium | Auth |
 | 7 | PostgreSQL support | Low | Infrastructure |
+| 8 | Thinking control | Low | Routing |
+
+### Thinking control (item 8)
+
+Thinking-capable models (e.g. Qwen3, DeepSeek-R1 on Ollama) produce verbose internal reasoning that gets included in the conversation history by the client, inflating subsequent payloads. There is no universal OpenAI-compatible standard for controlling thinking: Ollama uses `think: true`, OpenAI o1/o3 uses `reasoning_effort`, Anthropic has its own format.
+
+The approach needs to be designed. Open questions:
+- Per-request field (client decides) vs per-model configuration (admin decides at setup time)?
+- How to normalize across providers with different field names?
+- Should the gateway strip thinking content from incoming messages before forwarding to providers that do not support it?

@@ -12,6 +12,7 @@ export interface AIBaseResponse {
 
 export interface AIChatResponse extends AIBaseResponse {
   content: string;
+  toolCalls?: ToolCall[];
 }
 
 export interface AIChatStreamResponse extends AIBaseResponse {
@@ -28,3 +29,20 @@ export type ModelConfig = {
   aiProviderBaseUrl?: string;
   aiProviderModelId?: string;
 };
+
+export interface ChatOptions {
+  tools?: unknown[];
+  tool_choice?: unknown;
+  parallel_tool_calls?: boolean;
+  temperature?: number;
+  top_p?: number;
+  max_tokens?: number;
+  max_completion_tokens?: number;
+  presence_penalty?: number;
+  frequency_penalty?: number;
+  seed?: number;
+  stop?: string | string[];
+  response_format?: unknown;
+  stream_options?: unknown;
+  user?: string;
+}

@@ -116,6 +116,13 @@ export async function sendRequest(app: ReturnType<typeof createTestApp>, path: s
   }));
 }
 
+export function mockJsonResponse(payload: unknown, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: {'Content-Type': 'application/json'},
+  });
+}
+
 export function mockSseResponse(content: string | string[]) {
   const tokens = Array.isArray(content) ? content : [content];
   const sse = tokens.map(t => `data: ${JSON.stringify({ choices: [{ delta: { content: t } }] })}\n\n`).join('') + `data: [DONE]\n\n`;

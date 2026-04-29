@@ -65,13 +65,16 @@ export class ToolCallOrchestrator {
                                                    history: AIChatMessage[],
                                                    executeToolFn: (name: string, args: Record<string, unknown>) => Promise<string>): Promise<void> {
         for (const toolCall of toolCalls) {
-            const toolResult = await executeToolFn(toolCall.function.name, toolCall.function.arguments);
+            const args = typeof toolCall.function.arguments === 'string'
+                ? (JSON.parse(toolCall.function.arguments) as Record<string, unknown>)
+                : toolCall.function.arguments as Record<string, unknown>;
+            const toolResult = await executeToolFn(toolCall.function.name, args);
             history.push({role: 'tool', content: toolResult, tool_call_id: toolCall.id});
         }
     }
 
     private lastAssistantText(conversationHistory: AIChatMessage[]): string {
-        const last = conversationHistory.filter(m => m.role === 'assistant' && !m.tool_calls && m.content.trim()).at(-1)?.content ?? '';
+        const last = conversationHistory.filter(m => m.role === 'assistant' && !m.tool_calls && m.content?.trim()).at(-1)?.content ?? '';
         return stripThinkTags(last) || '✅';
     }
 }

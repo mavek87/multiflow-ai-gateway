@@ -1,29 +1,29 @@
 import {ok, err, type Result} from 'neverthrow';
 import type {Tenant} from '@/tenant/tenant.types';
-import type {ModelConfig} from '@/engine/client/client.types';
-import type {ChatCompletion, ChatHandlerResult} from '@/chat/chat.types';
+import type {ModelConfig, ChatOptions} from '@/engine/client/client.types';
+import type {ToolCall, ChatCompletion, ChatHandlerResult} from '@/chat/chat.types';
 import type {ChatServiceError, ChatServiceRequest} from '@/chat/chat.types';
 import {AIRouterFactory} from '@/engine/routing/ai-router.factory';
 import {createLogger} from '@/utils/logger';
 import {randomUUID} from 'node:crypto';
 
 const log = createLogger('CHAT_SVC');
-const DEFAULT_SYSTEM_PROMPT = 'You are a helpful assistant.';
 
 export class ChatService {
     constructor(private readonly aiRouterFactory: AIRouterFactory) {}
 
     public async handleChatRequest(tenant: Tenant, chatRequest: ChatServiceRequest, arrayOfModelConfigs: ModelConfig[]): Promise<Result<ChatHandlerResult, ChatServiceError>> {
         const aiRouter = this.aiRouterFactory.create(arrayOfModelConfigs);
-        const systemPrompt = chatRequest.system ?? DEFAULT_SYSTEM_PROMPT;
         const isStream = chatRequest.stream === true;
+        const systemPrompt = this.resolveSystemPrompt(chatRequest);
+        const opts = this.extractChatOptions(chatRequest);
 
         log.info({tenantId: tenant.id, stream: isStream}, 'chat request starting');
 
         const tenantCtx = {tenantId: tenant.id, tenantName: tenant.name};
 
         if (isStream) {
-            const result = await aiRouter.chatStream(systemPrompt, chatRequest.messages, tenantCtx);
+            const result = await aiRouter.chatStream(systemPrompt, chatRequest.messages, tenantCtx, opts);
             if (!result) {
                 return err({code: 'ai_unavailable'});
             }
@@ -36,14 +36,14 @@ export class ChatService {
                 aiProviderUrl: result.aiProviderUrl,
             });
         } else {
-            const result = await aiRouter.chat(systemPrompt, chatRequest.messages, tenantCtx);
+            const result = await aiRouter.chat(systemPrompt, chatRequest.messages, tenantCtx, undefined, undefined, opts);
             if (!result) {
                 return err({code: 'ai_unavailable'});
             }
 
             return ok({
                 isStream: false as const,
-                payload: this.buildChatResponsePayload(result.model, result.content),
+                payload: this.buildChatResponsePayload(result.model, result.content, result.toolCalls),
                 model: result.model,
                 aiProvider: result.aiProvider || result.model,
                 aiProviderUrl: result.aiProviderUrl,
@@ -51,13 +51,54 @@ export class ChatService {
         }
     }
 
-    private buildChatResponsePayload(model: string, content: string): ChatCompletion {
+    private resolveSystemPrompt(chatRequest: ChatServiceRequest): string {
+        if (chatRequest.system) return chatRequest.system;
+        const systemMessage = chatRequest.messages.find(m => m.role === 'system');
+        return systemMessage?.content ?? '';
+    }
+
+    private extractChatOptions(chatRequest: ChatServiceRequest): ChatOptions | undefined {
+        const opts: ChatOptions = {};
+        let hasOpts = false;
+
+        const assign = <K extends keyof ChatOptions>(key: K, value: ChatOptions[K]) => {
+            if (value !== undefined) { opts[key] = value; hasOpts = true; }
+        };
+
+        assign('tools', chatRequest.tools as ChatOptions['tools']);
+        assign('tool_choice', chatRequest.tool_choice);
+        assign('parallel_tool_calls', chatRequest.parallel_tool_calls);
+        assign('temperature', chatRequest.temperature);
+        assign('top_p', chatRequest.top_p);
+        assign('max_tokens', chatRequest.max_tokens);
+        assign('max_completion_tokens', chatRequest.max_completion_tokens);
+        assign('presence_penalty', chatRequest.presence_penalty);
+        assign('frequency_penalty', chatRequest.frequency_penalty);
+        assign('seed', chatRequest.seed);
+        assign('stop', chatRequest.stop);
+        assign('response_format', chatRequest.response_format);
+        assign('stream_options', chatRequest.stream_options);
+        assign('user', chatRequest.user);
+
+        return hasOpts ? opts : undefined;
+    }
+
+    private buildChatResponsePayload(model: string, content: string, toolCalls?: ToolCall[]): ChatCompletion {
+        const hasToolCalls = toolCalls && toolCalls.length > 0;
         return {
             id: `chatcmpl-${randomUUID()}`,
             object: 'chat.completion',
             created: Math.floor(Date.now() / 1000),
             model,
-            choices: [{index: 0, message: {role: 'assistant', content}, finish_reason: 'stop'}],
+            choices: [{
+                index: 0,
+                message: {
+                    role: 'assistant',
+                    content: hasToolCalls ? null : content,
+                    ...(hasToolCalls ? {tool_calls: toolCalls} : {}),
+                },
+                finish_reason: hasToolCalls ? 'tool_calls' : 'stop',
+            }],
         };
     }
 }

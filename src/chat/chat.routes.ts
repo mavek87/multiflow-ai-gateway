@@ -52,10 +52,11 @@ export function chatRoutePlugin(
                 return badRequestResponse("Cannot use both 'model' and 'models' fields simultaneously");
             }
 
+            const effectiveModel = body.model === 'multiflow-ai-gateway-auto-model' ? undefined : body.model;
             const {
                 providerName: requestedProviderName,
                 model: requestedModel
-            } = body.model ? parseModelString(body.model) : {providerName: undefined, model: undefined};
+            } = effectiveModel ? parseModelString(effectiveModel) : {providerName: undefined, model: undefined};
 
             const requestedModelsAndProviders = body.models?.map(parseModelString);
 
@@ -128,7 +129,60 @@ export function chatRoutePlugin(
             body: ChatRequestSchema,
             detail: {
                 summary: 'Chat completions',
-                description: 'OpenAI-compatible endpoint. Requires a gateway API key (Bearer gw_xxx). Routes the request through the best available model using intelligent selection (UCB1-Tuned by default, configurable via SELECTOR_TYPE) and circuit breaker. The `model` field is optional -- when provided, only providers with a matching modelName are considered. Use `models` (gateway extension) to restrict routing to a named subset of models; it takes precedence over `model` when provided.',
+                description: `OpenAI-compatible chat completions endpoint.
+
+Requires a gateway API key (\`Authorization: Bearer gw_xxx\`). Routes the request through the best available model using intelligent selection (UCB1-Tuned by default, configurable via \`SELECTOR_TYPE\`) and circuit breaker.
+
+**Model selection**
+- \`model\` (optional) -- restricts routing to providers that expose a model with that exact name. Supports \`"provider/model"\` syntax to target a specific provider. Pass \`"multiflow-ai-gateway-auto-model"\` to let the gateway route freely across all tenant models (useful for clients that require a non-empty model field).
+- \`models\` (gateway extension, array) -- restricts routing to an explicit subset of models. Takes precedence over \`model\`. Cannot be used together with \`model\`.
+
+**Tool calling pass-through**
+
+The gateway is fully compatible with OpenAI function calling. Pass \`tools\` and \`tool_choice\` in the request body: they are forwarded verbatim to the upstream provider. When the model decides to call a tool, the response will have \`finish_reason: "tool_calls"\` and \`choices[0].message.tool_calls\` populated -- the client is responsible for executing the tool and sending back the result as a \`role: "tool"\` message in the next turn.
+
+**Sampling parameters**
+
+All standard OpenAI sampling parameters are forwarded upstream: \`temperature\`, \`top_p\`, \`max_tokens\`, \`max_completion_tokens\`, \`presence_penalty\`, \`frequency_penalty\`, \`seed\`, \`stop\`, \`response_format\`, \`stream_options\`, \`user\`, \`parallel_tool_calls\`.
+
+**Examples**
+
+Simple chat:
+\`\`\`json
+{
+  "messages": [{"role": "user", "content": "Hello!"}]
+}
+\`\`\`
+
+With tool calling:
+\`\`\`json
+{
+  "messages": [{"role": "user", "content": "What is the weather in Rome?"}],
+  "tools": [{
+    "type": "function",
+    "function": {
+      "name": "get_weather",
+      "description": "Get current weather for a city",
+      "parameters": {
+        "type": "object",
+        "properties": {"city": {"type": "string"}},
+        "required": ["city"]
+      }
+    }
+  }],
+  "tool_choice": "auto"
+}
+\`\`\`
+
+With sampling parameters:
+\`\`\`json
+{
+  "messages": [{"role": "user", "content": "Tell me a joke"}],
+  "temperature": 0.9,
+  "max_tokens": 256,
+  "seed": 42
+}
+\`\`\``,
                 tags: ['Chat'],
             },
         });

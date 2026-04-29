@@ -1,7 +1,6 @@
 import { describe, test, expect, afterEach, beforeEach } from 'bun:test';
-import { createTestContext, createTestApp, createTestAppWithTenantAndProvider, createTestAppWithMultipleModels, sendRequest, mockSseResponse, mockFetch } from '@test/test-setup';
+import { createTestContext, createTestApp, createTestAppWithTenantAndProvider, createTestAppWithMultipleModels, sendRequest, mockSseResponse, mockJsonResponse, mockFetch } from '@test/test-setup';
 import { CryptoService } from '@/crypto/crypto';
-
 
 describe('chatPlugin E2E', () => {
   let app: ReturnType<typeof createTestAppWithTenantAndProvider>['app'];
@@ -119,6 +118,29 @@ describe('chatPlugin E2E', () => {
 
       expect(res.status).toBe(200);
     });
+
+    test('routes across all tenant models when model is "multiflow-ai-gateway-auto-model"', async () => {
+      undoFetch();
+      undoFetch = mockFetch(() => mockSseResponse('ok'));
+
+      const res = await sendRequest(app, '/v1/chat/completions', {
+        method: 'POST',
+        apiKey: rawApiKey,
+        body: { model: 'multiflow-ai-gateway-auto-model', messages: [{ role: 'user', content: 'hi' }] }
+      });
+
+      expect(res.status).toBe(200);
+    });
+
+    test('returns 400 when model is unknown (auto-model sentinel is the only special case)', async () => {
+      const res = await sendRequest(app, '/v1/chat/completions', {
+        method: 'POST',
+        apiKey: rawApiKey,
+        body: { model: 'some-unknown-model', messages: [{ role: 'user', content: 'hi' }] }
+      });
+
+      expect(res.status).toBe(400);
+    });
   });
 
   describe('models array routing', () => {
@@ -207,6 +229,107 @@ describe('chatPlugin E2E', () => {
       });
 
       expect(res.status).toBe(429);
+    });
+  });
+
+  describe('tool calling pass-through', () => {
+    test('accepts request with tools array and sampling params', async () => {
+      undoFetch();
+      undoFetch = mockFetch(() => mockJsonResponse({ choices: [{ message: { content: 'sunny', tool_calls: undefined } }] }));
+
+      const res = await sendRequest(app, '/v1/chat/completions', {
+        method: 'POST',
+        apiKey: rawApiKey,
+        body: {
+          messages: [{ role: 'user', content: 'weather?' }],
+          tools: [{
+            type: 'function',
+            function: { name: 'get_weather', description: 'Get weather', parameters: { type: 'object', properties: { city: { type: 'string' } }, required: ['city'] } },
+          }],
+          tool_choice: 'auto',
+          temperature: 0.7,
+          max_tokens: 256,
+        },
+      });
+
+      expect(res.status).toBe(200);
+    });
+
+    test('returns tool_calls and finish_reason tool_calls when provider responds with tool call', async () => {
+      const toolCall = { id: 'call_1', type: 'function', function: { name: 'get_weather', arguments: '{"city":"Rome"}' } };
+      undoFetch();
+      undoFetch = mockFetch(() => mockJsonResponse({
+        choices: [{ message: { content: null, tool_calls: [toolCall] } }],
+      }));
+
+      const res = await sendRequest(app, '/v1/chat/completions', {
+        method: 'POST',
+        apiKey: rawApiKey,
+        body: {
+          messages: [{ role: 'user', content: 'weather in Rome?' }],
+          tools: [{ type: 'function', function: { name: 'get_weather', parameters: {} } }],
+        },
+      });
+
+      expect(res.status).toBe(200);
+      const body = await res.json() as any;
+      expect(body.choices[0].finish_reason).toBe('tool_calls');
+      expect(body.choices[0].message.content).toBeNull();
+      expect(body.choices[0].message.tool_calls).toHaveLength(1);
+      expect(body.choices[0].message.tool_calls[0].function.name).toBe('get_weather');
+    });
+
+    test('accepts assistant message with null content (tool call history)', async () => {
+      undoFetch();
+      undoFetch = mockFetch(() => mockSseResponse('done'));
+
+      const res = await sendRequest(app, '/v1/chat/completions', {
+        method: 'POST',
+        apiKey: rawApiKey,
+        body: {
+          messages: [
+            { role: 'user', content: 'weather?' },
+            { role: 'assistant', content: null, tool_calls: [{ id: 'c1', type: 'function', function: { name: 'get_weather', arguments: '{}' } }] },
+            { role: 'tool', content: 'sunny', tool_call_id: 'c1' },
+          ],
+        },
+      });
+
+      expect(res.status).toBe(200);
+    });
+
+    test('accepts arguments as JSON string (OpenAI spec)', async () => {
+      undoFetch();
+      undoFetch = mockFetch(() => mockSseResponse('ok'));
+
+      const res = await sendRequest(app, '/v1/chat/completions', {
+        method: 'POST',
+        apiKey: rawApiKey,
+        body: {
+          messages: [
+            { role: 'assistant', content: null, tool_calls: [{ id: 'c1', type: 'function', function: { name: 'foo', arguments: '{"x":1}' } }] },
+            { role: 'tool', content: 'result', tool_call_id: 'c1' },
+            { role: 'user', content: 'ok' },
+          ],
+        },
+      });
+
+      expect(res.status).toBe(200);
+    });
+
+    test('returns 422 when arguments is not a string', async () => {
+      const res = await sendRequest(app, '/v1/chat/completions', {
+        method: 'POST',
+        apiKey: rawApiKey,
+        body: {
+          messages: [
+            { role: 'assistant', content: null, tool_calls: [{ id: 'c1', type: 'function', function: { name: 'foo', arguments: { x: 1 } } }] },
+            { role: 'user', content: 'ok' },
+          ],
+        },
+      });
+
+      expect(res.status).toBe(422);
     });
   });
 });

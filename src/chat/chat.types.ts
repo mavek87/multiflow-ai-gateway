@@ -14,6 +14,21 @@ export interface ChatServiceRequest {
     messages: AIChatMessage[];
     system?: string;
     stream?: boolean;
+    tools?: unknown[];
+    tool_choice?: unknown;
+    parallel_tool_calls?: boolean;
+    temperature?: number;
+    top_p?: number;
+    max_tokens?: number;
+    max_completion_tokens?: number;
+    presence_penalty?: number;
+    frequency_penalty?: number;
+    seed?: number;
+    stop?: string | string[];
+    response_format?: unknown;
+    stream_options?: unknown;
+    user?: string;
+    n?: number;
 }
 
 export type ChatHandlerResult =
@@ -27,7 +42,7 @@ export interface ChatCompletion {
     model: string;
     choices: Array<{
         index: number;
-        message: {role: 'assistant'; content: string};
+        message: {role: 'assistant'; content: string | null; tool_calls?: ToolCall[]};
         finish_reason: 'stop' | 'length' | 'tool_calls' | 'content_filter';
     }>;
 }

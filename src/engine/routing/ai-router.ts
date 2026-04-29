@@ -8,6 +8,7 @@ import type {
     AIChatResponse,
     AIChatStreamResponse,
     AIBaseResponse,
+    ChatOptions,
 } from '@/engine/client/client.types';
 import type {
     ToolContext,
@@ -43,7 +44,7 @@ export class AIRouter {
     ) {
     }
 
-    async chat(systemPrompt: string, messages: AIChatMessage[], ctx?: ToolContext, tools?: ToolDefinition[], toolDispatcher?: ToolDispatcher): Promise<AIChatResponse | null> {
+    async chat(systemPrompt: string, messages: AIChatMessage[], ctx?: ToolContext, tools?: ToolDefinition[], toolDispatcher?: ToolDispatcher, opts?: ChatOptions): Promise<AIChatResponse | null> {
         log.info({messages: messages.length, tenantId: ctx?.tenantId ?? 'unknown'}, 'new request');
 
         return this.executeWithAudit(ctx?.tenantId ?? 'unknown', async () => {
@@ -52,29 +53,30 @@ export class AIRouter {
                     const executeToolFn = (name: string, args: Record<string, unknown>) => toolDispatcher(name, args, ctx);
                     return client.chatWithTools(systemPrompt, messages, tools, executeToolFn);
                 }
-                return client.chat(systemPrompt, messages);
+                return client.chat(systemPrompt, messages, opts);
             });
 
             if (result) {
                 const modelMeta = this.aiProviderIds.get(result.model);
                 const displayName = modelMeta?.modelName ?? result.model;
                 log.info({model: displayName, latencyMs: result.latencyMs, ttftMs: result.ttftMs}, 'model succeeded');
-                return {content: result.content, model: displayName, aiProviderId: result.aiProviderId, aiProvider: result.aiProvider, aiProviderUrl: result.aiProviderUrl};
+                return {content: result.content, toolCalls: result.toolCalls, model: displayName, aiProviderId: result.aiProviderId, aiProvider: result.aiProvider, aiProviderUrl: result.aiProviderUrl};
             }
 
             return null;
         });
     }
 
-    async chatStream(systemPrompt: string, messages: AIChatMessage[], ctx?: ToolContext): Promise<AIChatStreamResponse | null> {
+    async chatStream(systemPrompt: string, messages: AIChatMessage[], ctx?: ToolContext, opts?: ChatOptions): Promise<AIChatStreamResponse | null> {
         log.info({messages: messages.length, tenantId: ctx?.tenantId ?? 'unknown'}, 'new stream request');
 
         return this.executeWithAudit(ctx?.tenantId ?? 'unknown', async () => {
-            const result = await this.executeWithRetry<CallProviderStreamSuccess>((client) => client.chatStream(systemPrompt, messages));
+            const result = await this.executeWithRetry<CallProviderStreamSuccess>((client) => client.chatStream(systemPrompt, messages, opts));
 
             if (result) {
                 const modelMeta = this.aiProviderIds.get(result.model);
                 const displayName = modelMeta?.modelName ?? result.model;
+                log.info({model: displayName, ttftMs: result.ttftMs}, 'stream model succeeded');
                 return {body: result.body, model: displayName, aiProviderId: result.aiProviderId, aiProvider: result.aiProvider, aiProviderUrl: result.aiProviderUrl};
             }
 
@@ -121,7 +123,7 @@ export class AIRouter {
                 };
             }
 
-            log.warn({model: modelMeta?.modelName ?? selected, kind: result.error.kind}, 'attempt failed');
+            log.warn({model: modelMeta?.modelName ?? selected, kind: result.error.kind, reason: result.error.error instanceof Error ? result.error.error.message : String(result.error.error)}, 'attempt failed');
             this.onFailure(selected, result.error.kind);
         }
 

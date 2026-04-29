@@ -26,7 +26,7 @@ function okResult(content: string): CallProviderResult {
 function toolCallResult(name: string, args: Record<string, unknown> = {}): CallProviderResult {
   return ok({
     content: '',
-    toolCalls: [{ id: `tc-${name}`, type: 'function', function: { name, arguments: args } }],
+    toolCalls: [{ id: `tc-${name}`, type: 'function' as const, function: { name, arguments: JSON.stringify(args) } }],
     ttftMs: 1,
     latencyMs: 5,
   });
@@ -194,7 +194,7 @@ describe('ToolCallOrchestrator', () => {
     let call = 0;
     const orchestrator = new ToolCallOrchestrator(async () => {
       call++;
-      if (call === 1) return ok({ content: '', toolCalls: [{ id: 'tc-1', type: 'function', function: { name: 'tool_a', arguments: {} } }], ttftMs: 10, latencyMs: 100 });
+      if (call === 1) return ok({ content: '', toolCalls: [{ id: 'tc-1', type: 'function' as const, function: { name: 'tool_a', arguments: '{}' } }], ttftMs: 10, latencyMs: 100 });
       return ok({ content: 'done', ttftMs: 20, latencyMs: 200 });
     });
 
@@ -207,7 +207,7 @@ describe('ToolCallOrchestrator', () => {
   });
 
   test('preserves metrics when loop is exhausted at max calls', async () => {
-    const modelFn = async () => ok({ content: '', toolCalls: [{ id: 'tc-1', type: 'function' as const, function: { name: 'infinite_tool', arguments: {} } }], ttftMs: 5, latencyMs: 50 });
+    const modelFn = async () => ok({ content: '', toolCalls: [{ id: 'tc-1', type: 'function' as const, function: { name: 'infinite_tool', arguments: '{}' } }], ttftMs: 5, latencyMs: 50 });
     const orchestrator = new ToolCallOrchestrator(modelFn, 3);
 
     const result = await orchestrator.applyTools(HISTORY, [TOOL_DEF], async () => 'loop');

@@ -108,35 +108,85 @@ function patchSwaggerExamples({request, responseValue}: { request: Request; resp
     const content = requestBody?.content as Record<string, Record<string, unknown>>;
     if (!content?.['application/json']) return;
     content['application/json'].examples = {
-        'all-fields': {
-            summary: 'All optional fields (system prompt + streaming)',
-            value: {model: 'gpt-4o', messages: [{role: 'user', content: 'Hello'}], system: 'You are a helpful assistant.', stream: true},
+        'minimal': {
+            summary: 'Minimal request (auto-route)',
+            value: {messages: [{role: 'user', content: 'Hello!'}]},
         },
         'single-model': {
             summary: 'Single model (OpenAI-compatible)',
-            value: {model: 'llama-3-70b', messages: [{role: 'user', content: 'Hello'}]},
+            value: {model: 'gpt-4o', messages: [{role: 'user', content: 'Hello!'}]},
         },
         'provider-slash-model': {
             summary: 'Force specific provider',
-            value: {model: 'groq/llama-3-70b', messages: [{role: 'user', content: 'Hello'}]},
+            value: {model: 'groq/llama-3-70b', messages: [{role: 'user', content: 'Hello!'}]},
         },
         'models-subset': {
-            summary: 'Gateway extension: subset of models (multi-provider)',
-            value: {models: ['groq/llama-3-70b', 'openai/gpt-4o-mini', 'gemma-2-9b'], messages: [{role: 'user', content: 'Hello'}]},
+            summary: 'Gateway extension: restrict to a subset of models',
+            value: {models: ['groq/llama-3-70b', 'openai/gpt-4o-mini', 'gemma-2-9b'], messages: [{role: 'user', content: 'Hello!'}]},
+        },
+        'with-system-and-sampling': {
+            summary: 'System prompt + sampling parameters',
+            value: {
+                model: 'gpt-4o',
+                system: 'You are a helpful assistant.',
+                messages: [{role: 'user', content: 'Tell me a joke'}],
+                temperature: 0.9,
+                max_tokens: 256,
+            },
+        },
+        'streaming': {
+            summary: 'Streaming response (SSE)',
+            value: {
+                model: 'gpt-4o',
+                messages: [{role: 'user', content: 'Tell me a joke'}],
+                stream: true,
+            },
+        },
+        'with-tools': {
+            summary: 'Tool calling - Turn 1: send tools and ask the model',
+            value: {
+                model: 'gpt-4o',
+                messages: [{role: 'user', content: 'What is the weather in Rome?'}],
+                tools: [{
+                    type: 'function',
+                    function: {
+                        name: 'get_weather',
+                        description: 'Get current weather for a city',
+                        parameters: {
+                            type: 'object',
+                            properties: {city: {type: 'string'}},
+                            required: ['city'],
+                        },
+                    },
+                }],
+                tool_choice: 'auto',
+            },
         },
         'with-tool-result': {
-            summary: 'Conversation with tool call result',
+            summary: 'Tool calling - Turn 2: send back the tool result',
             value: {
                 model: 'gpt-4o',
                 messages: [
                     {role: 'user', content: 'What is the weather in Rome?'},
                     {
                         role: 'assistant',
-                        content: '',
-                        tool_calls: [{id: 'call_1', type: 'function', function: {name: 'get_weather', arguments: {city: 'Rome'}}}]
+                        content: null,
+                        tool_calls: [{id: 'call_1', type: 'function', function: {name: 'get_weather', arguments: '{"city":"Rome"}'}}],
                     },
                     {role: 'tool', content: '{"temperature": 22, "condition": "sunny"}', tool_call_id: 'call_1'},
                 ],
+                tools: [{
+                    type: 'function',
+                    function: {
+                        name: 'get_weather',
+                        description: 'Get current weather for a city',
+                        parameters: {
+                            type: 'object',
+                            properties: {city: {type: 'string'}},
+                            required: ['city'],
+                        },
+                    },
+                }],
             },
         },
     };

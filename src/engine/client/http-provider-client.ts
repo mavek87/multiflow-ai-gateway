@@ -8,7 +8,7 @@
  */
 
 import { ok, err, type Result } from 'neverthrow';
-import type { AIChatMessage, ModelConfig, ToolCall } from '@/engine/client/client.types';
+import type { AIChatMessage, ModelConfig, ToolCall, ChatOptions } from '@/engine/client/client.types';
 import type { ToolDefinition, ToolDispatcher } from '@/engine/tools/tools.types';
 import { createLogger } from '@/utils/logger';
 import { ToolCallOrchestrator } from '@/engine/tools/tools-call-orchestrator';
@@ -33,11 +33,16 @@ export class HttpProviderClient {
 
   /**
    * Executes a non-streaming chat completion request.
-   * Automatically strips <think> tags from the final response.
+   * When opts.tools is provided, uses JSON response (not SSE) to capture tool_calls.
    */
-  async chat(systemPrompt: string, messages: AIChatMessage[]): Promise<CallProviderResult> {
+  async chat(systemPrompt: string, messages: AIChatMessage[], opts?: ChatOptions): Promise<CallProviderResult> {
     const history: AIChatMessage[] = [{ role: 'system', content: systemPrompt }, ...messages];
-    const result = await this.callProvider(history, new SseResponseParser(this.firstTokenTimeoutMs, this.streamWatchdogMs));
+    const hasTools = (opts?.tools?.length ?? 0) > 0;
+    const parser: OpenAIResponseParser = hasTools
+      ? new JsonResponseParser()
+      : new SseResponseParser(this.firstTokenTimeoutMs, this.streamWatchdogMs);
+    const result = await this.callProvider(history, parser, undefined, opts);
+    if (hasTools) return result;
     return result.map((r) => ({ ...r, content: stripThinkTags(r.content) }));
   }
 
@@ -60,10 +65,9 @@ export class HttpProviderClient {
 
   /**
    * Opens a streaming connection to the provider and returns the raw Response body.
-   * Returns a StreamResult error if the HTTP request fails before streaming starts.
-   * Once the ReadableStream is returned, the caller owns it and must handle mid-stream errors.
+   * All opts (tools, sampling params) are forwarded upstream transparently.
    */
-  async chatStream(systemPrompt: string, messages: AIChatMessage[]): Promise<CallProviderStreamResult> {
+  async chatStream(systemPrompt: string, messages: AIChatMessage[], opts?: ChatOptions): Promise<CallProviderStreamResult> {
     const controller = new AbortController();
     const firstTokenTimeout = setTimeout(() => controller.abort(), this.firstTokenTimeoutMs);
     const start = Date.now();
@@ -72,7 +76,7 @@ export class HttpProviderClient {
       const res = await fetch(this.config.url, {
         method: 'POST',
         headers: this.buildHeaders(),
-        body: JSON.stringify({ model: this.config.model, messages: [{ role: 'system', content: systemPrompt }, ...messages], stream: true }),
+        body: JSON.stringify(this.buildBody([{ role: 'system', content: systemPrompt }, ...messages], true, undefined, opts)),
         signal: controller.signal,
       });
 
@@ -100,6 +104,7 @@ export class HttpProviderClient {
     messages: AIChatMessage[],
     responseParser: OpenAIResponseParser,
     tools?: ToolDefinition[],
+    opts?: ChatOptions,
   ): Promise<CallProviderResult> {
     const startTime = Date.now();
     const abortController = new AbortController();
@@ -116,7 +121,7 @@ export class HttpProviderClient {
       const response = await fetch(this.config.url, {
         method: 'POST',
         headers: this.buildHeaders(),
-        body: JSON.stringify(this.buildBody(messages, stream, tools)),
+        body: JSON.stringify(this.buildBody(messages, stream, tools, opts)),
         signal: abortController.signal,
       });
 
@@ -131,7 +136,7 @@ export class HttpProviderClient {
         () => { if (firstTokenTimeout) clearTimeout(firstTokenTimeout); },
       );
 
-      if (!content && responseParser.requiresContent) {
+      if (!content && !toolCalls?.length && responseParser.requiresContent) {
         return err({ kind: 'hard', error: new Error('empty response') });
       }
 
@@ -148,10 +153,28 @@ export class HttpProviderClient {
     }
   }
 
-  private buildBody(messages: AIChatMessage[], stream: boolean, tools?: ToolDefinition[]): Record<string, unknown> {
+  private buildBody(messages: AIChatMessage[], stream: boolean, tools?: ToolDefinition[], opts?: ChatOptions): Record<string, unknown> {
     const body: Record<string, unknown> = { model: this.config.model, messages, stream };
     if (this.enableThinking) body.think = true;
     if (tools?.length) body.tools = tools;
+
+    if (opts) {
+      if (opts.tools?.length) body.tools = opts.tools;
+      if (opts.tool_choice !== undefined) body.tool_choice = opts.tool_choice;
+      if (opts.parallel_tool_calls !== undefined) body.parallel_tool_calls = opts.parallel_tool_calls;
+      if (opts.temperature !== undefined) body.temperature = opts.temperature;
+      if (opts.top_p !== undefined) body.top_p = opts.top_p;
+      if (opts.max_tokens !== undefined) body.max_tokens = opts.max_tokens;
+      if (opts.max_completion_tokens !== undefined) body.max_completion_tokens = opts.max_completion_tokens;
+      if (opts.presence_penalty !== undefined) body.presence_penalty = opts.presence_penalty;
+      if (opts.frequency_penalty !== undefined) body.frequency_penalty = opts.frequency_penalty;
+      if (opts.seed !== undefined) body.seed = opts.seed;
+      if (opts.stop !== undefined) body.stop = opts.stop;
+      if (opts.response_format !== undefined) body.response_format = opts.response_format;
+      if (opts.stream_options !== undefined) body.stream_options = opts.stream_options;
+      if (opts.user !== undefined) body.user = opts.user;
+    }
+
     return body;
   }
 
