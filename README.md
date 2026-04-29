@@ -52,7 +52,7 @@ cp .env.example .env
 |---|---|---|---|
 | `MASTER_KEY` | yes | - | Protects `/admin/*` endpoints |
 | `ENCRYPTION_KEY` | yes | - | AES-256 key for provider API keys (64 hex chars) |
-| `PORT` | no | `3000` | HTTP server port |
+| `PORT` | no | `13000` | HTTP server port |
 | `DB_PATH` | no | `./data/gateway.db` | SQLite database path |
 | `AUDIT_RETENTION_DAYS` | no | `90` | How many days to retain audit records in the database |
 | `SELECTOR_TYPE` | no | `ucb1-tuned` | Model selector algorithm: `ucb1-tuned`, `thompson`, `sw-ucb1-tuned` |
@@ -127,7 +127,7 @@ A new tenant's gateway API key is printed to the logs on first creation. It is n
 Use this after the server is running if you prefer to configure tenants and providers dynamically via the Admin API.
 
 ```bash
-BASE=http://localhost:3000
+BASE=http://localhost:13000
 MASTER=your-master-key
 
 # 1. Create a global provider (once per provider, shared across tenants)
@@ -176,7 +176,7 @@ bun run check  # typecheck + tests
 bun run start
 ```
 
-The database is created automatically on first start. The server listens on `http://localhost:3000` (or the configured `PORT`).
+The database is created automatically on first start. The server listens on `http://localhost:13000` (or the configured `PORT`).
 
 ### 4b. Run with Docker (alternative)
 
@@ -424,7 +424,7 @@ If you lose the `ENCRYPTION_KEY` environment variable, every provider API key st
 
 ## API Reference
 
-Interactive docs available at `http://localhost:3000/docs` once the server is running.
+Interactive docs available at `http://localhost:13000/docs` once the server is running.
 
 ### Health
 
@@ -531,12 +531,12 @@ The gateway exposes an OpenAI-compatible API. Any agent or SDK that supports a c
 
 ```python
 from openai import OpenAI
-client = OpenAI(base_url="http://localhost:3000/v1", api_key="gw_your_tenant_key")
+client = OpenAI(base_url="http://localhost:13000/v1", api_key="gw_your_tenant_key")
 ```
 
 ```bash
 # OpenCode / Cursor: set the OpenAI base URL in the tool settings
-OPENAI_BASE_URL=http://localhost:3000/v1
+OPENAI_BASE_URL=http://localhost:13000/v1
 OPENAI_API_KEY=gw_your_tenant_key
 ```
 

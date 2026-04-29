@@ -21,7 +21,7 @@ function selectorType(): ModelSelectorType {
 }
 
 export const config = {
-  port: parseInt(optional('PORT', '3000'), 10),
+  port: parseInt(optional('PORT', '13000'), 10),
   masterKey: required('MASTER_KEY'),
   dbPath: optional('DB_PATH', './data/gateway.db'),
   auditRetentionDays: parseInt(optional('AUDIT_RETENTION_DAYS', '90'), 10),
