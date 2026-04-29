@@ -23,30 +23,20 @@ providers:
       - openai
 
 tenants:
-  - name: matteo
-    rateLimitDailyRequests: 1000   # optional: null or omit for unlimited
+  - name: ai-agents
     providers:
-      - name: Groq
-        apiKeyEnv: GROQ_API_KEY
-        models:
-          - name: llama-3.3-70b-versatile
-            priority: 0
-          - name: llama-3.1-8b-instant
-            priority: 1
-          - name: mixtral-8x7b-32768
-            priority: 2
-      - name: Ollama Local
-        models:
-          - name: qwen3.5:397b-cloud
-            priority: 3
-          - name: gemini-3-flash-preview
-            priority: 4
-          - name: gemma4:31b-cloud
-            priority: 5
-          - name: deepseek-v3.2:cloud
-            priority: 6
       - name: Pollinations
         apiKeyEnv: POLLINATIONS_API_KEY
         models:
           - name: openai
-            priority: 7
+            priority: 1
+      - name: Ollama Local
+        models:
+          - name: qwen3.5:397b-cloud
+            priority: 2
+          - name: gemini-3-flash-preview
+            priority: 3
+          - name: gemma4:31b-cloud
+            priority: 4
+          - name: deepseek-v3.2:cloud
+            priority: 5

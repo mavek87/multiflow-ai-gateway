@@ -51,7 +51,7 @@ export class AIRouter {
             if (result) {
                 const modelMeta = this.aiProviderIds.get(result.model);
                 const displayName = modelMeta?.modelName ?? result.model;
-                log.info({model: displayName, latencyMs: result.latencyMs, ttftMs: result.ttftMs}, 'model succeeded');
+                log.info({model: displayName, provider: modelMeta?.name, latencyMs: result.latencyMs, ttftMs: result.ttftMs}, 'model succeeded');
                 return {content: result.content, toolCalls: result.toolCalls, rawBody: result.rawBody, model: displayName, aiProviderId: result.aiProviderId, aiProvider: result.aiProvider, aiProviderUrl: result.aiProviderUrl};
             }
 
@@ -68,7 +68,7 @@ export class AIRouter {
             if (result) {
                 const modelMeta = this.aiProviderIds.get(result.model);
                 const displayName = modelMeta?.modelName ?? result.model;
-                log.info({model: displayName, ttftMs: result.ttftMs}, 'stream model succeeded');
+                log.info({model: displayName, provider: modelMeta?.name, ttftMs: result.ttftMs}, 'stream model succeeded');
                 return {body: result.body, model: displayName, aiProviderId: result.aiProviderId, aiProvider: result.aiProvider, aiProviderUrl: result.aiProviderUrl};
             }
 
@@ -115,7 +115,7 @@ export class AIRouter {
                 };
             }
 
-            log.warn({model: modelMeta?.modelName ?? selected, kind: result.error.kind, reason: result.error.error instanceof Error ? result.error.error.message : String(result.error.error)}, 'attempt failed');
+            log.warn({model: modelMeta?.modelName ?? selected, provider: modelMeta?.name, kind: result.error.kind, reason: result.error.error instanceof Error ? result.error.error.message : String(result.error.error)}, 'attempt failed');
             this.onFailure(selected, result.error.kind);
         }
 

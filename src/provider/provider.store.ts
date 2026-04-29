@@ -48,10 +48,10 @@ export class ProviderStore {
   }
 
   updateProvider(id: string, input: import('./provider.types').UpdateProviderInput): AiProvider | null {
-    if (!this.getProviderById(id)) return null;
-    this.db.update(aiProviders).set(input).where(eq(aiProviders.id, id)).run();
+    const row = this.db.update(aiProviders).set(input).where(eq(aiProviders.id, id)).returning().get();
+    if (!row) return null;
     log.info(`Updated provider ${id}`);
-    return this.getProviderById(id);
+    return row;
   }
 
   deleteProvider(id: string): boolean {
@@ -94,10 +94,10 @@ export class ProviderStore {
   }
 
   updateProviderModel(id: string, input: import('./provider.types').UpdateProviderModelInput): AiProviderModel | null {
-    if (!this.getProviderModelById(id)) return null;
-    this.db.update(aiProviderModels).set(input).where(eq(aiProviderModels.id, id)).run();
+    const row = this.db.update(aiProviderModels).set(input).where(eq(aiProviderModels.id, id)).returning().get();
+    if (!row) return null;
     log.info(`Updated provider model ${id}`);
-    return this.getProviderModelById(id);
+    return row;
   }
 
   deleteProviderModel(id: string): boolean {

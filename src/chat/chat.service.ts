@@ -54,7 +54,8 @@ export class ChatService {
     private resolveSystemPrompt(chatRequest: ChatServiceRequest): string {
         if (chatRequest.system) return chatRequest.system;
         const systemMessage = chatRequest.messages.find(m => m.role === 'system');
-        return systemMessage?.content ?? '';
+        const content = systemMessage?.content;
+        return typeof content === 'string' ? content : '';
     }
 
     private extractChatOptions(chatRequest: ChatServiceRequest): ChatOptions | undefined {

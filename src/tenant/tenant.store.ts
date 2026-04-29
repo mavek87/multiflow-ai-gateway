@@ -72,10 +72,10 @@ export class TenantStore {
   }
 
   updateTenant(id: string, input: UpdateTenantInput): Tenant | null {
-    if (!this.getTenantById(id)) return null;
-    this.db.update(tenants).set(input).where(eq(tenants.id, id)).run();
+    const row = this.db.update(tenants).set(input).where(eq(tenants.id, id)).returning().get();
+    if (!row) return null;
     log.info(`Updated tenant ${id}`);
-    return this.getTenantById(id);
+    return { ...row, forceAiProviderId: row.forceAiProviderId ?? null, rateLimitDailyRequests: row.rateLimitDailyRequests ?? null };
   }
 
   deleteTenant(id: string): boolean {
@@ -127,10 +127,10 @@ export class TenantStore {
   }
 
   updateTenantAiProviderKey(id: string, input: import('./tenant.types').UpdateTenantAiProviderKeyInput): TenantAiProviderKey | null {
-    if (!this.getTenantAiProviderKeyById(id)) return null;
-    this.db.update(tenantAiProviderKeys).set(input).where(eq(tenantAiProviderKeys.id, id)).run();
+    const row = this.db.update(tenantAiProviderKeys).set(input).where(eq(tenantAiProviderKeys.id, id)).returning().get();
+    if (!row) return null;
     log.info(`Updated tenant AI provider key ${id}`);
-    return this.getTenantAiProviderKeyById(id);
+    return row;
   }
 
   deleteTenantAiProviderKey(id: string): boolean {
@@ -169,10 +169,10 @@ export class TenantStore {
   }
 
   updateTenantAiModelPriority(id: string, input: import('./tenant.types').UpdateTenantAiModelPriorityInput): TenantAiModelPriority | null {
-    if (!this.getTenantAiModelPriorityById(id)) return null;
-    this.db.update(tenantAiModelPriorities).set(input).where(eq(tenantAiModelPriorities.id, id)).run();
+    const row = this.db.update(tenantAiModelPriorities).set(input).where(eq(tenantAiModelPriorities.id, id)).returning().get();
+    if (!row) return null;
     log.info(`Updated tenant AI model priority ${id}`);
-    return this.getTenantAiModelPriorityById(id);
+    return row;
   }
 
   deleteTenantAiModelPriority(id: string): boolean {
@@ -229,10 +229,38 @@ export class TenantStore {
   }
 
   upsertTenant(name: string): { tenant: Tenant; rawApiKey: string | null; isNew: boolean } {
-    const existing = this.getTenantByName(name);
-    if (existing) return { tenant: existing, rawApiKey: null, isNew: false };
-    const { tenant, rawApiKey } = this.createTenant(name);
-    return { tenant, rawApiKey, isNew: true };
+    const id = randomUUID();
+    const now = Date.now();
+    
+    this.db.insert(tenants)
+      .values({ id, name, forceAiProviderId: null, rateLimitDailyRequests: null, createdAt: now })
+      .onConflictDoNothing({ target: tenants.name })
+      .run();
+
+    const row = this.db.select().from(tenants).where(eq(tenants.name, name)).get()!;
+    const isNew = row.id === id;
+    let rawApiKey = null;
+    
+    if (isNew) {
+      rawApiKey = generateApiKey();
+      const keyHash = hashApiKey(rawApiKey);
+      const keyId = randomUUID();
+
+      this.db.insert(gatewayApiKeys).values({
+        id: keyId,
+        tenantId: row.id,
+        keyHash,
+        createdAt: row.createdAt,
+      }).run();
+      
+      log.info(`Created tenant via upsert: ${row.name} (${row.id})`);
+    }
+
+    return { 
+        tenant: { ...row, forceAiProviderId: row.forceAiProviderId ?? null, rateLimitDailyRequests: row.rateLimitDailyRequests ?? null }, 
+        rawApiKey, 
+        isNew 
+    };
   }
 
   getAiProviderKey(tenantId: string, aiProviderId: string): TenantAiProviderKey | null {

@@ -9,11 +9,18 @@ export const ToolCallSchema = t.Object({
     }),
 });
 
+const ContentPartSchema = t.Union([
+    t.Object({type: t.Literal('text'), text: t.String()}),
+    t.Object({type: t.Literal('image_url'), image_url: t.Object({url: t.String(), detail: t.Optional(t.String())})}),
+    t.Object({type: t.Literal('tool_result'), tool_use_id: t.Optional(t.String()), content: t.Optional(t.Unknown())}),
+    t.Object({type: t.String()}), // fallback for other part types
+]);
+
 export const MessageSchema = t.Object({
     role: t.Union([t.Literal('system'), t.Literal('user'), t.Literal('assistant'), t.Literal('tool')], {
         error: "Expected role to be one of: 'system', 'user', 'assistant', 'tool'",
     }),
-    content: t.Union([t.String(), t.Null()]),
+    content: t.Optional(t.Union([t.String(), t.Null(), t.Array(t.Any())])),
     name: t.Optional(t.String()),
     tool_calls: t.Optional(t.Array(ToolCallSchema)),
     tool_call_id: t.Optional(t.String()),
