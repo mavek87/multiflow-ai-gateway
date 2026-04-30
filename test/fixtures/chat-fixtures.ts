@@ -37,9 +37,9 @@ export function createFakeToolCallResponse(toolCallId: string, functionName: str
   const toolCall = {
     id: toolCallId,
     type: 'function' as const,
-    function: { name: functionName, arguments: args },
+    function: {name: functionName, arguments: args},
   };
-  
+
   return {
     id: 'chatcmpl-tool',
     object: 'chat.completion',
@@ -47,7 +47,7 @@ export function createFakeToolCallResponse(toolCallId: string, functionName: str
     model: 'gpt-4o',
     choices: [{
       index: 0,
-      message: { role: 'assistant', content: null, tool_calls: [toolCall] },
+      message: {role: 'assistant', content: null, tool_calls: [toolCall]},
       finish_reason: 'tool_calls'
     }]
   };

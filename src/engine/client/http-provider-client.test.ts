@@ -1,9 +1,14 @@
 import { describe, test, expect, afterEach } from 'bun:test';
 import { HttpProviderClient } from './http-provider-client';
 import { mockSseResponse, mockJsonResponse, mockFetch } from '@test/test-setup';
+import { createFakeToolCallResponse } from '@test/fixtures/chat-fixtures';
 
 function mockChatResponse(content: string) {
   return mockJsonResponse({ choices: [{ message: { content } }], usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } });
+}
+
+function mockToolCallResponse(id: string, name: string, args: string) {
+  return mockJsonResponse(createFakeToolCallResponse(id, name, args));
 }
 
 const SYSTEM = 'You are a helpful assistant.';
@@ -19,6 +24,19 @@ describe('HttpProviderClient - OpenAI-compat response parsing', () => {
     const result = await client.chat(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(result.isOk()).toBe(true);
     if (result.isOk()) expect(result.value.content).toBe('Hello world');
+  });
+
+  test('chat() returns tool_calls from JSON response', async () => {
+    const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' });
+    undoFetch = mockFetch(() => mockToolCallResponse('call_123', 'get_weather', '{"city":"London"}'));
+    const result = await client.chat(SYSTEM, [{ role: 'user', content: 'weather?' }], {
+      tools: [{ type: 'function', function: { name: 'get_weather', description: '', parameters: {} } }]
+    });
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.toolCalls).toHaveLength(1);
+      expect(result.value.toolCalls?.[0]?.function.name).toBe('get_weather');
+    }
   });
 
   test('chat() strips <think> tags from response', async () => {

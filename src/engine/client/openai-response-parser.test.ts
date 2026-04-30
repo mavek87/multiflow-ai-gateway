@@ -1,5 +1,6 @@
 import { describe, test, expect } from 'bun:test';
 import { SseResponseParser, JsonResponseParser } from './openai-response-parser';
+import { createFakeToolCallResponse } from '@test/fixtures/chat-fixtures';
 
 function makeReader(chunks: string[]): { read(): Promise<{ done: boolean; value?: Uint8Array }> } {
   const encoder = new TextEncoder();
@@ -24,11 +25,9 @@ describe('JsonResponseParser - parseJsonResponse', () => {
   });
 
   test('extracts tool_calls when present', () => {
-    const toolCalls = [{ id: 'call_1', type: 'function' as const, function: { name: 'get_weather', arguments: '{}' } }];
-    const result = parser.parseJsonResponse({
-      choices: [{ message: { content: '', tool_calls: toolCalls } }],
-    });
-    expect(result.toolCalls).toEqual(toolCalls);
+    const response = createFakeToolCallResponse('call_1', 'get_weather', '{}');
+    const result = parser.parseJsonResponse(response as any);
+    expect(result.toolCalls).toEqual(response.choices[0]!.message.tool_calls);
   });
 
   test('returns empty content when choices is missing', () => {

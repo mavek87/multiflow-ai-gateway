@@ -12,7 +12,7 @@ import {CryptoService} from '@/crypto/crypto';
 import {runSeed} from '@/bootstrap/seed.service';
 import {AuditStore} from '@/audit/audit.store';
 import {MetricsStore} from '@/engine/observability/metrics';
-import {startHousekeeping} from '@/housekeeping/housekeeping';
+import {startHousekeeping} from '@/audit/audit.housekeeping';
 import {CircuitBreaker} from '@/engine/resilience/circuit-breaker';
 
 const log = createLogger('SERVER');

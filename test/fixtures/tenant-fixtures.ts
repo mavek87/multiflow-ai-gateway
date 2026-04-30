@@ -6,7 +6,3 @@ export function setupTenantStoreContext() {
   const cryptoService = new CryptoService();
   return { ...context, cryptoService };
 }
-
-export function createTenant(tenantStore: any, name: string = 'Acme') {
-  return tenantStore.createTenant(name);
-}
