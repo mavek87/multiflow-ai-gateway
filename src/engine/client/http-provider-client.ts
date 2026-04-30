@@ -100,20 +100,6 @@ export class HttpProviderClient {
         }
     }
 
-    private async parseJsonResponse(res: Response, start: number): Promise<{ content: string; ttftMs: number; toolCalls?: ToolCall[]; rawBody: Record<string, unknown> }> {
-        const json = await res.json() as OpenAIChatCompletion;
-        log.debug({preview: JSON.stringify(json).slice(0, 200)}, 'non-stream response');
-        const message = json.choices?.[0]?.message;
-        const toolCalls = message?.tool_calls;
-        if (toolCalls) log.debug({toolCalls}, 'tool_calls received');
-        return {
-            content: message?.content ?? '',
-            toolCalls,
-            ttftMs: Date.now() - start,
-            rawBody: json as Record<string, unknown>,
-        };
-    }
-
     private buildHeaders(): Record<string, string> {
         const headers: Record<string, string> = {'Content-Type': 'application/json'};
         if (this.config.apiKey) {
@@ -144,5 +130,19 @@ export class HttpProviderClient {
         }
 
         return body;
+    }
+
+    private async parseJsonResponse(res: Response, start: number): Promise<{ content: string; ttftMs: number; toolCalls?: ToolCall[]; rawBody: Record<string, unknown> }> {
+        const json = await res.json() as OpenAIChatCompletion;
+        log.debug({preview: JSON.stringify(json).slice(0, 200)}, 'non-stream response');
+        const message = json.choices?.[0]?.message;
+        const toolCalls = message?.tool_calls;
+        if (toolCalls) log.debug({toolCalls}, 'tool_calls received');
+        return {
+            content: message?.content ?? '',
+            toolCalls,
+            ttftMs: Date.now() - start,
+            rawBody: json as Record<string, unknown>,
+        };
     }
 }
