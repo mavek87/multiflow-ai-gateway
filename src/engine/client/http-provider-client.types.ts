@@ -1,6 +1,5 @@
 import type {AIChatMessage, ToolCall} from '@/chat/chat.types';
 import type {Result} from "neverthrow";
-import type {UsageMetrics} from "@/engine/client/openai-response-parser.types.ts";
 
 export interface TenantContext {
     tenantId: string;
@@ -60,8 +59,7 @@ export type CallProviderSuccess = {
     toolCalls?: ToolCall[];
     ttftMs: number;
     latencyMs: number;
-    usage?: UsageMetrics;
-    rawBody?: Record<string, unknown>
+    rawBody?: Record<string, unknown>;
 };
 export type CallProviderResult = Result<CallProviderSuccess, CallProviderError>;
 export type CallProviderStreamSuccess = { body: ReadableStream<Uint8Array>; ttftMs: number };

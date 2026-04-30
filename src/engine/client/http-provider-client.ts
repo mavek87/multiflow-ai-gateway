@@ -56,8 +56,8 @@ export class HttpProviderClient {
                 return err({kind: 'hard', error: new Error(`HTTP ${response.status}`)});
             }
 
-            const {content, ttftMs, toolCalls, usage, rawBody} = await parseJsonResponse(response, startTime);
-            const result = ok({content, toolCalls, ttftMs, latencyMs: Date.now() - startTime, usage, rawBody});
+            const {content, ttftMs, toolCalls, rawBody} = await parseJsonResponse(response, startTime);
+            const result = ok({content, toolCalls, ttftMs, latencyMs: Date.now() - startTime, rawBody});
 
             if (hasTools) return result;
             return result.map((r) => ({...r, content: stripThinkTags(r.content)}));
