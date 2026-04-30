@@ -13,10 +13,11 @@ import type {
     CallProviderResult,
     CallProviderStreamResult,
     ChatOptions,
-    ModelConfig
+    ModelConfig,
+    OpenAIChatCompletion,
+    ToolCall,
 } from '@/engine/client/http-provider-client.types';
 import {createLogger} from '@/utils/logger';
-import {parseJsonResponse} from './openai-response-parser';
 import {stripThinkTags} from '@/utils/text';
 
 const log = createLogger('HTTP-PROVIDER-CLIENT');
@@ -30,18 +31,12 @@ export class HttpProviderClient {
     ) {
     }
 
-    /**
-     * Executes a non-streaming chat completion request.
-     * Always uses JSON (stream: false) for maximum provider compatibility and to capture usage metrics.
-     */
     async chat(systemPrompt: string, messages: AIChatMessage[], opts?: ChatOptions): Promise<CallProviderResult> {
         const history: AIChatMessage[] = [{role: 'system', content: systemPrompt}, ...messages];
         const hasTools = (opts?.tools?.length ?? 0) > 0;
         const startTime = Date.now();
         const abortController = new AbortController();
         const totalTimeout = setTimeout(() => abortController.abort(), this.providerRequestTimeoutMs);
-
-        log.debug('round start');
 
         try {
             const response = await fetch(this.config.url, {
@@ -56,7 +51,7 @@ export class HttpProviderClient {
                 return err({kind: 'hard', error: new Error(`HTTP ${response.status}`)});
             }
 
-            const {content, ttftMs, toolCalls, rawBody} = await parseJsonResponse(response, startTime);
+            const {content, ttftMs, toolCalls, rawBody} = await this.parseJsonResponse(response, startTime);
             const result = ok({content, toolCalls, ttftMs, latencyMs: Date.now() - startTime, rawBody});
 
             if (hasTools) return result;
@@ -72,10 +67,6 @@ export class HttpProviderClient {
         }
     }
 
-    /**
-     * Opens a streaming connection to the provider and returns the raw Response body.
-     * All opts (tools, sampling params) are forwarded upstream transparently.
-     */
     async chatStream(systemPrompt: string, messages: AIChatMessage[], opts?: ChatOptions): Promise<CallProviderStreamResult> {
         const controller = new AbortController();
         const firstTokenTimeout = setTimeout(() => controller.abort(), this.firstTokenTimeoutMs);
@@ -107,6 +98,20 @@ export class HttpProviderClient {
             }
             return err({kind: 'hard', error: e});
         }
+    }
+
+    private async parseJsonResponse(res: Response, start: number): Promise<{ content: string; ttftMs: number; toolCalls?: ToolCall[]; rawBody: Record<string, unknown> }> {
+        const json = await res.json() as OpenAIChatCompletion;
+        log.debug({preview: JSON.stringify(json).slice(0, 200)}, 'non-stream response');
+        const message = json.choices?.[0]?.message;
+        const toolCalls = message?.tool_calls;
+        if (toolCalls) log.debug({toolCalls}, 'tool_calls received');
+        return {
+            content: message?.content ?? '',
+            toolCalls,
+            ttftMs: Date.now() - start,
+            rawBody: json as Record<string, unknown>,
+        };
     }
 
     private buildHeaders(): Record<string, string> {

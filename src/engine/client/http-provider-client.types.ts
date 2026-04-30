@@ -53,6 +53,10 @@ export interface ChatOptions {
     user?: string;
 }
 
+export type OpenAIChatCompletion = {
+    choices?: Array<{ message?: { content?: string; tool_calls?: ToolCall[] } }>;
+};
+
 export type CallProviderError = { kind: 'soft' | 'hard'; error: unknown };
 export type CallProviderSuccess = {
     content: string;
