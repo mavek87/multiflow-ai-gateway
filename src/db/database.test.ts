@@ -1,19 +1,28 @@
-import {describe, expect, it} from "bun:test";
-import {db} from "./database";
+import { describe, expect, it } from 'bun:test';
+import { sql } from 'drizzle-orm';
+import { db } from './database';
 
-// Mocks must be defined before any other operation,
-// but since Bun executes database.ts during import, tests
-// on "how many times it is called" are less relevant than
-// ensuring that the 'db' instance is defined and functional.
+describe('Database', () => {
+  it("should export a ready-to-use 'db' instance", () => {
+    expect(db).toBeDefined();
+  });
 
-describe("Database", () => {
-    it("should export a ready-to-use 'db' instance", () => {
-        expect(db).toBeDefined();
-    });
+  it('should have initialized and migrated the database', () => {
+    expect(typeof db.select).toBe('function');
+  });
 
-    it("should have initialized and migrated the database", () => {
-        // If we get here without crashing, the top-level await worked.
-        // DrizzleDb has the BunSqlite database methods.
-        expect(typeof db.select).toBe("function");
-    });
+  it('should have created the tenants table', () => {
+    const result = db.all(sql`SELECT name FROM sqlite_master WHERE type='table' AND name='tenants'`);
+    expect(result).toHaveLength(1);
+  });
+
+  it('should have created the ai_providers table', () => {
+    const result = db.all(sql`SELECT name FROM sqlite_master WHERE type='table' AND name='ai_providers'`);
+    expect(result).toHaveLength(1);
+  });
+
+  it('should have created the gateway_api_keys table', () => {
+    const result = db.all(sql`SELECT name FROM sqlite_master WHERE type='table' AND name='gateway_api_keys'`);
+    expect(result).toHaveLength(1);
+  });
 });

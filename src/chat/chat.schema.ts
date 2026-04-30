@@ -20,7 +20,7 @@ export const MessageSchema = t.Object({
     role: t.Union([t.Literal('system'), t.Literal('user'), t.Literal('assistant'), t.Literal('tool')], {
         error: "Expected role to be one of: 'system', 'user', 'assistant', 'tool'",
     }),
-    content: t.Optional(t.Union([t.String(), t.Null(), t.Array(t.Any())])),
+    content: t.Optional(t.Union([t.String(), t.Null(), t.Array(ContentPartSchema)])),
     name: t.Optional(t.String()),
     tool_calls: t.Optional(t.Array(ToolCallSchema)),
     tool_call_id: t.Optional(t.String()),

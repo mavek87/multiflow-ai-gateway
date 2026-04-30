@@ -1,15 +1,24 @@
 import { describe, test, expect } from 'bun:test';
 import { buildProviderUrl } from './provider.utils';
 
-describe('ProviderUtils', () => {
-  test('buildProviderUrl returns the correct chat completion URL', () => {
+describe('buildProviderUrl', () => {
+  test('returns the correct chat completion URL', () => {
     expect(buildProviderUrl('https://api.openai.com/v1', 'openai')).toBe('https://api.openai.com/v1/chat/completions');
   });
 
-  test('buildProviderUrl handles trailing slashes in baseUrl (though it does not trim them in current implementation)', () => {
-    // Current implementation: return `${baseUrl}/chat/completions`;
-    // If baseUrl has trailing slash, it will have double slash.
-    // This test documents current behavior.
-    expect(buildProviderUrl('https://api.openai.com/v1/', 'openai')).toBe('https://api.openai.com/v1//chat/completions');
+  test('trims trailing slash from baseUrl', () => {
+    expect(buildProviderUrl('https://api.openai.com/v1/', 'openai')).toBe('https://api.openai.com/v1/chat/completions');
+  });
+
+  test('trims multiple trailing slashes', () => {
+    expect(buildProviderUrl('https://api.openai.com/v1//', 'openai')).toBe('https://api.openai.com/v1/chat/completions');
+  });
+
+  test('works for groq provider type', () => {
+    expect(buildProviderUrl('https://api.groq.com/openai/v1', 'groq')).toBe('https://api.groq.com/openai/v1/chat/completions');
+  });
+
+  test('works for ollama provider type', () => {
+    expect(buildProviderUrl('http://localhost:11434/api', 'ollama')).toBe('http://localhost:11434/api/chat/completions');
   });
 });

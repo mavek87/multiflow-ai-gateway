@@ -17,13 +17,6 @@ describe('runSeed', () => {
     return path;
   }
 
-  function writeTempYml(content: string): string {
-    const path = `/tmp/seed-test-${randomUUID()}.yml`;
-    writeFileSync(path, content, 'utf-8');
-    tempFiles.push(path);
-    return path;
-  }
-
   afterEach(() => {
     for (const file of tempFiles) {
       if (existsSync(file)) unlinkSync(file);

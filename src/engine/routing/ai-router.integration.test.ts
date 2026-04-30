@@ -2,7 +2,7 @@ import { describe, test, expect } from 'bun:test';
 import { AIRouterFactory } from './ai-router.factory';
 import { createModelSelector } from '@/engine/selection/model-selector.factory';
 import type { ModelConfig } from '@/engine/client/http-provider-client.types';
-import { mockSseResponse, mockJsonResponse, setupTestDb } from '@test/test-setup';
+import { mockJsonResponse, setupTestDb } from '@test/test-setup';
 import { MetricsStore } from '@/engine/observability/metrics';
 import { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
 import { AuditStore } from '@/audit/audit.store';
@@ -87,7 +87,7 @@ describe('Routing Integration', () => {
       }
     ];
 
-    const router = factory.create(configs);
+    factory.create(configs);
     
     // Simulate 3 hard failures on Provider 1 (uuid-1)
     cb.recordHardFailure('uuid-1');

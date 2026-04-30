@@ -24,8 +24,8 @@ const log = createLogger('HTTP-PROVIDER-CLIENT');
 export class HttpProviderClient {
     constructor(
         private config: ModelConfig,
-        private firstTokenTimeoutMs = 30000,
-        private providerRequestTimeoutMs = 30000,
+        private firstTokenTimeoutMs: number,
+        private providerRequestTimeoutMs: number,
         private enableThinking = false,
     ) {
     }
@@ -34,19 +34,18 @@ export class HttpProviderClient {
         const history: AIChatMessage[] = [{role: 'system', content: systemPrompt}, ...messages];
         const hasTools = (opts?.tools?.length ?? 0) > 0;
         const startTime = Date.now();
-        const abortController = new AbortController();
-        const totalTimeout = setTimeout(() => abortController.abort(), this.providerRequestTimeoutMs);
+        const fetchAbortController = new AbortController();
+        const totalTimeout = setTimeout(() => fetchAbortController.abort(), this.providerRequestTimeoutMs);
 
         try {
             const response = await fetch(this.config.url, {
                 method: 'POST',
                 headers: this.buildHeaders(),
                 body: JSON.stringify(this.buildBody(history, false, opts)),
-                signal: abortController.signal,
+                signal: fetchAbortController.signal,
             });
 
             if (!response.ok) {
-                log.error({status: response.status}, 'HTTP error');
                 return err({kind: 'hard', error: new Error(`HTTP ${response.status}`)});
             }
 
@@ -59,7 +58,6 @@ export class HttpProviderClient {
             if (e instanceof Error && e.name === 'AbortError') {
                 return err({kind: 'soft', error: e});
             }
-            log.error({err: e}, 'fetch failed');
             return err({kind: 'hard', error: e});
         } finally {
             clearTimeout(totalTimeout);
@@ -67,8 +65,8 @@ export class HttpProviderClient {
     }
 
     async callStream(systemPrompt: string, messages: AIChatMessage[], opts?: ProviderChatOptions): Promise<CallProviderStreamResult> {
-        const controller = new AbortController();
-        const firstTokenTimeout = setTimeout(() => controller.abort(), this.firstTokenTimeoutMs);
+        const fetchAbortController = new AbortController();
+        const firstTokenTimeout = setTimeout(() => fetchAbortController.abort(), this.firstTokenTimeoutMs);
         const start = Date.now();
 
         try {
@@ -76,10 +74,8 @@ export class HttpProviderClient {
                 method: 'POST',
                 headers: this.buildHeaders(),
                 body: JSON.stringify(this.buildBody([{role: 'system', content: systemPrompt}, ...messages], true, opts)),
-                signal: controller.signal,
+                signal: fetchAbortController.signal,
             });
-
-            clearTimeout(firstTokenTimeout);
 
             if (!res.ok) {
                 return err({kind: 'hard', error: new Error(`HTTP ${res.status}`)});
@@ -91,11 +87,12 @@ export class HttpProviderClient {
 
             return ok({body: res.body!, ttftMs: Date.now() - start});
         } catch (e) {
-            clearTimeout(firstTokenTimeout);
             if (e instanceof Error && e.name === 'AbortError') {
                 return err({kind: 'soft', error: e});
             }
             return err({kind: 'hard', error: e});
+        } finally {
+            clearTimeout(firstTokenTimeout);
         }
     }
 

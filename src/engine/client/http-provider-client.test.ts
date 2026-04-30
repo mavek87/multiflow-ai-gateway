@@ -1,7 +1,12 @@
-import { describe, test, expect, afterEach } from 'bun:test';
+import { describe, test, expect, afterEach, spyOn } from 'bun:test';
 import { HttpProviderClient } from './http-provider-client';
 import { mockSseResponse, mockJsonResponse, mockFetch } from '@test/test-setup';
 import { createFakeToolCallResponse } from '@test/fixtures/chat-fixtures';
+import type { ModelConfig } from './http-provider-client.types';
+
+function createTestClient(config: ModelConfig, firstTokenTimeoutMs = 30000, providerRequestTimeoutMs = 30000) {
+  return new HttpProviderClient(config, firstTokenTimeoutMs, providerRequestTimeoutMs);
+}
 
 function mockChatResponse(content: string) {
   return mockJsonResponse({ choices: [{ message: { content } }], usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } });
@@ -19,7 +24,7 @@ describe('HttpProviderClient - OpenAI-compat response parsing', () => {
   afterEach(() => undoFetch());
 
   test('call() returns content from JSON response', async () => {
-    const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' });
+    const client = createTestClient({ url: 'http://fake/v1', model: 'test-model' });
     undoFetch = mockFetch(() => mockChatResponse('Hello world'));
     const result = await client.call(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(result.isOk()).toBe(true);
@@ -27,7 +32,7 @@ describe('HttpProviderClient - OpenAI-compat response parsing', () => {
   });
 
   test('call() returns tool_calls from JSON response', async () => {
-    const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' });
+    const client = createTestClient({ url: 'http://fake/v1', model: 'test-model' });
     undoFetch = mockFetch(() => mockToolCallResponse('call_123', 'get_weather', '{"city":"London"}'));
     const result = await client.call(SYSTEM, [{ role: 'user', content: 'weather?' }], {
       tools: [{ type: 'function', function: { name: 'get_weather', description: '', parameters: {} } }]
@@ -40,7 +45,7 @@ describe('HttpProviderClient - OpenAI-compat response parsing', () => {
   });
 
   test('call() strips <think> tags from response', async () => {
-    const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' });
+    const client = createTestClient({ url: 'http://fake/v1', model: 'test-model' });
     undoFetch = mockFetch(() => mockChatResponse('<think>internal reasoning</think>actual answer'));
     const result = await client.call(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(result.isOk()).toBe(true);
@@ -48,7 +53,7 @@ describe('HttpProviderClient - OpenAI-compat response parsing', () => {
   });
 
   test('call() returns hard failure on HTTP 500', async () => {
-    const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' });
+    const client = createTestClient({ url: 'http://fake/v1', model: 'test-model' });
     undoFetch = mockFetch(() => new Response('', { status: 500 }));
     const result = await client.call(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(result.isErr()).toBe(true);
@@ -57,7 +62,7 @@ describe('HttpProviderClient - OpenAI-compat response parsing', () => {
 
   test('includes Authorization header when apiKey is set', async () => {
     let capturedHeaders: Record<string, string> = {};
-    const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model', apiKey: 'sk-test-key' });
+    const client = createTestClient({ url: 'http://fake/v1', model: 'test-model', apiKey: 'sk-test-key' });
     undoFetch = mockFetch((_url: string, init: RequestInit) => {
       capturedHeaders = Object.fromEntries(new Headers(init.headers as Record<string, string>).entries());
       return mockChatResponse('ok');
@@ -66,8 +71,26 @@ describe('HttpProviderClient - OpenAI-compat response parsing', () => {
     expect(capturedHeaders['authorization']).toBe('Bearer sk-test-key');
   });
 
+  test('call() clears the timeout on success', async () => {
+    const client = createTestClient({ url: 'http://fake/v1', model: 'test-model' });
+    undoFetch = mockFetch(() => mockChatResponse('Hello'));
+    const spy = spyOn(globalThis, 'clearTimeout');
+    await client.call(SYSTEM, [{ role: 'user', content: 'hi' }]);
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  test('call() clears the timeout on HTTP error', async () => {
+    const client = createTestClient({ url: 'http://fake/v1', model: 'test-model' });
+    undoFetch = mockFetch(() => new Response('', { status: 500 }));
+    const spy = spyOn(globalThis, 'clearTimeout');
+    await client.call(SYSTEM, [{ role: 'user', content: 'hi' }]);
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
   test('call() aborts after providerRequestTimeoutMs on a hanging JSON request', async () => {
-    const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' }, 30000, 100);
+    const client = createTestClient({ url: 'http://fake/v1', model: 'test-model' }, 30000, 100);
     const originalFetch = globalThis.fetch;
     globalThis.fetch = ((_url: string, init?: RequestInit) =>
       new Promise((_, reject) => {
@@ -91,8 +114,35 @@ describe('HttpProviderClient - callStream()', () => {
 
   afterEach(() => undoFetch());
 
+  test('callStream() clears the timeout on success', async () => {
+    const client = createTestClient({ url: 'http://fake/v1', model: 'test-model' });
+    undoFetch = mockFetch(() => mockSseResponse('hi'));
+    const spy = spyOn(globalThis, 'clearTimeout');
+    await client.callStream(SYSTEM, [{ role: 'user', content: 'hi' }]);
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  test('callStream() clears the timeout on HTTP error', async () => {
+    const client = createTestClient({ url: 'http://fake/v1', model: 'test-model' });
+    undoFetch = mockFetch(() => new Response('', { status: 500 }));
+    const spy = spyOn(globalThis, 'clearTimeout');
+    await client.callStream(SYSTEM, [{ role: 'user', content: 'hi' }]);
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  test('callStream() clears the timeout on content-type mismatch', async () => {
+    const client = createTestClient({ url: 'http://fake/v1', model: 'test-model' });
+    undoFetch = mockFetch(() => new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    const spy = spyOn(globalThis, 'clearTimeout');
+    await client.callStream(SYSTEM, [{ role: 'user', content: 'hi' }]);
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
   test('returns ok with body on HTTP 200', async () => {
-    const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' });
+    const client = createTestClient({ url: 'http://fake/v1', model: 'test-model' });
     undoFetch = mockFetch(() => mockSseResponse('hi'));
     const result = await client.callStream(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(result.isOk()).toBe(true);
@@ -100,7 +150,7 @@ describe('HttpProviderClient - callStream()', () => {
   });
 
   test('returns hard failure on HTTP 500', async () => {
-    const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' });
+    const client = createTestClient({ url: 'http://fake/v1', model: 'test-model' });
     undoFetch = mockFetch(() => new Response('', { status: 500 }));
     const result = await client.callStream(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(result.isErr()).toBe(true);
@@ -108,7 +158,7 @@ describe('HttpProviderClient - callStream()', () => {
   });
 
   test('sends stream:true in the request body', async () => {
-    const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' });
+    const client = createTestClient({ url: 'http://fake/v1', model: 'test-model' });
     let capturedBody: Record<string, unknown> = {};
     undoFetch = mockFetch((_url: string, init: RequestInit) => {
       capturedBody = JSON.parse(init.body as string);
@@ -119,7 +169,7 @@ describe('HttpProviderClient - callStream()', () => {
   });
 
   test('returns hard failure if upstream does not return text/event-stream', async () => {
-    const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' });
+    const client = createTestClient({ url: 'http://fake/v1', model: 'test-model' });
     undoFetch = mockFetch(() => new Response('{"choices":[]}', { status: 200, headers: { 'Content-Type': 'application/json' } }));
     const result = await client.callStream(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(result.isErr()).toBe(true);
@@ -127,7 +177,7 @@ describe('HttpProviderClient - callStream()', () => {
   });
 
   test('prepends system message to the request', async () => {
-    const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' });
+    const client = createTestClient({ url: 'http://fake/v1', model: 'test-model' });
     let capturedMessages: Array<{ role: string; content: string }> = [];
     undoFetch = mockFetch((_url: string, init: RequestInit) => {
       capturedMessages = (JSON.parse(init.body as string) as { messages: Array<{ role: string; content: string }> }).messages;

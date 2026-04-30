@@ -1,6 +1,7 @@
 export function buildProviderUrl(baseUrl: string, type: string): string {
+    const base = baseUrl.replace(/\/+$/, '');
     switch (type) {
         default:
-            return `${baseUrl}/chat/completions`;
+            return `${base}/chat/completions`;
     }
 }

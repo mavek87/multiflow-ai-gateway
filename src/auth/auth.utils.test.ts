@@ -28,6 +28,6 @@ describe('hashApiKey', () => {
 
   test('different inputs produce different hashes', () => {
     expect(hashApiKey('gw_aaa')).not.toBe(hashApiKey('gw_bbb'));
-    });
-    });
+  });
+});
 

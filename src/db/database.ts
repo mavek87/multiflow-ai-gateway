@@ -5,7 +5,7 @@ import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { config } from '@/config/config';
 import { createLogger } from '@/utils/logger';
-import * as schema from './schema';
+import * as schema from './schema/index';
 
 const log = createLogger('DB');
 
