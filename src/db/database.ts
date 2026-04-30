@@ -1,4 +1,4 @@
-import { drizzle, type BunSQLiteDatabase } from 'drizzle-orm/bun-sqlite';
+import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { migrate } from 'drizzle-orm/bun-sqlite/migrator';
 import { Database } from 'bun:sqlite';
 import { mkdirSync } from 'node:fs';
@@ -6,10 +6,10 @@ import { dirname } from 'node:path';
 import { config } from '@/config/config';
 import { createLogger } from '@/utils/logger';
 import * as schema from './schema/index';
+import type {DrizzleDb} from './database.types';
+export type {DrizzleDb};
 
 const log = createLogger('DB');
-
-export type DrizzleDb = BunSQLiteDatabase<typeof schema>;
 
 mkdirSync(dirname(config.dbPath), { recursive: true });
 

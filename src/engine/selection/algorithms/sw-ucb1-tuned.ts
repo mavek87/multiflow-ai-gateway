@@ -16,7 +16,7 @@
 import type {MetricsStore, ModelMetrics} from '@/engine/observability/metrics';
 import {BaseUCB1Selector} from '@/engine/selection/algorithms/base-ucb1';
 
-type Observation = { success: boolean; latencyMs: number };
+type Observation = {success: boolean; latencyMs: number};
 
 const DEFAULT_WINDOW = 100;
 

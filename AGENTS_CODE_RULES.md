@@ -13,6 +13,7 @@ This document contains the code writing rules for AI agents.
 ### STRICT
 - **Modular Architecture (Folder-by-Feature)**: Each business feature must have its own directory containing its routes, services, schemas, and tests (e.g., `src/chat/`, `src/auth/`).
 - **File Naming**: Use the `[feature].[type].ts` convention (e.g., `chat.routes.ts`, `auth.middleware.ts`, `tenant.store.ts`).
+- **Type Placement**: Exported types (`export type`) must be defined in a dedicated `<module-name>.types.ts` sibling file. Non-exported (internal) types can stay inline in the implementation file.
 - Don't mix the logic with UI.
 ### FLEXIBLE
 - Fail fast: validate at system boundaries, trust data inside the domain.

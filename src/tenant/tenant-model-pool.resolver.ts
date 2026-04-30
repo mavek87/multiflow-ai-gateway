@@ -10,7 +10,7 @@ import type {ModelConfig} from '@/engine/client/http-provider-client.types';
 import {buildProviderUrl} from '@/provider/provider.utils';
 import type {CryptoService} from '@/crypto/crypto';
 
-type RequestedModel = { providerName?: string; model: string };
+type RequestedModel = {providerName?: string; model: string};
 
 export class TenantModelPoolResolver {
     constructor(

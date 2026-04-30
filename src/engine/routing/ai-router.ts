@@ -27,7 +27,7 @@ import type {AuditStore} from '@/audit/audit.store';
 const log = createLogger('ROUTING');
 const MAX_ATTEMPTS_CAP = 10;
 
-type RoutedSuccess<T> = T & ProviderBaseResponse & { model: string };
+type RoutedSuccess<T> = T & ProviderBaseResponse & {model: string};
 
 export class AIRouter {
     constructor(

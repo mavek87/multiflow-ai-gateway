@@ -18,19 +18,19 @@
 
 type State = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
 
+type BreakerState = {
+    state: State;
+    consecutiveHardFailures: number;
+    consecutiveSoftFailures: number;
+    halfOpenSuccesses: number;
+    probesInFlight: number;
+    openedAt: number | null;
+};
+
 const HARD_FAILURE_THRESHOLD = 3;
 const SOFT_FAILURE_THRESHOLD = 5;
 const HALF_OPEN_SUCCESSES_REQUIRED = 2;
 const OPEN_TIMEOUT_MS = 30_000;
-
-type BreakerState = {
-  state: State;
-  consecutiveHardFailures: number;
-  consecutiveSoftFailures: number;
-  halfOpenSuccesses: number;
-  probesInFlight: number;
-  openedAt: number | null;
-};
 
 export class CircuitBreaker {
   private breakers = new Map<string, BreakerState>();
