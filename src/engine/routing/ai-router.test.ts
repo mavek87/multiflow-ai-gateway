@@ -25,7 +25,7 @@ function createAIRouter(models: any[]) {
   const auditStore = new AuditStore(setupTestDb());
 
   for (const m of models) {
-    clients.set(m.model, new HttpProviderClient(m, 10000, 60000, 10000, false));
+    clients.set(m.model, new HttpProviderClient(m, 10000, 10000, false));
     aiProviderIds.set(m.model, { name: m.aiProviderId ?? '', baseUrl: m.aiProviderBaseUrl ?? '' });
   }
 
@@ -88,7 +88,7 @@ describe('AIRouter - chatStream()', () => {
     const circuitBreaker = new CircuitBreaker();
     const selector = new MockSelector();
     const clients = new Map();
-    clients.set('m1', new HttpProviderClient(model('m1'), 10000, 60000, 10000, false));
+    clients.set('m1', new HttpProviderClient(model('m1'), 10000, 10000, false));
     const aiProviderIds = new Map();
     const auditStore = new AuditStore(setupTestDb());
     

@@ -67,7 +67,7 @@ describe('HttpProviderClient - OpenAI-compat response parsing', () => {
   });
 
   test('chat() aborts after providerRequestTimeoutMs on a hanging JSON request', async () => {
-    const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' }, 30000, 10000, 100);
+    const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' }, 30000, 100);
     const originalFetch = globalThis.fetch;
     globalThis.fetch = ((_url: string, init?: RequestInit) =>
       new Promise((_, reject) => {
@@ -84,22 +84,6 @@ describe('HttpProviderClient - OpenAI-compat response parsing', () => {
     if (result.isErr()) expect(result.error.kind).toBe('soft');
   });
 
-  test('chat() does not use streamWatchdogMs for JSON requests', async () => {
-    // providerRequestTimeoutMs=100, streamWatchdogMs=10000 — JSON must abort at 100ms, not 10000ms
-    const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' }, 30000, 10000, 100);
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = ((_url: string, init?: RequestInit) =>
-      new Promise((_, reject) => {
-        (init?.signal as AbortSignal)?.addEventListener('abort', () => {
-          const e = new Error('AbortError'); e.name = 'AbortError'; reject(e);
-        });
-      })
-    ) as unknown as typeof fetch;
-    undoFetch = () => { globalThis.fetch = originalFetch; };
-    const start = Date.now();
-    await client.chat(SYSTEM, [{ role: 'user', content: 'hi' }]);
-    expect(Date.now() - start).toBeLessThan(500);
-  });
 });
 
 describe('HttpProviderClient - chatStream()', () => {

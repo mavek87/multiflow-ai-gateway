@@ -1,5 +1,5 @@
 import type { Tenant } from '@/tenant/tenant.types';
-import type { ModelConfig } from '@/engine/client/client.types';
+import type { ModelConfig } from '@/engine/client/http-provider-client.types';
 
 export const fakeTenant: Tenant = { 
   id: 'tenant-1', 

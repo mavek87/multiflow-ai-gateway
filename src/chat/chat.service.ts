@@ -1,6 +1,6 @@
 import {ok, err, type Result} from 'neverthrow';
 import type {Tenant} from '@/tenant/tenant.types';
-import type {ModelConfig, ChatOptions} from '@/engine/client/client.types';
+import type {ModelConfig, ChatOptions} from '@/engine/client/http-provider-client.types';
 import type {ChatHandlerResult} from '@/chat/chat.types';
 import type {ChatServiceError, ChatServiceRequest} from '@/chat/chat.types';
 import {AIRouterFactory} from '@/engine/routing/ai-router.factory';

@@ -10,7 +10,7 @@ import type {
     AIBaseResponse,
     ChatOptions,
     TenantContext,
-} from '@/engine/client/client.types';
+} from '@/engine/client/http-provider-client.types';
 import type {
     CallProviderError,
     CallProviderSuccess,

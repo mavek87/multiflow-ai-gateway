@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'bun:test';
 import { AIRouterFactory } from './ai-router.factory';
 import { createModelSelector } from '@/engine/selection/model-selector.factory';
-import type { ModelConfig } from '@/engine/client/client.types';
+import type { ModelConfig } from '@/engine/client/http-provider-client.types';
 import { mockSseResponse, mockJsonResponse, setupTestDb } from '@test/test-setup';
 import { MetricsStore } from '@/engine/observability/metrics';
 import { CircuitBreaker } from '@/engine/resilience/circuit-breaker';

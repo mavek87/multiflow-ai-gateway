@@ -4,7 +4,7 @@ import { createModelSelector } from '@/engine/selection/model-selector.factory';
 import { MetricsStore } from '@/engine/observability/metrics';
 import { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
 import { ChatService } from '@/chat/chat.service';
-import type { ModelConfig } from '@/engine/client/client.types';
+import type { ModelConfig } from '@/engine/client/http-provider-client.types';
 import { AuditStore } from '@/audit/audit.store';
 import { setupTestDb } from '@test/test-setup';
 

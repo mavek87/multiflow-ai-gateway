@@ -58,7 +58,6 @@ cp .env.example .env
 | `SELECTOR_TYPE` | no | `ucb1-tuned` | Model selector algorithm: `ucb1-tuned`, `thompson`, `sw-ucb1-tuned` |
 | `LOG_LEVEL` | no | `info` | Log level: `trace`, `debug`, `info`, `warn`, `error` |
 | `PROVIDER_STREAM_FIRST_TOKEN_TIMEOUT_MS` | no | `300000` | SSE: max wait for the first chunk from the provider (ms) |
-| `PROVIDER_STREAM_WATCHDOG_MS` | no | `120000` | SSE: max total streaming duration per request (ms) |
 | `PROVIDER_REQUEST_TIMEOUT_MS` | no | `600000` | Non-streaming: max wait for the complete JSON response from the provider (ms) |
 | `SEED_FILE` | no | `./seed.yaml` | Path to the declarative seed file applied at startup. Both `.yaml` and `.yml` extensions are accepted. |
 | `METRICS_WARM_UP_WINDOW_MS` | no | `3600000` | How far back (in ms) to look in the audit log to warm up routing metrics on startup. Default is 1 hour. Set to `0` to always start cold. |

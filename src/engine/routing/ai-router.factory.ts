@@ -1,5 +1,5 @@
 import {AIRouter} from './ai-router';
-import type {ModelConfig} from '@/engine/client/client.types';
+import type {ModelConfig} from '@/engine/client/http-provider-client.types';
 import {MetricsStore} from '@/engine/observability/metrics';
 import {CircuitBreaker} from '@/engine/resilience/circuit-breaker';
 import type {ModelSelector} from '@/engine/selection/model-selector.types';
@@ -25,7 +25,7 @@ export class AIRouterFactory {
         for (const modelConfig of sortedModelConfigs) {
             const clientKey = modelConfig.aiProviderModelId!;
 
-            aiProviderClients.set(clientKey, new HttpProviderClient(modelConfig, config.providerStreamFirstTokenTimeoutMs, config.providerStreamWatchdogMs, config.providerRequestTimeoutMs, false));
+            aiProviderClients.set(clientKey, new HttpProviderClient(modelConfig, config.providerStreamFirstTokenTimeoutMs, config.providerRequestTimeoutMs, false));
             aiProviderIds.set(clientKey, {
                 name: modelConfig.aiProviderName ?? modelConfig.aiProviderId ?? '',
                 baseUrl: modelConfig.aiProviderBaseUrl ?? '',

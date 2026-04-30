@@ -8,10 +8,11 @@
  */
 
 import { ok, err, type Result } from 'neverthrow';
-import type { AIChatMessage, ModelConfig, ToolCall, ChatOptions } from '@/engine/client/client.types';
+import type { AIChatMessage, ModelConfig, ToolCall, ChatOptions } from '@/engine/client/http-provider-client.types';
 import { createLogger } from '@/utils/logger';
-import { JsonResponseParser, type OpenAIResponseParser, type UsageMetrics } from './openai-response-parser';
+import { parseJsonResponse, type UsageMetrics } from './openai-response-parser';
 import { stripThinkTags } from '@/utils/text';
+
 
 const log = createLogger('HTTP-PROVIDER-CLIENT');
 
@@ -25,7 +26,6 @@ export class HttpProviderClient {
   constructor(
     private config: ModelConfig,
     private firstTokenTimeoutMs = 30000,
-    private streamWatchdogMs = 120000,
     private providerRequestTimeoutMs = 30000,
     private enableThinking = false,
   ) {}
@@ -37,12 +37,40 @@ export class HttpProviderClient {
   async chat(systemPrompt: string, messages: AIChatMessage[], opts?: ChatOptions): Promise<CallProviderResult> {
     const history: AIChatMessage[] = [{ role: 'system', content: systemPrompt }, ...messages];
     const hasTools = (opts?.tools?.length ?? 0) > 0;
-    const result = await this.callProvider(history, new JsonResponseParser(), opts);
-    if (hasTools) return result;
-    return result.map((r) => ({ ...r, content: stripThinkTags(r.content) }));
+    const startTime = Date.now();
+    const abortController = new AbortController();
+    const totalTimeout = setTimeout(() => abortController.abort(), this.providerRequestTimeoutMs);
+
+    log.debug('round start');
+
+    try {
+      const response = await fetch(this.config.url, {
+        method: 'POST',
+        headers: this.buildHeaders(),
+        body: JSON.stringify(this.buildBody(history, false, opts)),
+        signal: abortController.signal,
+      });
+
+      if (!response.ok) {
+        log.error({ status: response.status }, 'HTTP error');
+        return err({ kind: 'hard', error: new Error(`HTTP ${response.status}`) });
+      }
+
+      const { content, ttftMs, toolCalls, usage, rawBody } = await parseJsonResponse(response, startTime);
+      const result = ok({ content, toolCalls, ttftMs, latencyMs: Date.now() - startTime, usage, rawBody });
+
+      if (hasTools) return result;
+      return result.map((r) => ({ ...r, content: stripThinkTags(r.content) }));
+    } catch (e) {
+      if (e instanceof Error && e.name === 'AbortError') {
+        return err({ kind: 'soft', error: e });
+      }
+      log.error({ err: e }, 'fetch failed');
+      return err({ kind: 'hard', error: e });
+    } finally {
+      clearTimeout(totalTimeout);
+    }
   }
-
-
 
   /**
    * Opens a streaming connection to the provider and returns the raw Response body.
@@ -81,59 +109,12 @@ export class HttpProviderClient {
     }
   }
 
-  private async callProvider(
-    messages: AIChatMessage[],
-    responseParser: OpenAIResponseParser,
-    opts?: ChatOptions,
-  ): Promise<CallProviderResult> {
-    const startTime = Date.now();
-    const abortController = new AbortController();
-    const stream = responseParser.firstTokenTimeoutMs !== null;
-
-    const totalTimeout = setTimeout(
-      () => abortController.abort(),
-      stream ? this.streamWatchdogMs : this.providerRequestTimeoutMs,
-    );
-    const firstTokenTimeout = responseParser.firstTokenTimeoutMs
-      ? setTimeout(() => abortController.abort(), responseParser.firstTokenTimeoutMs)
-      : null;
-
-    log.debug({ stream }, 'round start');
-
-    try {
-      const response = await fetch(this.config.url, {
-        method: 'POST',
-        headers: this.buildHeaders(),
-        body: JSON.stringify(this.buildBody(messages, stream, opts)),
-        signal: abortController.signal,
-      });
-
-      if (!response.ok) {
-        log.error({ status: response.status }, 'HTTP error');
-        return err({ kind: 'hard', error: new Error(`HTTP ${response.status}`) });
-      }
-
-      const { content, ttftMs, toolCalls, usage, rawBody } = await responseParser.parse(
-        response,
-        startTime,
-        () => { if (firstTokenTimeout) clearTimeout(firstTokenTimeout); },
-      );
-
-      if (!content && !toolCalls?.length && responseParser.requiresContent) {
-        return err({ kind: 'hard', error: new Error('empty response') });
-      }
-
-      return ok({ content, toolCalls, ttftMs, latencyMs: Date.now() - startTime, usage, rawBody });
-    } catch (e) {
-      if (e instanceof Error && e.name === 'AbortError') {
-        return err({ kind: 'soft', error: e });
-      }
-      log.error({ err: e }, 'fetch failed');
-      return err({ kind: 'hard', error: e });
-    } finally {
-      if (firstTokenTimeout) clearTimeout(firstTokenTimeout);
-      clearTimeout(totalTimeout);
+  private buildHeaders(): Record<string, string> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (this.config.apiKey) {
+      headers['Authorization'] = `Bearer ${this.config.apiKey}`;
     }
+    return headers;
   }
 
   private buildBody(messages: AIChatMessage[], stream: boolean, opts?: ChatOptions): Record<string, unknown> {
@@ -158,13 +139,5 @@ export class HttpProviderClient {
     }
 
     return body;
-  }
-
-  private buildHeaders(): Record<string, string> {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (this.config.apiKey) {
-      headers['Authorization'] = `Bearer ${this.config.apiKey}`;
-    }
-    return headers;
   }
 }
