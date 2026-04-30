@@ -1,14 +1,9 @@
 import { createLogger } from '@/utils/logger';
-import type { ToolCall } from '@/engine/client/http-provider-client.types';
-import type { OpenAIResponse } from './openai-response-parser.types';
+import type { OpenAIChatCompletion, OpenAIResponse } from './openai-response-parser.types';
 
 export type { OpenAIResponse } from './openai-response-parser.types';
 
 const log = createLogger('MODEL-CLIENT');
-
-type OpenAIChatCompletion = {
-  choices?: Array<{ message?: { content?: string; tool_calls?: ToolCall[] } }>;
-};
 
 export async function parseJsonResponse(res: Response, start: number): Promise<OpenAIResponse> {
   const json = await res.json() as OpenAIChatCompletion;
