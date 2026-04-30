@@ -15,7 +15,7 @@ import type {
     CallProviderError,
     CallProviderSuccess,
     CallProviderStreamSuccess
-} from '@/engine/client/http-provider-client';
+} from '@/engine/client/http-provider-client.types';
 import {HttpProviderClient} from '@/engine/client/http-provider-client';
 
 import type {ModelSelector} from '@/engine/selection/model-selector.types';

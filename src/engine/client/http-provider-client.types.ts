@@ -1,52 +1,68 @@
-import type { AIChatMessage, ToolCall } from '@/chat/chat.types';
+import type {AIChatMessage, ToolCall} from '@/chat/chat.types';
+import type {Result} from "neverthrow";
+import type {UsageMetrics} from "@/engine/client/openai-response-parser.types.ts";
+
 export interface TenantContext {
-  tenantId: string;
-  tenantName: string;
+    tenantId: string;
+    tenantName: string;
 }
 
-export type { AIChatMessage, ToolCall };
+export type {AIChatMessage, ToolCall};
 
 export interface AIBaseResponse {
-  model: string;
-  aiProviderId: string;
-  aiProvider: string;
-  aiProviderUrl: string;
+    model: string;
+    aiProviderId: string;
+    aiProvider: string;
+    aiProviderUrl: string;
 }
 
 export interface AIChatResponse extends AIBaseResponse {
-  content: string;
-  toolCalls?: ToolCall[];
-  rawBody?: Record<string, unknown>;
+    content: string;
+    toolCalls?: ToolCall[];
+    rawBody?: Record<string, unknown>;
 }
 
 export interface AIChatStreamResponse extends AIBaseResponse {
-  body: ReadableStream<Uint8Array>;
+    body: ReadableStream<Uint8Array>;
 }
 
 export type ModelConfig = {
-  url: string;
-  model: string;
-  apiKey?: string;
-  priority?: number;
-  aiProviderId?: string;
-  aiProviderName?: string;
-  aiProviderBaseUrl?: string;
-  aiProviderModelId?: string;
+    url: string;
+    model: string;
+    apiKey?: string;
+    priority?: number;
+    aiProviderId?: string;
+    aiProviderName?: string;
+    aiProviderBaseUrl?: string;
+    aiProviderModelId?: string;
 };
 
 export interface ChatOptions {
-  tools?: unknown[];
-  tool_choice?: unknown;
-  parallel_tool_calls?: boolean;
-  temperature?: number;
-  top_p?: number;
-  max_tokens?: number;
-  max_completion_tokens?: number;
-  presence_penalty?: number;
-  frequency_penalty?: number;
-  seed?: number;
-  stop?: string | string[];
-  response_format?: unknown;
-  stream_options?: unknown;
-  user?: string;
+    tools?: unknown[];
+    tool_choice?: unknown;
+    parallel_tool_calls?: boolean;
+    temperature?: number;
+    top_p?: number;
+    max_tokens?: number;
+    max_completion_tokens?: number;
+    presence_penalty?: number;
+    frequency_penalty?: number;
+    seed?: number;
+    stop?: string | string[];
+    response_format?: unknown;
+    stream_options?: unknown;
+    user?: string;
 }
+
+export type CallProviderError = { kind: 'soft' | 'hard'; error: unknown };
+export type CallProviderSuccess = {
+    content: string;
+    toolCalls?: ToolCall[];
+    ttftMs: number;
+    latencyMs: number;
+    usage?: UsageMetrics;
+    rawBody?: Record<string, unknown>
+};
+export type CallProviderResult = Result<CallProviderSuccess, CallProviderError>;
+export type CallProviderStreamSuccess = { body: ReadableStream<Uint8Array>; ttftMs: number };
+export type CallProviderStreamResult = Result<CallProviderStreamSuccess, CallProviderError>;
