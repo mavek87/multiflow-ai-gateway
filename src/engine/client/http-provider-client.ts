@@ -8,14 +8,13 @@
  */
 
 import {err, ok} from 'neverthrow';
+import type {AIChatMessage, ToolCall} from '@/chat/chat.types';
 import type {
-    AIChatMessage,
     CallProviderResult,
     CallProviderStreamResult,
-    ChatOptions,
+    ProviderChatOptions,
     ModelConfig,
     OpenAIChatCompletion,
-    ToolCall,
 } from '@/engine/client/http-provider-client.types';
 import {createLogger} from '@/utils/logger';
 import {stripThinkTags} from '@/utils/text';
@@ -31,7 +30,7 @@ export class HttpProviderClient {
     ) {
     }
 
-    async chat(systemPrompt: string, messages: AIChatMessage[], opts?: ChatOptions): Promise<CallProviderResult> {
+    async call(systemPrompt: string, messages: AIChatMessage[], opts?: ProviderChatOptions): Promise<CallProviderResult> {
         const history: AIChatMessage[] = [{role: 'system', content: systemPrompt}, ...messages];
         const hasTools = (opts?.tools?.length ?? 0) > 0;
         const startTime = Date.now();
@@ -67,7 +66,7 @@ export class HttpProviderClient {
         }
     }
 
-    async chatStream(systemPrompt: string, messages: AIChatMessage[], opts?: ChatOptions): Promise<CallProviderStreamResult> {
+    async callStream(systemPrompt: string, messages: AIChatMessage[], opts?: ProviderChatOptions): Promise<CallProviderStreamResult> {
         const controller = new AbortController();
         const firstTokenTimeout = setTimeout(() => controller.abort(), this.firstTokenTimeoutMs);
         const start = Date.now();
@@ -108,7 +107,7 @@ export class HttpProviderClient {
         return headers;
     }
 
-    private buildBody(messages: AIChatMessage[], stream: boolean, opts?: ChatOptions): Record<string, unknown> {
+    private buildBody(messages: AIChatMessage[], stream: boolean, opts?: ProviderChatOptions): Record<string, unknown> {
         const body: Record<string, unknown> = {model: this.config.model, messages, stream};
         if (this.enableThinking) body.think = true;
 

@@ -3,12 +3,12 @@
  */
 
 import type {Result} from 'neverthrow';
+import type {AIChatMessage} from '@/chat/chat.types';
 import type {
-    AIChatMessage,
-    AIChatResponse,
-    AIChatStreamResponse,
-    AIBaseResponse,
-    ChatOptions,
+    ProviderChatResponse,
+    ProviderStreamResponse,
+    ProviderBaseResponse,
+    ProviderChatOptions,
     TenantContext,
 } from '@/engine/client/http-provider-client.types';
 import type {
@@ -27,7 +27,7 @@ import type {AuditStore} from '@/audit/audit.store';
 const log = createLogger('ROUTING');
 const MAX_ATTEMPTS_CAP = 10;
 
-type RoutedSuccess<T> = T & AIBaseResponse & { model: string };
+type RoutedSuccess<T> = T & ProviderBaseResponse & { model: string };
 
 export class AIRouter {
     constructor(
@@ -40,12 +40,12 @@ export class AIRouter {
     ) {
     }
 
-    async chat(systemPrompt: string, messages: AIChatMessage[], ctx?: TenantContext, opts?: ChatOptions): Promise<AIChatResponse | null> {
+    async chat(systemPrompt: string, messages: AIChatMessage[], ctx?: TenantContext, opts?: ProviderChatOptions): Promise<ProviderChatResponse | null> {
         log.info({messages: messages.length, tenantId: ctx?.tenantId ?? 'unknown'}, 'new request');
 
         return this.executeWithAudit(ctx?.tenantId ?? 'unknown', async () => {
             const result = await this.executeWithRetry<CallProviderSuccess>((client) => {
-                return client.chat(systemPrompt, messages, opts);
+                return client.call(systemPrompt, messages, opts);
             });
 
             if (result) {
@@ -59,11 +59,11 @@ export class AIRouter {
         });
     }
 
-    async chatStream(systemPrompt: string, messages: AIChatMessage[], ctx?: TenantContext, opts?: ChatOptions): Promise<AIChatStreamResponse | null> {
+    async chatStream(systemPrompt: string, messages: AIChatMessage[], ctx?: TenantContext, opts?: ProviderChatOptions): Promise<ProviderStreamResponse | null> {
         log.info({messages: messages.length, tenantId: ctx?.tenantId ?? 'unknown'}, 'new stream request');
 
         return this.executeWithAudit(ctx?.tenantId ?? 'unknown', async () => {
-            const result = await this.executeWithRetry<CallProviderStreamSuccess>((client) => client.chatStream(systemPrompt, messages, opts));
+            const result = await this.executeWithRetry<CallProviderStreamSuccess>((client) => client.callStream(systemPrompt, messages, opts));
 
             if (result) {
                 const modelMeta = this.aiProviderIds.get(result.model);

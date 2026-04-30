@@ -18,18 +18,18 @@ describe('HttpProviderClient - OpenAI-compat response parsing', () => {
 
   afterEach(() => undoFetch());
 
-  test('chat() returns content from JSON response', async () => {
+  test('call() returns content from JSON response', async () => {
     const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' });
     undoFetch = mockFetch(() => mockChatResponse('Hello world'));
-    const result = await client.chat(SYSTEM, [{ role: 'user', content: 'hi' }]);
+    const result = await client.call(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(result.isOk()).toBe(true);
     if (result.isOk()) expect(result.value.content).toBe('Hello world');
   });
 
-  test('chat() returns tool_calls from JSON response', async () => {
+  test('call() returns tool_calls from JSON response', async () => {
     const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' });
     undoFetch = mockFetch(() => mockToolCallResponse('call_123', 'get_weather', '{"city":"London"}'));
-    const result = await client.chat(SYSTEM, [{ role: 'user', content: 'weather?' }], {
+    const result = await client.call(SYSTEM, [{ role: 'user', content: 'weather?' }], {
       tools: [{ type: 'function', function: { name: 'get_weather', description: '', parameters: {} } }]
     });
     expect(result.isOk()).toBe(true);
@@ -39,18 +39,18 @@ describe('HttpProviderClient - OpenAI-compat response parsing', () => {
     }
   });
 
-  test('chat() strips <think> tags from response', async () => {
+  test('call() strips <think> tags from response', async () => {
     const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' });
     undoFetch = mockFetch(() => mockChatResponse('<think>internal reasoning</think>actual answer'));
-    const result = await client.chat(SYSTEM, [{ role: 'user', content: 'hi' }]);
+    const result = await client.call(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(result.isOk()).toBe(true);
     if (result.isOk()) expect(result.value.content).toBe('actual answer');
   });
 
-  test('chat() returns hard failure on HTTP 500', async () => {
+  test('call() returns hard failure on HTTP 500', async () => {
     const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' });
     undoFetch = mockFetch(() => new Response('', { status: 500 }));
-    const result = await client.chat(SYSTEM, [{ role: 'user', content: 'hi' }]);
+    const result = await client.call(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) expect(result.error.kind).toBe('hard');
   });
@@ -62,11 +62,11 @@ describe('HttpProviderClient - OpenAI-compat response parsing', () => {
       capturedHeaders = Object.fromEntries(new Headers(init.headers as Record<string, string>).entries());
       return mockChatResponse('ok');
     });
-    await client.chat(SYSTEM, [{ role: 'user', content: 'hi' }]);
+    await client.call(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(capturedHeaders['authorization']).toBe('Bearer sk-test-key');
   });
 
-  test('chat() aborts after providerRequestTimeoutMs on a hanging JSON request', async () => {
+  test('call() aborts after providerRequestTimeoutMs on a hanging JSON request', async () => {
     const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' }, 30000, 100);
     const originalFetch = globalThis.fetch;
     globalThis.fetch = ((_url: string, init?: RequestInit) =>
@@ -78,7 +78,7 @@ describe('HttpProviderClient - OpenAI-compat response parsing', () => {
     ) as unknown as typeof fetch;
     undoFetch = () => { globalThis.fetch = originalFetch; };
     const start = Date.now();
-    const result = await client.chat(SYSTEM, [{ role: 'user', content: 'hi' }]);
+    const result = await client.call(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(Date.now() - start).toBeLessThan(500);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) expect(result.error.kind).toBe('soft');
@@ -86,7 +86,7 @@ describe('HttpProviderClient - OpenAI-compat response parsing', () => {
 
 });
 
-describe('HttpProviderClient - chatStream()', () => {
+describe('HttpProviderClient - callStream()', () => {
   let undoFetch: () => void;
 
   afterEach(() => undoFetch());
@@ -94,7 +94,7 @@ describe('HttpProviderClient - chatStream()', () => {
   test('returns ok with body on HTTP 200', async () => {
     const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' });
     undoFetch = mockFetch(() => mockSseResponse('hi'));
-    const result = await client.chatStream(SYSTEM, [{ role: 'user', content: 'hi' }]);
+    const result = await client.callStream(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(result.isOk()).toBe(true);
     if (result.isOk()) expect(result.value.body).toBeDefined();
   });
@@ -102,7 +102,7 @@ describe('HttpProviderClient - chatStream()', () => {
   test('returns hard failure on HTTP 500', async () => {
     const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' });
     undoFetch = mockFetch(() => new Response('', { status: 500 }));
-    const result = await client.chatStream(SYSTEM, [{ role: 'user', content: 'hi' }]);
+    const result = await client.callStream(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) expect(result.error.kind).toBe('hard');
   });
@@ -114,14 +114,14 @@ describe('HttpProviderClient - chatStream()', () => {
       capturedBody = JSON.parse(init.body as string);
       return mockSseResponse('');
     });
-    await client.chatStream(SYSTEM, [{ role: 'user', content: 'hi' }]);
+    await client.callStream(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(capturedBody['stream']).toBe(true);
   });
 
   test('returns hard failure if upstream does not return text/event-stream', async () => {
     const client = new HttpProviderClient({ url: 'http://fake/v1', model: 'test-model' });
     undoFetch = mockFetch(() => new Response('{"choices":[]}', { status: 200, headers: { 'Content-Type': 'application/json' } }));
-    const result = await client.chatStream(SYSTEM, [{ role: 'user', content: 'hi' }]);
+    const result = await client.callStream(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) expect(result.error.kind).toBe('hard');
   });
@@ -133,7 +133,7 @@ describe('HttpProviderClient - chatStream()', () => {
       capturedMessages = (JSON.parse(init.body as string) as { messages: Array<{ role: string; content: string }> }).messages;
       return mockSseResponse('');
     });
-    await client.chatStream('my system prompt', [{ role: 'user', content: 'hello' }]);
+    await client.callStream('my system prompt', [{ role: 'user', content: 'hello' }]);
     expect(capturedMessages[0]).toEqual({ role: 'system', content: 'my system prompt' });
     expect(capturedMessages[1]).toEqual({ role: 'user', content: 'hello' });
   });

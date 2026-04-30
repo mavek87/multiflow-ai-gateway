@@ -1,4 +1,4 @@
-import type {AIChatMessage, ToolCall} from '@/chat/chat.types';
+import type {ToolCall} from '@/chat/chat.types';
 import type {Result} from "neverthrow";
 
 export interface TenantContext {
@@ -6,22 +6,20 @@ export interface TenantContext {
     tenantName: string;
 }
 
-export type {AIChatMessage, ToolCall};
-
-export interface AIBaseResponse {
+export interface ProviderBaseResponse {
     model: string;
     aiProviderId: string;
     aiProvider: string;
     aiProviderUrl: string;
 }
 
-export interface AIChatResponse extends AIBaseResponse {
+export interface ProviderChatResponse extends ProviderBaseResponse {
     content: string;
     toolCalls?: ToolCall[];
     rawBody?: Record<string, unknown>;
 }
 
-export interface AIChatStreamResponse extends AIBaseResponse {
+export interface ProviderStreamResponse extends ProviderBaseResponse {
     body: ReadableStream<Uint8Array>;
 }
 
@@ -36,7 +34,7 @@ export type ModelConfig = {
     aiProviderModelId?: string;
 };
 
-export interface ChatOptions {
+export interface ProviderChatOptions {
     tools?: unknown[];
     tool_choice?: unknown;
     parallel_tool_calls?: boolean;

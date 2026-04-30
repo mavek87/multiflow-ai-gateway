@@ -1,6 +1,6 @@
 import {ok, err, type Result} from 'neverthrow';
 import type {Tenant} from '@/tenant/tenant.types';
-import type {ModelConfig, ChatOptions} from '@/engine/client/http-provider-client.types';
+import type {ModelConfig, ProviderChatOptions} from '@/engine/client/http-provider-client.types';
 import type {ChatHandlerResult} from '@/chat/chat.types';
 import type {ChatServiceError, ChatServiceRequest} from '@/chat/chat.types';
 import {AIRouterFactory} from '@/engine/routing/ai-router.factory';
@@ -15,7 +15,7 @@ export class ChatService {
         const aiRouter = this.aiRouterFactory.create(arrayOfModelConfigs);
         const isStream = chatRequest.stream === true;
         const systemPrompt = this.resolveSystemPrompt(chatRequest);
-        const opts = this.extractChatOptions(chatRequest);
+        const opts = this.extractProviderChatOptions(chatRequest);
 
         log.info({tenantId: tenant.id, stream: isStream}, 'chat request starting');
 
@@ -58,7 +58,7 @@ export class ChatService {
         return typeof content === 'string' ? content : '';
     }
 
-    private extractChatOptions(chatRequest: ChatServiceRequest): ChatOptions | undefined {
+    private extractProviderChatOptions(chatRequest: ChatServiceRequest): ProviderChatOptions | undefined {
         const {
             tools, tool_choice, parallel_tool_calls, temperature, top_p,
             max_tokens, max_completion_tokens, presence_penalty, frequency_penalty,
@@ -73,7 +73,7 @@ export class ChatService {
 
         const opts = Object.fromEntries(Object.entries(rawOpts).filter(([_, v]) => v !== undefined));
         
-        return Object.keys(opts).length > 0 ? opts as ChatOptions : undefined;
+        return Object.keys(opts).length > 0 ? opts as ProviderChatOptions : undefined;
     }
 
 }

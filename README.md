@@ -269,7 +269,7 @@ sequenceDiagram
     S->>CB: isAvailable(A)?
     CB-->>S: CLOSED
     S-->>R: A (highest UCB1 score)
-    R->>A: chat()
+    R->>A: call()
     A-->>R: HTTP 500
     R->>CB: recordHardFailure(A)
     R->>S: select([B, C])
@@ -278,7 +278,7 @@ sequenceDiagram
     S->>CB: isAvailable(C)?
     CB-->>S: CLOSED
     S-->>R: C
-    R->>C: chat()
+    R->>C: call()
     C-->>R: success
     R->>CB: recordSuccess(C)
     R->>S: record(C, latency, success=true)

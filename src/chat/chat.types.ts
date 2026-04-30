@@ -1,12 +1,10 @@
 import type {Static} from 'elysia';
-import type {ToolCallSchema, MessageSchema} from '@/chat/chat.schema';
+import type {MessageSchema, ToolCallSchema} from '@/chat/chat.schema';
 
 export type ToolCall = Static<typeof ToolCallSchema>;
 export type AIChatMessage = Static<typeof MessageSchema>;
 
-export type ChatServiceError =
-    | {code: 'ai_unavailable'}
-    | {code: 'stream_not_supported'};
+export type ChatServiceError = | { code: 'ai_unavailable' } | { code: 'stream_not_supported' };
 
 export interface ChatServiceRequest {
     model?: string;
@@ -32,5 +30,5 @@ export interface ChatServiceRequest {
 }
 
 export type ChatHandlerResult =
-    | {isStream: true; payload: ReadableStream<Uint8Array>; model: string; aiProvider: string; aiProviderUrl: string}
-    | {isStream: false; payload: Record<string, unknown>; model: string; aiProvider: string; aiProviderUrl: string};
+    | { isStream: true; payload: ReadableStream<Uint8Array>; model: string; aiProvider: string; aiProviderUrl: string }
+    | { isStream: false; payload: Record<string, unknown>; model: string; aiProvider: string; aiProviderUrl: string };
