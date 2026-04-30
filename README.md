@@ -286,7 +286,7 @@ sequenceDiagram
 
 ### Database
 
-SQLite via Drizzle ORM. Schema defined in `src/db/schema.ts`. Migrations in `drizzle/` and applied automatically at boot.
+SQLite via Drizzle ORM. Schema defined in `src/db/schema/`. Migrations in `drizzle/` and applied automatically at boot.
 
 | Table | Purpose |
 |---|---|
