@@ -13,7 +13,8 @@ describe('ProviderStore', () => {
 
   test('createProvider returns provider', () => {
     const result = store.createProvider(OPENAI_PROVIDER_BASE);
-    const p = expect(result).toSucceed()._unsafeUnwrap();
+    expect(result).toSucceed();
+    const p = result._unsafeUnwrap();
     expect(p.name).toBe(OPENAI_PROVIDER_BASE.name);
     expect(p.id).toBeDefined();
   });
@@ -40,7 +41,8 @@ describe('ProviderStore', () => {
   test('createProviderModel returns model', () => {
     const p = store.createProvider(GROQ_PROVIDER_BASE)._unsafeUnwrap();
     const result = store.createProviderModel({ aiProviderId: p.id, modelName: 'llama3-70b' });
-    const m = expect(result).toSucceed()._unsafeUnwrap();
+    expect(result).toSucceed();
+    const m = result._unsafeUnwrap();
     expect(m.modelName).toBe('llama3-70b');
   });
 

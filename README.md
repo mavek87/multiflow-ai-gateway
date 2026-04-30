@@ -660,7 +660,7 @@ The project follows a **Modular Architecture (Folder-by-Feature)**. Each feature
 ```
 src/
   admin/                    # Admin API routes
-  audit/                    # Audit store (SQLite-backed request log, rate limit check)
+  audit/                    # Audit store, rate limit check, and periodic cleanup of expired records
   auth/                     # Authentication (Tenant & Admin)
   bootstrap/                # Declarative seed file bootstrap (seed.yaml)
   chat/                     # Chat Completions feature (core)
@@ -675,7 +675,6 @@ src/
     |   |-- algorithms/     # UCB1-Tuned, SW-UCB1-Tuned, Thompson Sampling
   provider/                 # Global provider registry
   tenant/                   # Tenant management and resolution
-  housekeeping/             # Periodic cleanup of expired audit records
   crypto/                   # Envelope encryption service (AES-256-GCM)
   utils/                    # Shared utilities (http, logger)
   index.ts                  # Entry point
