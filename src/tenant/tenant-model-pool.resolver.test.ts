@@ -25,7 +25,7 @@ describe('TenantModelPoolResolver', () => {
 
   describe('Basic resolution', () => {
     test('returns configs with correct metadata when tenant has configured models', () => {
-      const result = resolver.resolve({ tenantId: tenant.id });
+      const result = resolver.resolve({ tenantId: tenant.id, models: [] });
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -39,14 +39,14 @@ describe('TenantModelPoolResolver', () => {
     test('correctly decrypts the API key in the resolved config', () => {
       const secretKey = 'sk-real-secret-key';
       const encryptedKey = cryptoService.encrypt(secretKey);
-      
+
       const provider = providerStore.listProviders()[0]!;
-      store.upsertAiProviderKey(tenant.id, { 
-        aiProviderId: provider.id, 
-        aiProviderApiKeyEncrypted: encryptedKey 
+      store.upsertAiProviderKey(tenant.id, {
+        aiProviderId: provider.id,
+        aiProviderApiKeyEncrypted: encryptedKey
       });
 
-      const result = resolver.resolve({ tenantId: tenant.id });
+      const result = resolver.resolve({ tenantId: tenant.id, models: [] });
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -62,7 +62,7 @@ describe('TenantModelPoolResolver', () => {
 
       const result = resolver.resolve({
         tenantId: seeded.tenant.id,
-        model: 'model-a'
+        models: ['model-a'],
       });
 
       expect(result.isOk()).toBe(true);
@@ -77,7 +77,7 @@ describe('TenantModelPoolResolver', () => {
     test(`routes across all tenant models when model is "${MULTIFLOW_AUTO_MODEL}"`, () => {
       const result = resolver.resolve({
         tenantId: tenant.id,
-        model: MULTIFLOW_AUTO_MODEL
+        models: [MULTIFLOW_AUTO_MODEL],
       });
 
       expect(result.isOk()).toBe(true);
@@ -89,7 +89,7 @@ describe('TenantModelPoolResolver', () => {
 
   describe('Error cases', () => {
     test('returns model_not_found if requested model is not assigned to tenant', () => {
-      const result = resolver.resolve({ tenantId: tenant.id, model: 'claude-3-opus' });
+      const result = resolver.resolve({ tenantId: tenant.id, models: ['claude-3-opus'] });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -101,26 +101,15 @@ describe('TenantModelPoolResolver', () => {
     test('returns no_usable_model if tenant has empty configuration', () => {
       const emptyTenant = store.createTenant('Empty').tenant;
 
-      const result = resolver.resolve({ tenantId: emptyTenant.id });
+      const result = resolver.resolve({ tenantId: emptyTenant.id, models: [] });
       expect(result.isErr()).toBe(true);
       if (result.isErr()) expect(result.error.code).toBe('no_usable_model');
-    });
-
-    test('returns model_ambiguous_selection if both model and models are provided', () => {
-      const result = resolver.resolve({
-        tenantId: tenant.id,
-        model: 'gpt-4o',
-        models: ['gpt-4o']
-      });
-
-      expect(result.isErr()).toBe(true);
-      if (result.isErr()) expect(result.error.code).toBe('model_ambiguous_selection');
     });
   });
 
   describe('provider/model format (single model field)', () => {
     test('filters by provider name when "provider/model" format is used', () => {
-      const result = resolver.resolve({ tenantId: tenant.id, model: 'OpenAI/gpt-4o' });
+      const result = resolver.resolve({ tenantId: tenant.id, models: ['OpenAI/gpt-4o'] });
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -130,28 +119,28 @@ describe('TenantModelPoolResolver', () => {
     });
 
     test('provider name match is case-insensitive', () => {
-      const result = resolver.resolve({ tenantId: tenant.id, model: 'openai/gpt-4o' });
+      const result = resolver.resolve({ tenantId: tenant.id, models: ['openai/gpt-4o'] });
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) expect(result.value.length).toBe(1);
     });
 
     test('returns model_not_found if provider name does not match any configured provider', () => {
-      const result = resolver.resolve({ tenantId: tenant.id, model: 'Groq/gpt-4o' });
+      const result = resolver.resolve({ tenantId: tenant.id, models: ['Groq/gpt-4o'] });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) expect(result.error.code).toBe('model_not_found');
     });
 
     test('returns model_not_found if provider name matches but model does not', () => {
-      const result = resolver.resolve({ tenantId: tenant.id, model: 'OpenAI/gpt-99' });
+      const result = resolver.resolve({ tenantId: tenant.id, models: ['OpenAI/gpt-99'] });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) expect(result.error.code).toBe('model_not_found');
     });
 
     test('filters by provider name alone using "provider/" format', () => {
-      const result = resolver.resolve({ tenantId: tenant.id, model: 'OpenAI/' });
+      const result = resolver.resolve({ tenantId: tenant.id, models: ['OpenAI/'] });
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) expect(result.value.length).toBe(1);
@@ -209,7 +198,7 @@ describe('TenantModelPoolResolver', () => {
           tenantId: seeded.tenant.id,
           models: ['providera/model-a'],
         });
-  
+
         expect(result.isOk()).toBe(true);
         if (result.isOk()) {
           expect(result.value.length).toBe(1);
@@ -272,10 +261,9 @@ describe('TenantModelPoolResolver', () => {
       const seeded = seedTestTenantWithMultipleModels(store, providerStore);
       const providerA = providerStore.listProviders().find(p => p.name === 'ProviderA')!;
 
-      // model-a is on ProviderA.
       const result = resolver.resolve({
         tenantId: seeded.tenant.id,
-        model: 'model-a',
+        models: ['model-a'],
         forceAiProviderId: providerA.id
       });
 
@@ -290,10 +278,9 @@ describe('TenantModelPoolResolver', () => {
       const seeded = seedTestTenantWithMultipleModels(store, providerStore);
       const providerA = providerStore.listProviders().find(p => p.name === 'ProviderA')!;
 
-      // model-b exists but is on ProviderB. If we force ProviderA, it should fail.
       const result = resolver.resolve({
         tenantId: seeded.tenant.id,
-        model: 'model-b',
+        models: ['model-b'],
         forceAiProviderId: providerA.id
       });
 
@@ -309,7 +296,7 @@ describe('TenantModelPoolResolver', () => {
 
       const result = resolver.resolve({
         tenantId: seeded.tenant.id,
-        model: MULTIFLOW_AUTO_MODEL,
+        models: [MULTIFLOW_AUTO_MODEL],
         forceAiProviderId: providerA.id
       });
 
@@ -322,8 +309,8 @@ describe('TenantModelPoolResolver', () => {
     });
 
     test('returns no_usable_model if forceAiProviderId does not match any configured provider', () => {
-        const result = resolver.resolve({ tenantId: tenant.id, forceAiProviderId: 'non-existent-provider-id' });
-  
+        const result = resolver.resolve({ tenantId: tenant.id, models: [], forceAiProviderId: 'non-existent-provider-id' });
+
         expect(result.isErr()).toBe(true);
         if (result.isErr()) expect(result.error.code).toBe('no_usable_model');
       });

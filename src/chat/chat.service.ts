@@ -15,7 +15,7 @@ export class ChatService {
         const aiRouter = this.aiRouterFactory.create(arrayOfModelConfigs);
         const isStream = chatRequest.stream === true;
         const systemPrompt = this.resolveSystemPrompt(chatRequest);
-        const opts = this.extractProviderChatOptions(chatRequest);
+        const chatOptions = this.extractProviderChatOptions(chatRequest);
 
         log.info({tenantId: tenant.id, stream: isStream}, 'chat request starting');
 
@@ -23,7 +23,7 @@ export class ChatService {
         const filteredMessages = chatRequest.messages.filter(m => m.role !== 'system');
 
         if (isStream) {
-            const result = await aiRouter.chatStream(systemPrompt, filteredMessages, tenantCtx, opts);
+            const result = await aiRouter.chatStream(systemPrompt, filteredMessages, tenantCtx, chatOptions);
             if (!result) {
                 return err({code: 'ai_unavailable'});
             }
@@ -36,7 +36,7 @@ export class ChatService {
                 aiProviderUrl: result.aiProviderUrl,
             });
         } else {
-            const result = await aiRouter.chat(systemPrompt, filteredMessages, tenantCtx, opts);
+            const result = await aiRouter.chat(systemPrompt, filteredMessages, tenantCtx, chatOptions);
             if (!result) {
                 return err({code: 'ai_unavailable'});
             }

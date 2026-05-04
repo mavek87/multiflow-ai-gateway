@@ -2,13 +2,11 @@ export const MULTIFLOW_AUTO_MODEL = 'multiflow-ai-gateway-auto-model';
 
 export type TenantModelConfigError =
     | { code: 'no_usable_model' }
-    | { code: 'model_not_found'; model: string }
-    | { code: 'model_ambiguous_selection' };
+    | { code: 'model_not_found'; model: string };
 
 export interface TenantModelConfigKey {
     tenantId: string;
-    model?: string;
-    models?: string[];
+    models: string[];
     forceAiProviderId?: string | null;
 }
 

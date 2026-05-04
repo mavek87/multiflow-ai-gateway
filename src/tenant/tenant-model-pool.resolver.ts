@@ -20,18 +20,17 @@ export class TenantModelPoolResolver {
     }
 
     public resolve(key: TenantModelConfigKey): Result<ModelConfig[], TenantModelConfigError> {
-        const {tenantId, model, models, forceAiProviderId} = key;
-
-        if (model && models) {
-            return err({code: 'model_ambiguous_selection'});
-        }
+        const {tenantId, models, forceAiProviderId} = key;
 
         const allModels = this.tenantStore.getTenantModelConfigs(tenantId, forceAiProviderId);
         if (allModels.length === 0) {
             return err({code: 'no_usable_model'});
         }
 
-        const requestedModels = this.getRequestedModels(model, models);
+        const requestedModels = models.length > 0
+            ? models.filter(m => m !== MULTIFLOW_AUTO_MODEL).map(m => this.parseModelString(m))
+            : undefined;
+
         const matchingModels = this.filterMatchingModels(allModels, requestedModels);
 
         if (requestedModels && matchingModels.length === 0) {
@@ -42,18 +41,6 @@ export class TenantModelPoolResolver {
         }
 
         return ok(this.mapToModelConfigs(matchingModels));
-    }
-
-    private getRequestedModels(model?: string, models?: string[]): RequestedModel[] | undefined {
-        if (models && models.length > 0) {
-            return models.map(m => this.parseModelString(m));
-        }
-
-        if (model && model !== MULTIFLOW_AUTO_MODEL) {
-            return [this.parseModelString(model)];
-        }
-
-        return undefined;
     }
 
     private filterMatchingModels(allModels: TenantModelConfig[], requestedModels?: RequestedModel[]): TenantModelConfig[] {

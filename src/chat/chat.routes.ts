@@ -38,17 +38,18 @@ export function chatRoutePlugin(
         .guard({detail: {security: [{GatewayApiKey: []}]}}) // This guard applies the security requirement for Swagger UI / OpenAPI docs
         .post('/v1/chat/completions', async ({body, tenant}) => {
 
+            if (body.model && body.models) {
+                return badRequestResponse("Cannot use both 'model' and 'models' fields simultaneously");
+            }
+
             const modelConfigsResult = tenantModelPoolResolver.resolve({
                 tenantId: tenant!.id,
-                model: body.model,
-                models: body.models,
+                models: body.model ? [body.model] : (body.models ?? []),
                 forceAiProviderId: tenant!.forceAiProviderId
             });
 
             if (modelConfigsResult.isErr()) {
                 switch (modelConfigsResult.error.code) {
-                    case 'model_ambiguous_selection':
-                        return badRequestResponse("Cannot use both 'model' and 'models' fields simultaneously");
                     case 'no_usable_model':
                         return unprocessableResponse('No usable models configured for this tenant');
                     case 'model_not_found':
