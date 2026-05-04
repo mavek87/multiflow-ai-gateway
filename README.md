@@ -661,10 +661,11 @@ src/
   admin/                    # Admin API routes
   audit/                    # Audit store, rate limit check, and periodic cleanup of expired records
   auth/                     # Authentication (Tenant & Admin)
-  bootstrap/                # Declarative seed file bootstrap (seed.yaml)
   chat/                     # Chat Completions feature (core)
   config/                   # App configuration
-  db/                       # Database connection and schema
+  db/                       # Database connection, schema, and seed
+    |-- schema/             # Drizzle table definitions
+    |-- seed/               # Declarative seed file service (seed.yaml)
   engine/                   # Shared AI Engine core
     |-- client/             # AI Provider clients and response parsers
     |-- observability/      # Latency and success rate metrics

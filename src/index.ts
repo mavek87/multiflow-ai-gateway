@@ -9,7 +9,7 @@ import {chatRoutePlugin} from '@/chat/chat.routes';
 import {config} from '@/config/config';
 import {createLogger} from '@/utils/logger';
 import {CryptoService} from '@/crypto/crypto';
-import {runSeed} from '@/bootstrap/seed.service';
+import {runSeed} from '@/db/seed/seed.service';
 import {AuditStore} from '@/audit/audit.store';
 import {MetricsStore} from '@/engine/observability/metrics';
 import {startHousekeeping} from '@/audit/audit.housekeeping';
@@ -21,11 +21,11 @@ const cryptoService = new CryptoService();
 const auditStore = new AuditStore(db);
 const tenantStore = new TenantStore(db);
 const providerStore = new ProviderStore(db);
+const metricsStore = new MetricsStore();
+const circuitBreaker = new CircuitBreaker();
 
 runSeed(providerStore, tenantStore, cryptoService, config.seedFile);
 startHousekeeping(auditStore, config.auditRetentionDays);
-const metricsStore = new MetricsStore();
-const circuitBreaker = new CircuitBreaker();
 
 new Elysia()
     .onError(({code, error, request}) => {
