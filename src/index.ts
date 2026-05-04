@@ -19,12 +19,11 @@ const log = createLogger('SERVER');
 
 const cryptoService = new CryptoService();
 const auditStore = new AuditStore(db);
-
-runSeed(db, cryptoService, config.seedFile);
-startHousekeeping(auditStore, config.auditRetentionDays);
-
 const tenantStore = new TenantStore(db);
 const providerStore = new ProviderStore(db);
+
+runSeed(providerStore, tenantStore, cryptoService, config.seedFile);
+startHousekeeping(auditStore, config.auditRetentionDays);
 const metricsStore = new MetricsStore();
 const circuitBreaker = new CircuitBreaker();
 
