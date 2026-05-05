@@ -13,7 +13,7 @@ import {config} from '@/config/config';
 import type {CryptoService} from '@/crypto/crypto';
 import {MetricsStore} from '@/engine/observability/metrics';
 import {CircuitBreaker} from '@/engine/resilience/circuit-breaker';
-import type {AuditStore} from '@/audit/audit.store';
+import type {AuditStore} from '@/db/audit/audit.store';
 
 export function chatRoutePlugin(
     tenantStore: TenantStore,

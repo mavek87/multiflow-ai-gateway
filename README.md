@@ -249,7 +249,7 @@ AIRouter (src/engine/routing/ai-router.ts)
   |-- CircuitBreaker        (skips models in OPEN state)
   |-- HttpProviderClient    (low-level HTTP to OpenAI-compatible endpoint)
   |-- MetricsStore          (updates latency/success EMA after each chat)
-  |-- AuditStore (src/audit/audit.store.ts)
+  |-- AuditStore (src/db/audit/audit.store.ts)
 ```
 
 ### Routing and retry loop
@@ -659,11 +659,11 @@ The project follows a **Modular Architecture (Folder-by-Feature)**. Each feature
 ```
 src/
   admin/                    # Admin API routes
-  audit/                    # Audit store, rate limit check, and periodic cleanup of expired records
   auth/                     # Authentication (Tenant & Admin)
   chat/                     # Chat Completions feature (core)
   config/                   # App configuration
   db/                       # Database connection, schema, and seed
+    |-- audit/              # Audit store, rate limit check, and periodic cleanup of expired records
     |-- schema/             # Drizzle table definitions
     |-- seed/               # Declarative seed file service (seed.yaml)
   engine/                   # Shared AI Engine core

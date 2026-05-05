@@ -11,9 +11,9 @@ import {config} from '@/config/config';
 import {createLogger} from '@/utils/logger';
 import {CryptoService} from '@/crypto/crypto';
 import {runSeed} from '@/db/seed/seed.service';
-import {AuditStore} from '@/audit/audit.store';
+import {AuditStore} from '@/db/audit/audit.store';
 import {MetricsStore} from '@/engine/observability/metrics';
-import {startHousekeeping} from '@/audit/audit.housekeeping';
+import {startHousekeeping} from '@/db/audit/audit.housekeeping';
 import {CircuitBreaker} from '@/engine/resilience/circuit-breaker';
 
 const log = createLogger('SERVER');

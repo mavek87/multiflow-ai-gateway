@@ -22,7 +22,7 @@ import type {ModelSelector} from '@/engine/selection/model-selector.types';
 import {MetricsStore} from '@/engine/observability/metrics';
 import {CircuitBreaker} from '@/engine/resilience/circuit-breaker';
 import {createLogger} from '@/utils/logger';
-import type {AuditStore} from '@/audit/audit.store';
+import type {AuditStore} from '@/db/audit/audit.store';
 
 const log = createLogger('ROUTING');
 const MAX_ATTEMPTS_CAP = 10;

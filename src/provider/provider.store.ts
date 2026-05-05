@@ -7,6 +7,8 @@ import type {
   AiProviderModel,
   CreateProviderInput,
   CreateProviderModelInput,
+  UpdateProviderInput,
+  UpdateProviderModelInput,
 } from './provider.types';
 import { createLogger } from '@/utils/logger';
 import { randomUUID } from 'node:crypto';
@@ -47,7 +49,7 @@ export class ProviderStore {
     return ok(provider);
   }
 
-  updateProvider(id: string, input: import('./provider.types').UpdateProviderInput): AiProvider | null {
+  updateProvider(id: string, input: UpdateProviderInput): AiProvider | null {
     const row = this.db.update(aiProviders).set(input).where(eq(aiProviders.id, id)).returning().get();
     if (!row) return null;
     log.info(`Updated provider ${id}`);
@@ -93,7 +95,7 @@ export class ProviderStore {
     return ok(model);
   }
 
-  updateProviderModel(id: string, input: import('./provider.types').UpdateProviderModelInput): AiProviderModel | null {
+  updateProviderModel(id: string, input: UpdateProviderModelInput): AiProviderModel | null {
     const row = this.db.update(aiProviderModels).set(input).where(eq(aiProviderModels.id, id)).returning().get();
     if (!row) return null;
     log.info(`Updated provider model ${id}`);

@@ -5,7 +5,7 @@ import {CircuitBreaker} from '@/engine/resilience/circuit-breaker';
 import type {ModelSelector} from '@/engine/selection/model-selector.types';
 import {HttpProviderClient} from '@/engine/client/http-provider-client';
 import {config} from '@/config/config';
-import type {AuditStore} from '@/audit/audit.store';
+import type {AuditStore} from '@/db/audit/audit.store';
 
 export class AIRouterFactory {
     constructor(

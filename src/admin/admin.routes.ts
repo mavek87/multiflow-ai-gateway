@@ -4,7 +4,7 @@ import type { ProviderStore } from '@/provider/provider.store';
 import { badRequestResponse, notFoundResponse, createdResponse, conflictResponse } from '@/utils/http';
 import { checkMasterKey } from '@/auth/auth.middleware';
 import type { CryptoService } from '@/crypto/crypto';
-import type { AuditStore } from '@/audit/audit.store';
+import type { AuditStore } from '@/db/audit/audit.store';
 import type { MetricsStore } from '@/engine/observability/metrics';
 import type { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
 
