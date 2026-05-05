@@ -1,4 +1,4 @@
-import { describe, test, expect } from 'bun:test';
+import { describe, test, expect, mock } from 'bun:test';
 import { generateApiKey, hashApiKey } from './auth.utils';
 
 describe('generateApiKey', () => {
@@ -7,7 +7,9 @@ describe('generateApiKey', () => {
   });
 
   test('generates unique keys', () => {
-    const keys = new Set(Array.from({ length: 100 }, generateApiKey));
+    const spyGenerateApiKey = mock(generateApiKey);
+    const keys = new Set(Array.from({ length: 100 }, spyGenerateApiKey));
+    expect(spyGenerateApiKey).toHaveBeenCalledTimes(100);
     expect(keys.size).toBe(100);
   });
 
