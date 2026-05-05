@@ -23,8 +23,8 @@ import { sqliteTable, text, integer, uniqueIndex } from 'drizzle-orm/sqlite-core
  * │ type      │ text    │ Adapter discriminator, reserved for future use. Currently all providers are  │
  * │           │         │ routed through the same OpenAI-compatible client. Intended for future        │
  * │           │         │ adapters targeting non-OpenAI-compat APIs (e.g., Gemini native, Bedrock).    │
- * │ baseUrl   │ text    │ Root endpoint of the provider API                                            │
- * │           │         │ (e.g., "https://api.groq.com", "http://localhost:11434").                    │
+ * │ baseUrl   │ text    │ Versioned base URL of the provider API                                       │
+ * │           │         │ (e.g., "https://api.groq.com/openai/v1", "http://localhost:11434/v1").       │
  * │ createdAt │ integer │ Unix timestamp of provider registration.                                     │
  * └───────────┴─────────┴──────────────────────────────────────────────────────────────────────────────┘
  *
@@ -33,9 +33,9 @@ import { sqliteTable, text, integer, uniqueIndex } from 'drizzle-orm/sqlite-core
  * every provider is treated as OpenAI-compatible until a second adapter is introduced.
  *
  * Example rows:
- *   { id: "p_01", name: "Groq",         type: "openai", baseUrl: "https://api.groq.com",       createdAt: 1700000000 }
- *   { id: "p_02", name: "OpenRouter",   type: "openai", baseUrl: "https://openrouter.ai/api",  createdAt: 1700000001 }
- *   { id: "p_03", name: "Ollama-local", type: "openai", baseUrl: "http://localhost:11434",      createdAt: 1700000002 }
+ *   { id: "p_01", name: "Groq",         type: "openai", baseUrl: "https://api.groq.com/openai/v1",   createdAt: 1700000000 }
+ *   { id: "p_02", name: "OpenRouter",   type: "openai", baseUrl: "https://openrouter.ai/api/v1",  createdAt: 1700000001 }
+ *   { id: "p_03", name: "Ollama-local", type: "openai", baseUrl: "http://localhost:11434/v1",       createdAt: 1700000002 }
  */
 export const aiProviders = sqliteTable('ai_providers', {
   id: text('id').primaryKey(),

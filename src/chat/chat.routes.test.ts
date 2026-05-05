@@ -2,6 +2,7 @@ import { describe, test, expect, afterEach, beforeEach } from 'bun:test';
 import { createTestContext, createTestApp, createTestAppWithTenantAndProvider, createTestAppWithMultipleModels, sendRequest, mockSseResponse, mockJsonResponse, mockFetch } from '@test/test-setup';
 import { CryptoService } from '@/crypto/crypto';
 import { MULTIFLOW_AUTO_MODEL } from '@/tenant/tenant.types';
+import { CHAT_COMPLETIONS_PATH } from '@/chat/chat.constants';
 
 import { createFakeChatCompletionResponse } from '@test/fixtures/chat-fixtures';
 
@@ -29,7 +30,7 @@ describe('chatPlugin E2E', () => {
     undoFetch();
     undoFetch = mockFetch(() => mockChatJson('Hello from gateway'));
 
-    const res = await sendRequest(app, '/v1/chat/completions', {
+    const res = await sendRequest(app, CHAT_COMPLETIONS_PATH, {
       method: 'POST',
       apiKey: rawApiKey,
       body: { messages: [{ role: 'user', content: 'hi' }] }
@@ -45,7 +46,7 @@ describe('chatPlugin E2E', () => {
     undoFetch();
     undoFetch = mockFetch(() => mockSseResponse('Stream message'));
 
-    const res = await sendRequest(app, '/v1/chat/completions', {
+    const res = await sendRequest(app, CHAT_COMPLETIONS_PATH, {
       method: 'POST',
       apiKey: rawApiKey,
       body: { messages: [{ role: 'user', content: 'hi' }], stream: true }
@@ -57,7 +58,7 @@ describe('chatPlugin E2E', () => {
   });
 
   test('returns 400 Bad Request when requested model is not available', async () => {
-    const res = await sendRequest(app, '/v1/chat/completions', {
+    const res = await sendRequest(app, CHAT_COMPLETIONS_PATH, {
       method: 'POST',
       apiKey: rawApiKey,
       body: { model: 'claude-opus', messages: [{ role: 'user', content: 'hi' }] }
@@ -71,7 +72,7 @@ describe('chatPlugin E2E', () => {
       undoFetch();
       undoFetch = mockFetch(() => mockChatJson('ok'));
 
-      const res = await sendRequest(app, '/v1/chat/completions', {
+      const res = await sendRequest(app, CHAT_COMPLETIONS_PATH, {
         method: 'POST',
         apiKey: rawApiKey,
         body: { messages: [{ role: 'user', content: 'hi' }] }
@@ -84,7 +85,7 @@ describe('chatPlugin E2E', () => {
       undoFetch();
       undoFetch = mockFetch(() => mockChatJson('ok'));
 
-      const res = await sendRequest(app, '/v1/chat/completions', {
+      const res = await sendRequest(app, CHAT_COMPLETIONS_PATH, {
         method: 'POST',
         apiKey: rawApiKey,
         body: { model: 'OpenAI/gpt-4o', messages: [{ role: 'user', content: 'hi' }] }
@@ -94,7 +95,7 @@ describe('chatPlugin E2E', () => {
     });
 
     test('returns 400 when provider in provider/model format does not match any configured provider', async () => {
-      const res = await sendRequest(app, '/v1/chat/completions', {
+      const res = await sendRequest(app, CHAT_COMPLETIONS_PATH, {
         method: 'POST',
         apiKey: rawApiKey,
         body: { model: 'Groq/gpt-4o', messages: [{ role: 'user', content: 'hi' }] }
@@ -104,7 +105,7 @@ describe('chatPlugin E2E', () => {
     });
 
     test('returns 400 when model in provider/model format does not match any configured model', async () => {
-      const res = await sendRequest(app, '/v1/chat/completions', {
+      const res = await sendRequest(app, CHAT_COMPLETIONS_PATH, {
         method: 'POST',
         apiKey: rawApiKey,
         body: { model: 'OpenAI/gpt-99', messages: [{ role: 'user', content: 'hi' }] }
@@ -117,7 +118,7 @@ describe('chatPlugin E2E', () => {
       undoFetch();
       undoFetch = mockFetch(() => mockChatJson('ok'));
 
-      const res = await sendRequest(app, '/v1/chat/completions', {
+      const res = await sendRequest(app, CHAT_COMPLETIONS_PATH, {
         method: 'POST',
         apiKey: rawApiKey,
         body: { model: 'OpenAI/', messages: [{ role: 'user', content: 'hi' }] }
@@ -130,7 +131,7 @@ describe('chatPlugin E2E', () => {
       undoFetch();
       undoFetch = mockFetch(() => mockChatJson('ok'));
 
-      const res = await sendRequest(app, '/v1/chat/completions', {
+      const res = await sendRequest(app, CHAT_COMPLETIONS_PATH, {
         method: 'POST',
         apiKey: rawApiKey,
         body: { model: MULTIFLOW_AUTO_MODEL, messages: [{ role: 'user', content: 'hi' }] }
@@ -140,7 +141,7 @@ describe('chatPlugin E2E', () => {
     });
 
     test('returns 400 when model is unknown (auto-model sentinel is the only special case)', async () => {
-      const res = await sendRequest(app, '/v1/chat/completions', {
+      const res = await sendRequest(app, CHAT_COMPLETIONS_PATH, {
         method: 'POST',
         apiKey: rawApiKey,
         body: { model: 'some-unknown-model', messages: [{ role: 'user', content: 'hi' }] }
@@ -164,7 +165,7 @@ describe('chatPlugin E2E', () => {
       undoFetch();
       undoFetch = mockFetch(() => mockChatJson('ok'));
 
-      const res = await sendRequest(multiApp, '/v1/chat/completions', {
+      const res = await sendRequest(multiApp, CHAT_COMPLETIONS_PATH, {
         method: 'POST',
         apiKey: multiRawApiKey,
         body: { models: ['model-a', 'model-b'], messages: [{role: 'user', content: 'hi'}] }
@@ -177,7 +178,7 @@ describe('chatPlugin E2E', () => {
       undoFetch();
       undoFetch = mockFetch(() => mockChatJson('ok'));
 
-      const res = await sendRequest(multiApp, '/v1/chat/completions', {
+      const res = await sendRequest(multiApp, CHAT_COMPLETIONS_PATH, {
         method: 'POST',
         apiKey: multiRawApiKey,
         body: { models: ['ProviderA/model-a'], messages: [{role: 'user', content: 'hi'}] }
@@ -187,7 +188,7 @@ describe('chatPlugin E2E', () => {
     });
 
     test('returns 400 when models array contains no valid models', async () => {
-      const res = await sendRequest(multiApp, '/v1/chat/completions', {
+      const res = await sendRequest(multiApp, CHAT_COMPLETIONS_PATH, {
         method: 'POST',
         apiKey: multiRawApiKey,
         body: { models: ['unknown-model'], messages: [{role: 'user', content: 'hi'}] }
@@ -197,7 +198,7 @@ describe('chatPlugin E2E', () => {
     });
 
     test('returns 400 when both model and models are provided', async () => {
-      const res = await sendRequest(multiApp, '/v1/chat/completions', {
+      const res = await sendRequest(multiApp, CHAT_COMPLETIONS_PATH, {
         method: 'POST',
         apiKey: multiRawApiKey,
         body: { model: 'model-a', models: ['model-b'], messages: [{role: 'user', content: 'hi'}] }
@@ -213,7 +214,7 @@ describe('chatPlugin E2E', () => {
       const emptyTenant = tenantStore.createTenant('Empty');
       const emptyApp = createTestApp(tenantStore, providerStore, localAuditStore, localMetricsStore, localCircuitBreaker, new CryptoService());
 
-      const res = await sendRequest(emptyApp, '/v1/chat/completions', {
+      const res = await sendRequest(emptyApp, CHAT_COMPLETIONS_PATH, {
         method: 'POST',
         apiKey: emptyTenant.rawApiKey,
         body: { messages: [{ role: 'user', content: 'hi' }] }
@@ -229,7 +230,7 @@ describe('chatPlugin E2E', () => {
 
       const limitedApp = createTestApp(tenantStore, providerStore, localAuditStore, localMetricsStore, localCircuitBreaker, new CryptoService());
 
-      const res = await sendRequest(limitedApp, '/v1/chat/completions', {
+      const res = await sendRequest(limitedApp, CHAT_COMPLETIONS_PATH, {
         method: 'POST',
         apiKey: limitedKey,
         body: { messages: [{ role: 'user', content: 'hi' }] }
@@ -244,7 +245,7 @@ describe('chatPlugin E2E', () => {
       undoFetch();
       undoFetch = mockFetch(() => mockJsonResponse({ choices: [{ message: { content: 'sunny', tool_calls: undefined } }] }));
 
-      const res = await sendRequest(app, '/v1/chat/completions', {
+      const res = await sendRequest(app, CHAT_COMPLETIONS_PATH, {
         method: 'POST',
         apiKey: rawApiKey,
         body: {
@@ -269,7 +270,7 @@ describe('chatPlugin E2E', () => {
         choices: [{ index: 0, message: { role: 'assistant', content: null, tool_calls: [toolCall] }, finish_reason: 'tool_calls' }],
       }));
 
-      const res = await sendRequest(app, '/v1/chat/completions', {
+      const res = await sendRequest(app, CHAT_COMPLETIONS_PATH, {
         method: 'POST',
         apiKey: rawApiKey,
         body: {
@@ -290,7 +291,7 @@ describe('chatPlugin E2E', () => {
       undoFetch();
       undoFetch = mockFetch(() => mockChatJson('done'));
 
-      const res = await sendRequest(app, '/v1/chat/completions', {
+      const res = await sendRequest(app, CHAT_COMPLETIONS_PATH, {
         method: 'POST',
         apiKey: rawApiKey,
         body: {
@@ -309,7 +310,7 @@ describe('chatPlugin E2E', () => {
       undoFetch();
       undoFetch = mockFetch(() => mockChatJson('ok'));
 
-      const res = await sendRequest(app, '/v1/chat/completions', {
+      const res = await sendRequest(app, CHAT_COMPLETIONS_PATH, {
         method: 'POST',
         apiKey: rawApiKey,
         body: {
@@ -325,7 +326,7 @@ describe('chatPlugin E2E', () => {
     });
 
     test('returns 422 when arguments is not a string', async () => {
-      const res = await sendRequest(app, '/v1/chat/completions', {
+      const res = await sendRequest(app, CHAT_COMPLETIONS_PATH, {
         method: 'POST',
         apiKey: rawApiKey,
         body: {

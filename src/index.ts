@@ -6,6 +6,7 @@ import {TenantStore} from '@/tenant/tenant.store';
 import {ProviderStore} from '@/provider/provider.store';
 import {adminRoutePlugin} from '@/admin/admin.routes';
 import {chatRoutePlugin} from '@/chat/chat.routes';
+import {CHAT_COMPLETIONS_PATH} from '@/chat/chat.constants';
 import {config} from '@/config/config';
 import {createLogger} from '@/utils/logger';
 import {CryptoService} from '@/crypto/crypto';
@@ -102,7 +103,7 @@ log.info(`multiflow-ai-gateway listening on port ${config.port}`);
 function patchSwaggerExamples({request, responseValue}: { request: Request; responseValue: unknown }) {
     if (new URL(request.url).pathname !== '/docs/json') return;
     const spec = responseValue as Record<string, unknown>;
-    const post = (spec?.paths as Record<string, Record<string, unknown>>)?.['/v1/chat/completions']?.post as Record<string, unknown> | undefined;
+    const post = (spec?.paths as Record<string, Record<string, unknown>>)?.[CHAT_COMPLETIONS_PATH]?.post as Record<string, unknown> | undefined;
     if (!post) return;
     const requestBody = post.requestBody as Record<string, unknown>;
     const content = requestBody?.content as Record<string, Record<string, unknown>>;
