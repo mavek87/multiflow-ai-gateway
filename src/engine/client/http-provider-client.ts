@@ -8,7 +8,7 @@
  */
 
 import {err, ok, type Result} from 'neverthrow';
-import type {AIChatMessage, ToolCall} from '@/chat/chat.types';
+import type {ChatMessage, ToolCall} from '@/chat/chat.types';
 import type {
     CallProviderResult,
     CallProviderStreamResult,
@@ -31,8 +31,8 @@ export class HttpProviderClient {
     ) {
     }
 
-    async call(systemPrompt: string, messages: AIChatMessage[], opts?: ProviderChatOptions): Promise<CallProviderResult> {
-        const history: AIChatMessage[] = systemPrompt ? [{role: 'system', content: systemPrompt}, ...messages] : messages;
+    async call(systemPrompt: string, messages: ChatMessage[], opts?: ProviderChatOptions): Promise<CallProviderResult> {
+        const history: ChatMessage[] = systemPrompt ? [{role: 'system', content: systemPrompt}, ...messages] : messages;
         const hasTools = (opts?.tools?.length ?? 0) > 0;
         const startTime = Date.now();
 
@@ -54,8 +54,8 @@ export class HttpProviderClient {
             const parsed = await this.parseJsonResponse(response, startTime);
             if (parsed.isErr()) return err(parsed.error);
 
-            const {content, ttftMs, toolCalls, rawBody} = parsed.value;
-            const result = ok({content, toolCalls, ttftMs, latencyMs: Date.now() - startTime, rawBody});
+            const {content, ttftMs, toolCalls, body} = parsed.value;
+            const result = ok({content, toolCalls, ttftMs, latencyMs: Date.now() - startTime, body});
 
             if (hasTools) return result;
             return result.map((r) => ({...r, content: stripThinkTags(r.content)}));
@@ -69,8 +69,8 @@ export class HttpProviderClient {
         }
     }
 
-    async callStream(systemPrompt: string, messages: AIChatMessage[], opts?: ProviderChatOptions): Promise<CallProviderStreamResult> {
-        const history: AIChatMessage[] = systemPrompt ? [{role: 'system', content: systemPrompt}, ...messages] : messages;
+    async callStream(systemPrompt: string, messages: ChatMessage[], opts?: ProviderChatOptions): Promise<CallProviderStreamResult> {
+        const history: ChatMessage[] = systemPrompt ? [{role: 'system', content: systemPrompt}, ...messages] : messages;
         const start = Date.now();
 
         const abortController = new AbortController();
@@ -152,14 +152,14 @@ export class HttpProviderClient {
         return headers;
     }
 
-    private buildBody(messages: AIChatMessage[], stream: boolean, opts?: ProviderChatOptions): Record<string, unknown> {
+    private buildBody(messages: ChatMessage[], stream: boolean, opts?: ProviderChatOptions): Record<string, unknown> {
         const body: Record<string, unknown> = {model: this.config.model, messages, stream};
         if (this.enableThinking) body.think = true;
         if (opts) Object.assign(body, opts);
         return body;
     }
 
-    private async parseJsonResponse(res: Response, start: number): Promise<Result<{ content: string; ttftMs: number; toolCalls?: ToolCall[]; rawBody: Record<string, unknown> }, CallProviderError>> {
+    private async parseJsonResponse(res: Response, start: number): Promise<Result<{ content: string; ttftMs: number; toolCalls?: ToolCall[]; body: Record<string, unknown> }, CallProviderError>> {
         try {
             const json = await res.json() as OpenAIChatCompletion;
             log.debug({preview: JSON.stringify(json).slice(0, 200)}, 'non-stream response');
@@ -170,7 +170,7 @@ export class HttpProviderClient {
                 content: message?.content ?? '',
                 toolCalls,
                 ttftMs: Date.now() - start,
-                rawBody: json as Record<string, unknown>,
+                body: json as Record<string, unknown>,
             });
         } catch (e) {
             return err({kind: 'hard', error: e});

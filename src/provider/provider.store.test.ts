@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from 'bun:test';
-import { ProviderStore } from './provider.store';
+import { ProviderStore } from '@/provider/provider.store';
 import { createTestContext } from '@test/test-setup';
 import { OPENAI_PROVIDER_BASE, GROQ_PROVIDER_BASE } from '@test/fixtures/provider-fixtures';
 

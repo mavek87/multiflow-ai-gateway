@@ -1,5 +1,5 @@
 import { describe, test, expect, afterEach } from 'bun:test';
-import { ChatService } from './chat.service';
+import { ChatService } from '@/chat/chat.service';
 import { AIRouterFactory } from '@/engine/routing/ai-router.factory';
 import type { AIRouter } from '@/engine/routing/ai-router';
 import { fakeTenant, fakeModelConfigs, createFakeChatCompletionResponse, createFakeToolCallResponse } from '@test/fixtures/chat-fixtures';
@@ -18,7 +18,7 @@ describe('ChatService', () => {
   test('handles standard chat request successfully', async () => {
     const fakeRawBody = createFakeChatCompletionResponse('Mocked reply');
     const mockClient: Pick<AIRouter, 'chat' | 'chatStream'> = {
-      chat: async () => ({ model: 'gpt-4o', content: 'Mocked reply', rawBody: fakeRawBody, aiProviderId: 'prov-1', aiProvider: 'openai', aiProviderUrl: 'https://api.openai.com' }),
+      chat: async () => ({ model: 'gpt-4o', content: 'Mocked reply', body: fakeRawBody, aiProviderId: 'prov-1', aiProvider: 'openai', aiProviderUrl: 'https://api.openai.com' }),
       chatStream: async () => null,
     };
     const service = new ChatService(makeFactory(mockClient));
@@ -116,12 +116,12 @@ describe('ChatService', () => {
   });
 
   describe('tool calling pass-through', () => {
-    test('forwards finish_reason tool_calls from rawBody when provider returns tool_calls', async () => {
+    test('forwards finish_reason tool_calls from body when provider returns tool_calls', async () => {
       const fakeRawBody = createFakeToolCallResponse('call_abc', 'get_weather', '{"city":"Rome"}');
       const fakeToolCall = fakeRawBody.choices[0]!.message.tool_calls![0]!;
       const mockClient: Pick<AIRouter, 'chat' | 'chatStream'> = {
         chat: async () => ({
-          model: 'gpt-4o', content: '', toolCalls: [fakeToolCall], rawBody: fakeRawBody as any,
+          model: 'gpt-4o', content: '', toolCalls: [fakeToolCall], body: fakeRawBody as any,
           aiProviderId: 'p', aiProvider: 'a', aiProviderUrl: 'u',
         }),
         chatStream: async () => null,
@@ -143,11 +143,11 @@ describe('ChatService', () => {
       }
     });
 
-    test('forwards finish_reason stop from rawBody when no tool_calls', async () => {
+    test('forwards finish_reason stop from body when no tool_calls', async () => {
       const fakeRawBody = { id: 'chatcmpl-3', object: 'chat.completion', created: 1, model: 'gpt-4o', choices: [{ index: 0, message: { role: 'assistant', content: 'It is sunny.', tool_calls: undefined }, finish_reason: 'stop' }] };
       const mockClient: Pick<AIRouter, 'chat' | 'chatStream'> = {
         chat: async () => ({
-          model: 'gpt-4o', content: 'It is sunny.', toolCalls: undefined, rawBody: fakeRawBody,
+          model: 'gpt-4o', content: 'It is sunny.', toolCalls: undefined, body: fakeRawBody,
           aiProviderId: 'p', aiProvider: 'a', aiProviderUrl: 'u',
         }),
         chatStream: async () => null,

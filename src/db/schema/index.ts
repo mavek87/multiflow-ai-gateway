@@ -1,3 +1,3 @@
-export * from './providers';
-export * from './tenants';
-export * from './request-log';
+export * from '@/db/schema/providers';
+export * from '@/db/schema/tenants';
+export * from '@/db/schema/request-log';

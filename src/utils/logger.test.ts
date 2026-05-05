@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test';
-import { createLogger } from './logger';
+import { createLogger } from '@/utils/logger';
 
 test('L1: createLogger returns a pino child with the given label binding', () => {
   const log = createLogger('TEST_LABEL');

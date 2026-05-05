@@ -1,4 +1,4 @@
-import type {ChatServiceRequest, ToolCall} from '@/chat/chat.types';
+import type {ChatRequest, ToolCall} from '@/chat/chat.types';
 import type {Result} from "neverthrow";
 
 export interface TenantContext {
@@ -16,7 +16,7 @@ export interface ProviderBaseResponse {
 export interface ProviderChatResponse extends ProviderBaseResponse {
     content: string;
     toolCalls?: ToolCall[];
-    rawBody?: Record<string, unknown>;
+    body?: Record<string, unknown>;
 }
 
 export interface ProviderStreamResponse extends ProviderBaseResponse {
@@ -34,7 +34,7 @@ export type ModelConfig = {
     aiProviderModelId?: string;
 };
 
-export type ProviderChatOptions = Omit<ChatServiceRequest, 'model' | 'models' | 'system' | 'stream' | 'messages'>;
+export type ProviderChatOptions = Omit<ChatRequest, 'model' | 'models' | 'system' | 'stream' | 'messages'>;
 
 export type OpenAIChatCompletion = {
     choices?: Array<{ message?: { content?: string; tool_calls?: ToolCall[] } }>;
@@ -46,7 +46,7 @@ export type CallProviderSuccess = {
     toolCalls?: ToolCall[];
     ttftMs: number;
     latencyMs: number;
-    rawBody?: Record<string, unknown>;
+    body?: Record<string, unknown>;
 };
 export type CallProviderResult = Result<CallProviderSuccess, CallProviderError>;
 export type CallProviderStreamSuccess = { body: ReadableStream<Uint8Array>; ttftMs: number };

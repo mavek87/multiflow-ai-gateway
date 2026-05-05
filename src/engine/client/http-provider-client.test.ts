@@ -1,8 +1,8 @@
 import { describe, test, expect, afterEach, spyOn } from 'bun:test';
-import { HttpProviderClient } from './http-provider-client';
+import { HttpProviderClient } from '@/engine/client/http-provider-client';
 import { mockSseResponse, mockJsonResponse, mockFetch } from '@test/test-setup';
 import { createFakeToolCallResponse } from '@test/fixtures/chat-fixtures';
-import type { ModelConfig } from './http-provider-client.types';
+import type { ModelConfig } from '@/engine/client/http-provider-client.types';
 
 function createTestClient(config: ModelConfig, firstTokenTimeoutMs = 30000, providerRequestTimeoutMs = 30000) {
   return new HttpProviderClient(config, firstTokenTimeoutMs, providerRequestTimeoutMs);

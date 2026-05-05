@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from 'bun:test';
-import { TenantStore } from './tenant.store';
+import { TenantStore } from '@/tenant/tenant.store';
 import { ProviderStore } from '@/provider/provider.store';
 import { CryptoService } from '@/crypto/crypto';
 import { setupTenantStoreContext } from '@test/fixtures/tenant-fixtures';

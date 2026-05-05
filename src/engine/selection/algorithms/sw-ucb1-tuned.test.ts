@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { SWUcb1TunedSelector } from './sw-ucb1-tuned';
+import { SWUcb1TunedSelector } from '@/engine/selection/algorithms/sw-ucb1-tuned';
 import { MetricsStore } from '@/engine/observability/metrics';
 import { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
 

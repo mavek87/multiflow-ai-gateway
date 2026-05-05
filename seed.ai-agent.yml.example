@@ -1,0 +1,54 @@
+providers:
+  - name: OpenRouter
+    type: openai
+    baseUrl: https://openrouter.ai/api/v1
+    models:
+      - openai/gpt-oss-120b:free
+
+  - name: Pollinations
+    type: openai
+    baseUrl: https://gen.pollinations.ai/v1
+    models:
+      - openai
+
+  - name: Ollama Local
+    type: ollama
+    baseUrl: http://localhost:11434/v1
+    models:
+      - qwen3.5:397b-cloud
+      - gemini-3-flash-preview
+      - gemma4:31b-cloud
+      - deepseek-v3.2:cloud
+
+  - name: Nvidia
+    type: openai
+    baseUrl: https://integrate.api.nvidia.com/v1
+    models:
+      - moonshotai/kimi-k2-instruct
+
+tenants:
+  - name: ai-agents
+    providers:
+      - name: OpenRouter
+        apiKeyEnv: OPENROUTER_API_KEY
+        models:
+          - name: openai/gpt-oss-120b:free
+            priority: 5
+      - name: Nvidia
+        apiKeyEnv: NVIDIA_API_KEY
+        models:
+          - name: moonshotai/kimi-k2-instruct
+            priority: 4
+      - name: Pollinations
+        apiKeyEnv: POLLINATIONS_API_KEY
+        models:
+          - name: openai
+            priority: 6
+      - name: Ollama Local
+        models:
+          - name: qwen3.5:397b-cloud
+            priority: 1
+          - name: gemini-3-flash-preview
+            priority: 2
+          - name: deepseek-v3.2:cloud
+            priority: 3

@@ -1,4 +1,4 @@
-import {AIRouter} from './ai-router';
+import {AIRouter} from '@/engine/routing/ai-router';
 import type {ModelConfig} from '@/engine/client/http-provider-client.types';
 import {MetricsStore} from '@/engine/observability/metrics';
 import {CircuitBreaker} from '@/engine/resilience/circuit-breaker';

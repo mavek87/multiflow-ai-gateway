@@ -5,7 +5,7 @@ import {
     type TenantModelConfigError,
     type TenantModelConfig,
     MULTIFLOW_AUTO_MODEL
-} from './tenant.types';
+} from '@/tenant/tenant.types';
 import type {ModelConfig} from '@/engine/client/http-provider-client.types';
 import {buildProviderUrl} from '@/provider/provider.utils';
 import type {CryptoService} from '@/crypto/crypto';

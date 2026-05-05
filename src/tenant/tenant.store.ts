@@ -12,7 +12,7 @@ import type {
   UpdateTenantAiModelPriorityInput,
   UpdateTenantAiProviderKeyInput,
   UpdateTenantInput,
-} from './tenant.types';
+} from '@/tenant/tenant.types';
 import { generateApiKey, hashApiKey } from '@/auth/auth.utils';
 import { createLogger } from '@/utils/logger';
 import { randomUUID } from 'node:crypto';

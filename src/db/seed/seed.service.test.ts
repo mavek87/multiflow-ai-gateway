@@ -3,7 +3,7 @@ import { writeFileSync, unlinkSync, existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { createTestContext } from '@test/test-setup';
 import { CryptoService } from '@/crypto/crypto';
-import { runSeed } from './seed.service';
+import { runSeed } from '@/db/seed/seed.service';
 
 describe('runSeed', () => {
   const tempFiles: string[] = [];

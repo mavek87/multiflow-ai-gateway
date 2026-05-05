@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from 'bun:test';
-import { AuditStore } from './audit.store';
+import { AuditStore } from '@/db/audit/audit.store';
 import { setupTestDb } from '@test/test-setup';
 
 const entry = (tenantId = 't1') => ({

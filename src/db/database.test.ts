@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { sql } from 'drizzle-orm';
-import { db } from './database';
+import { db } from '@/db/database';
 
 describe('Database', () => {
   it("should export a ready-to-use 'db' instance", () => {

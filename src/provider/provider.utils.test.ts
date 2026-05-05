@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { buildProviderUrl } from './provider.utils';
+import { buildProviderUrl } from '@/provider/provider.utils';
 
 const CHAT_SUFFIX = '/chat/completions';
 

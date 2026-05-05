@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { computeReward } from './base-ucb1';
+import { computeReward } from '@/engine/selection/algorithms/base-ucb1';
 
 describe('BaseUCB1Selector utils', () => {
   describe('computeReward', () => {

@@ -1,5 +1,5 @@
 import { describe, test, expect, afterEach } from 'bun:test';
-import { AIRouter } from './ai-router';
+import { AIRouter } from '@/engine/routing/ai-router';
 import { MetricsStore } from '@/engine/observability/metrics';
 import { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
 import type { ModelSelector } from '@/engine/selection/model-selector.types';

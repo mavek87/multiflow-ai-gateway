@@ -8,7 +8,7 @@
  * On the very first call for a model the raw value is used directly (no prior EMA to blend with).
  */
 
-import type {ModelMetrics} from './metrics.types';
+import type {ModelMetrics} from '@/engine/observability/metrics.types';
 export type {ModelMetrics};
 
 const ALPHA = 0.1;

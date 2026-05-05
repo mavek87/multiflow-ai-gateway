@@ -2,13 +2,13 @@ import {Elysia} from 'elysia';
 import type {TenantStore} from '@/tenant/tenant.store';
 import {MULTIFLOW_AUTO_MODEL} from '@/tenant/tenant.types';
 import {badRequestResponse, internalErrorResponse, tooManyRequestsResponse, unprocessableResponse} from '@/utils/http';
-import {ChatService} from './chat.service';
+import {ChatService} from '@/chat/chat.service';
 import {AIRouterFactory} from '@/engine/routing/ai-router.factory';
 import {createModelSelector} from '@/engine/selection/model-selector.factory';
 import {TenantModelPoolResolver} from '@/tenant/tenant-model-pool.resolver';
 import {tenantAuthPlugin} from '@/auth/auth.middleware';
-import {ChatRequestSchema} from './chat.schema';
-import {CHAT_COMPLETIONS_PATH} from './chat.constants';
+import {ChatRequestSchema} from '@/chat/chat.schema';
+import {CHAT_COMPLETIONS_PATH} from '@/chat/chat.constants';
 import {config} from '@/config/config';
 import type {CryptoService} from '@/crypto/crypto';
 import {MetricsStore} from '@/engine/observability/metrics';
@@ -37,15 +37,15 @@ export function chatRoutePlugin(
     return new Elysia()
         .use(tenantAuthPlugin(tenantStore))
         .guard({detail: {security: [{GatewayApiKey: []}]}}) // This guard applies the security requirement for Swagger UI / OpenAPI docs
-        .post(CHAT_COMPLETIONS_PATH, async ({body, tenant}) => {
+        .post(CHAT_COMPLETIONS_PATH, async ({body: chatRequest, tenant}) => {
 
-            if (body.model && body.models) {
+            if (chatRequest.model && chatRequest.models) {
                 return badRequestResponse("Cannot use both 'model' and 'models' fields simultaneously");
             }
 
             const modelConfigsResult = tenantModelPoolResolver.resolve({
                 tenantId: tenant!.id,
-                models: body.model ? [body.model] : (body.models ?? []),
+                models: chatRequest.model ? [chatRequest.model] : (chatRequest.models ?? []),
                 forceAiProviderId: tenant!.forceAiProviderId
             });
 
@@ -58,11 +58,12 @@ export function chatRoutePlugin(
                 }
             }
 
-            const chatResult = await chatService.handleChatRequest(tenant!, body, modelConfigsResult.value);
+            const arrayOfModelConfig = modelConfigsResult.value;
+            const chatResult = await chatService.handleChatRequest(tenant!, chatRequest, arrayOfModelConfig);
             if (chatResult.isErr()) {
                 switch (chatResult.error.code) {
                     case 'ai_unavailable':
-                        if (body.stream) {
+                        if (chatRequest.stream) {
                             return new Response('data: {"error":"AI service unavailable"}\n\ndata: [DONE]\n\n', {
                                 status: 503,
                                 headers: {'Content-Type': 'text/event-stream'},

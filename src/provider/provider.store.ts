@@ -9,7 +9,7 @@ import type {
   CreateProviderModelInput,
   UpdateProviderInput,
   UpdateProviderModelInput,
-} from './provider.types';
+} from '@/provider/provider.types';
 import { createLogger } from '@/utils/logger';
 import { randomUUID } from 'node:crypto';
 

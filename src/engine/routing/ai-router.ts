@@ -3,7 +3,7 @@
  */
 
 import type {Result} from 'neverthrow';
-import type {AIChatMessage} from '@/chat/chat.types';
+import type {ChatMessage} from '@/chat/chat.types';
 import type {
     ProviderChatResponse,
     ProviderStreamResponse,
@@ -40,7 +40,7 @@ export class AIRouter {
     ) {
     }
 
-    async chat(systemPrompt: string, messages: AIChatMessage[], ctx?: TenantContext, opts?: ProviderChatOptions): Promise<ProviderChatResponse | null> {
+    async chat(systemPrompt: string, messages: ChatMessage[], ctx?: TenantContext, opts?: ProviderChatOptions): Promise<ProviderChatResponse | null> {
         log.info({messages: messages.length, tenantId: ctx?.tenantId ?? 'unknown'}, 'new request');
 
         return this.executeWithAudit(ctx?.tenantId ?? 'unknown', async () => {
@@ -52,14 +52,14 @@ export class AIRouter {
                 const modelMeta = this.aiProviderIds.get(result.model);
                 const displayName = modelMeta?.modelName ?? result.model;
                 log.info({model: displayName, provider: modelMeta?.name, latencyMs: result.latencyMs, ttftMs: result.ttftMs}, 'model succeeded');
-                return {content: result.content, toolCalls: result.toolCalls, rawBody: result.rawBody, model: displayName, aiProviderId: result.aiProviderId, aiProvider: result.aiProvider, aiProviderUrl: result.aiProviderUrl};
+                return {content: result.content, toolCalls: result.toolCalls, body: result.body, model: displayName, aiProviderId: result.aiProviderId, aiProvider: result.aiProvider, aiProviderUrl: result.aiProviderUrl};
             }
 
             return null;
         });
     }
 
-    async chatStream(systemPrompt: string, messages: AIChatMessage[], ctx?: TenantContext, opts?: ProviderChatOptions): Promise<ProviderStreamResponse | null> {
+    async chatStream(systemPrompt: string, messages: ChatMessage[], ctx?: TenantContext, opts?: ProviderChatOptions): Promise<ProviderStreamResponse | null> {
         log.info({messages: messages.length, tenantId: ctx?.tenantId ?? 'unknown'}, 'new stream request');
 
         return this.executeWithAudit(ctx?.tenantId ?? 'unknown', async () => {

@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from 'bun:test';
-import { TenantModelPoolResolver } from './tenant-model-pool.resolver';
+import { TenantModelPoolResolver } from '@/tenant/tenant-model-pool.resolver';
 import { createTestContext, seedTestTenantAndProvider, seedTestTenantWithMultipleModels } from '@test/test-setup';
 import type { TenantStore } from '@/tenant/tenant.store';
 import type { ProviderStore } from '@/provider/provider.store';

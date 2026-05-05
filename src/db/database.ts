@@ -5,8 +5,8 @@ import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { config } from '@/config/config';
 import { createLogger } from '@/utils/logger';
-import * as schema from './schema/index';
-import type {DrizzleDb} from './database.types';
+import * as schema from '@/db/schema/index';
+import type {DrizzleDb} from '@/db/database.types';
 export type {DrizzleDb};
 
 const log = createLogger('DB');

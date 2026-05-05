@@ -1,5 +1,5 @@
 import { sqliteTable, text, integer, uniqueIndex } from 'drizzle-orm/sqlite-core';
-import { aiProviders, aiProviderModels } from './providers';
+import { aiProviders, aiProviderModels } from '@/db/schema/providers';
 
 /**
  * TENANTS

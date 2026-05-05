@@ -1,5 +1,5 @@
 import { describe, test, expect, mock } from 'bun:test';
-import { generateApiKey, hashApiKey } from './auth.utils';
+import { generateApiKey, hashApiKey } from '@/auth/auth.utils';
 
 describe('generateApiKey', () => {
   test('starts with gw_ prefix', () => {

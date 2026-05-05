@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'bun:test';
-import { MetricsStore } from './metrics';
+import { MetricsStore } from '@/engine/observability/metrics';
 
 describe('MetricsStore', () => {
   test('returns default metrics for unknown model', () => {

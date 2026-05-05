@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'bun:test';
-import * as http from './http';
+import * as http from '@/utils/http';
 
 describe('HTTP Utilities', () => {
   test('badRequestResponse returns 400', async () => {

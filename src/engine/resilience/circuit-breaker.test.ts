@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'bun:test';
-import { CircuitBreaker } from './circuit-breaker';
+import { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
 
 describe('CircuitBreaker', () => {
   test('starts CLOSED and available', () => {

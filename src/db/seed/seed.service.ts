@@ -4,7 +4,7 @@ import { CryptoService } from '@/crypto/crypto';
 import { ProviderStore } from '@/provider/provider.store';
 import { TenantStore } from '@/tenant/tenant.store';
 import { createLogger } from '@/utils/logger';
-import type { SeedFile, SeedProviderEntry, SeedTenantEntry, SeedTenantProviderEntry } from './seed.types';
+import type { SeedFile, SeedProviderEntry, SeedTenantEntry, SeedTenantProviderEntry } from '@/db/seed/seed.types';
 
 const log = createLogger('SEED');
 

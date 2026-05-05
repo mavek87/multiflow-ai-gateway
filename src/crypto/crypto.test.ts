@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll } from 'bun:test';
-import { CryptoService } from './crypto';
+import { CryptoService } from '@/crypto/crypto';
 
 const TEST_KEY = 'a'.repeat(64);
 
