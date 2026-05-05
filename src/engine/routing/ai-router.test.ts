@@ -6,10 +6,11 @@ import type { ModelSelector } from '@/engine/selection/model-selector.types';
 import { UCB1TunedSelector } from '@/engine/selection/algorithms/ucb1-tuned';
 import { HttpProviderClient } from '@/engine/client/http-provider-client';
 import { mockSseResponse, mockFetch, setupTestDb } from '@test/test-setup';
-import { AuditStore } from '@/audit/audit.store';
+import { AuditStore } from '@/db/audit/audit.store';
+import { CHAT_COMPLETIONS_PATH } from '@/chat/chat.constants';
 
 const model = (name: string) => ({
-  url: 'http://fake/v1/chat/completions',
+  url: `http://fake${CHAT_COMPLETIONS_PATH}`,
   model: name,
   priority: 0,
   aiProviderId: 'provider-1',

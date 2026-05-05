@@ -5,7 +5,7 @@ import * as schema from '@/db/schema';
 import { TenantStore } from '@/tenant/tenant.store';
 import { ProviderStore } from '@/provider/provider.store';
 import { CryptoService } from '@/crypto/crypto';
-import { AuditStore } from '@/audit/audit.store';
+import { AuditStore } from '@/db/audit/audit.store';
 import { MetricsStore } from '@/engine/observability/metrics';
 import { Elysia } from 'elysia';
 import { chatRoutePlugin } from '@/chat/chat.routes';

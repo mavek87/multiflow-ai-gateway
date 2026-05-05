@@ -8,11 +8,12 @@ import {createModelSelector} from '@/engine/selection/model-selector.factory';
 import {TenantModelPoolResolver} from '@/tenant/tenant-model-pool.resolver';
 import {tenantAuthPlugin} from '@/auth/auth.middleware';
 import {ChatRequestSchema} from './chat.schema';
+import {CHAT_COMPLETIONS_PATH} from './chat.constants';
 import {config} from '@/config/config';
 import type {CryptoService} from '@/crypto/crypto';
 import {MetricsStore} from '@/engine/observability/metrics';
 import {CircuitBreaker} from '@/engine/resilience/circuit-breaker';
-import type {AuditStore} from '@/audit/audit.store';
+import type {AuditStore} from '@/db/audit/audit.store';
 
 export function chatRoutePlugin(
     tenantStore: TenantStore,
@@ -36,7 +37,7 @@ export function chatRoutePlugin(
     return new Elysia()
         .use(tenantAuthPlugin(tenantStore))
         .guard({detail: {security: [{GatewayApiKey: []}]}}) // This guard applies the security requirement for Swagger UI / OpenAPI docs
-        .post('/v1/chat/completions', async ({body, tenant}) => {
+        .post(CHAT_COMPLETIONS_PATH, async ({body, tenant}) => {
 
             if (body.model && body.models) {
                 return badRequestResponse("Cannot use both 'model' and 'models' fields simultaneously");

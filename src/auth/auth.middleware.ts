@@ -30,10 +30,10 @@ export function checkMasterKey(headers: Record<string, string | undefined>): Res
   const key = headers['x-master-key'];
   if (!key) return forbiddenResponse();
   
-  const a = Buffer.from(key);
-  const b = Buffer.from(config.masterKey);
-  
-  if (a.length !== b.length || !timingSafeEqual(a, b)) {
+  const providedKey = Buffer.from(key);
+  const masterKey = Buffer.from(config.masterKey);
+
+  if (providedKey.length !== masterKey.length || !timingSafeEqual(providedKey, masterKey)) {
     return forbiddenResponse();
   }
 }

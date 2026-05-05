@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq, gt, lt, gte, lte } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import type { DrizzleDb } from '@/db/database';
 import { requestLog } from '@/db/schema';
-import type { AuditLogEntry, AuditQueryParams, AuditRecord } from './audit.types';
+import type { AuditLogEntry, AuditQueryParams, AuditRecord } from '@/db/audit/audit.types';
 import { createLogger } from '@/utils/logger';
 
 const logger = createLogger('AUDIT');

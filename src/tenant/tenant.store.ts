@@ -4,10 +4,13 @@ import { aiProviderModels, aiProviders, gatewayApiKeys, tenantAiModelPriorities,
 import type {
   AssignAiModelPriorityInput,
   AssignAiProviderKeyInput,
-  TenantModelConfig,
+  GatewayApiKeyListOutput,
   Tenant,
   TenantAiModelPriority,
   TenantAiProviderKey,
+  TenantModelConfig,
+  UpdateTenantAiModelPriorityInput,
+  UpdateTenantAiProviderKeyInput,
   UpdateTenantInput,
 } from './tenant.types';
 import { generateApiKey, hashApiKey } from '@/auth/auth.utils';
@@ -126,7 +129,7 @@ export class TenantStore {
     return this.db.select().from(tenantAiProviderKeys).where(eq(tenantAiProviderKeys.id, id)).get() ?? null;
   }
 
-  updateTenantAiProviderKey(id: string, input: import('./tenant.types').UpdateTenantAiProviderKeyInput): TenantAiProviderKey | null {
+  updateTenantAiProviderKey(id: string, input: UpdateTenantAiProviderKeyInput): TenantAiProviderKey | null {
     const row = this.db.update(tenantAiProviderKeys).set(input).where(eq(tenantAiProviderKeys.id, id)).returning().get();
     if (!row) return null;
     log.info(`Updated tenant AI provider key ${id}`);
@@ -168,7 +171,7 @@ export class TenantStore {
     return this.db.select().from(tenantAiModelPriorities).where(eq(tenantAiModelPriorities.id, id)).get() ?? null;
   }
 
-  updateTenantAiModelPriority(id: string, input: import('./tenant.types').UpdateTenantAiModelPriorityInput): TenantAiModelPriority | null {
+  updateTenantAiModelPriority(id: string, input: UpdateTenantAiModelPriorityInput): TenantAiModelPriority | null {
     const row = this.db.update(tenantAiModelPriorities).set(input).where(eq(tenantAiModelPriorities.id, id)).returning().get();
     if (!row) return null;
     log.info(`Updated tenant AI model priority ${id}`);
@@ -183,7 +186,7 @@ export class TenantStore {
 
   // --- Gateway API key management ---
 
-  listGatewayApiKeys(tenantId: string): import('./tenant.types').GatewayApiKeyListOutput[] {
+  listGatewayApiKeys(tenantId: string): GatewayApiKeyListOutput[] {
     return this.db
       .select({
         id: gatewayApiKeys.id,

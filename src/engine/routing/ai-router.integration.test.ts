@@ -5,7 +5,7 @@ import type { ModelConfig } from '@/engine/client/http-provider-client.types';
 import { mockJsonResponse, setupTestDb } from '@test/test-setup';
 import { MetricsStore } from '@/engine/observability/metrics';
 import { CircuitBreaker } from '@/engine/resilience/circuit-breaker';
-import { AuditStore } from '@/audit/audit.store';
+import { AuditStore } from '@/db/audit/audit.store';
 
 function createTestFactory() {
   const metrics = new MetricsStore();

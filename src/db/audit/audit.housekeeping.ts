@@ -1,4 +1,4 @@
-import type { AuditStore } from '@/audit/audit.store';
+import type { AuditStore } from '@/db/audit/audit.store';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('HOUSEKEEPING');

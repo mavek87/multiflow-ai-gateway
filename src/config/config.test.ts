@@ -1,7 +1,7 @@
 import { test, expect, describe } from 'bun:test';
 
 describe('Config', () => {
-  const checkScript = 'src/config/config-check.ts';
+  const checkScript = 'src/config/config.check.ts';
 
   test('throws if MASTER_KEY is missing', () => {
     const proc = Bun.spawnSync(['bun', checkScript], {
