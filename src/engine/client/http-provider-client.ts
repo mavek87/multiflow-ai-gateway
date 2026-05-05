@@ -32,7 +32,7 @@ export class HttpProviderClient {
     }
 
     async call(systemPrompt: string, messages: AIChatMessage[], opts?: ProviderChatOptions): Promise<CallProviderResult> {
-        const history: AIChatMessage[] = [{role: 'system', content: systemPrompt}, ...messages];
+        const history: AIChatMessage[] = systemPrompt ? [{role: 'system', content: systemPrompt}, ...messages] : messages;
         const hasTools = (opts?.tools?.length ?? 0) > 0;
         const startTime = Date.now();
 
@@ -70,7 +70,7 @@ export class HttpProviderClient {
     }
 
     async callStream(systemPrompt: string, messages: AIChatMessage[], opts?: ProviderChatOptions): Promise<CallProviderStreamResult> {
-        const history: AIChatMessage[] = [{role: 'system', content: systemPrompt}, ...messages];
+        const history: AIChatMessage[] = systemPrompt ? [{role: 'system', content: systemPrompt}, ...messages] : messages;
         const start = Date.now();
 
         const abortController = new AbortController();
@@ -155,24 +155,7 @@ export class HttpProviderClient {
     private buildBody(messages: AIChatMessage[], stream: boolean, opts?: ProviderChatOptions): Record<string, unknown> {
         const body: Record<string, unknown> = {model: this.config.model, messages, stream};
         if (this.enableThinking) body.think = true;
-
-        if (opts) {
-            if (opts.tools?.length) body.tools = opts.tools;
-            if (opts.tool_choice !== undefined) body.tool_choice = opts.tool_choice;
-            if (opts.parallel_tool_calls !== undefined) body.parallel_tool_calls = opts.parallel_tool_calls;
-            if (opts.temperature !== undefined) body.temperature = opts.temperature;
-            if (opts.top_p !== undefined) body.top_p = opts.top_p;
-            if (opts.max_tokens !== undefined) body.max_tokens = opts.max_tokens;
-            if (opts.max_completion_tokens !== undefined) body.max_completion_tokens = opts.max_completion_tokens;
-            if (opts.presence_penalty !== undefined) body.presence_penalty = opts.presence_penalty;
-            if (opts.frequency_penalty !== undefined) body.frequency_penalty = opts.frequency_penalty;
-            if (opts.seed !== undefined) body.seed = opts.seed;
-            if (opts.stop !== undefined) body.stop = opts.stop;
-            if (opts.response_format !== undefined) body.response_format = opts.response_format;
-            if (opts.stream_options !== undefined) body.stream_options = opts.stream_options;
-            if (opts.user !== undefined) body.user = opts.user;
-        }
-
+        if (opts) Object.assign(body, opts);
         return body;
     }
 

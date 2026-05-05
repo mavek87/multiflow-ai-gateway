@@ -1,4 +1,4 @@
-import type {ToolCall} from '@/chat/chat.types';
+import type {ChatServiceRequest, ToolCall} from '@/chat/chat.types';
 import type {Result} from "neverthrow";
 
 export interface TenantContext {
@@ -34,22 +34,7 @@ export type ModelConfig = {
     aiProviderModelId?: string;
 };
 
-export interface ProviderChatOptions {
-    tools?: unknown[];
-    tool_choice?: unknown;
-    parallel_tool_calls?: boolean;
-    temperature?: number;
-    top_p?: number;
-    max_tokens?: number;
-    max_completion_tokens?: number;
-    presence_penalty?: number;
-    frequency_penalty?: number;
-    seed?: number;
-    stop?: string | string[];
-    response_format?: unknown;
-    stream_options?: unknown;
-    user?: string;
-}
+export type ProviderChatOptions = Omit<ChatServiceRequest, 'model' | 'models' | 'system' | 'stream' | 'messages'>;
 
 export type OpenAIChatCompletion = {
     choices?: Array<{ message?: { content?: string; tool_calls?: ToolCall[] } }>;

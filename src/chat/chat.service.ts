@@ -59,20 +59,8 @@ export class ChatService {
     }
 
     private extractProviderChatOptions(chatRequest: ChatServiceRequest): ProviderChatOptions | undefined {
-        const {
-            tools, tool_choice, parallel_tool_calls, temperature, top_p,
-            max_tokens, max_completion_tokens, presence_penalty, frequency_penalty,
-            seed, stop, response_format, stream_options, user
-        } = chatRequest;
-
-        const rawOpts = {
-            tools, tool_choice, parallel_tool_calls, temperature, top_p,
-            max_tokens, max_completion_tokens, presence_penalty, frequency_penalty,
-            seed, stop, response_format, stream_options, user
-        };
-
-        const opts = Object.fromEntries(Object.entries(rawOpts).filter(([_, v]) => v !== undefined));
-        
+        const {model: _model, models: _models, system: _system, stream: _stream, messages: _messages, ...providerOpts} = chatRequest;
+        const opts = Object.fromEntries(Object.entries(providerOpts).filter(([_, v]) => v !== undefined && !(Array.isArray(v) && v.length === 0)));
         return Object.keys(opts).length > 0 ? opts as ProviderChatOptions : undefined;
     }
 
