@@ -17,10 +17,9 @@ const model = (name: string) => ({
   aiProviderModelId: 'model-1',
 });
 
-function createAIRouter(models: any[]) {
+function createAIRouter(models: any[], selector: ModelSelector = new UCB1TunedSelector()) {
   const metrics = new MetricsStore();
   const circuitBreaker = new CircuitBreaker();
-  const selector = new UCB1TunedSelector();
   const clients = new Map();
   const aiProviderIds = new Map();
   const auditStore = new AuditStore(setupTestDb());
@@ -85,15 +84,7 @@ describe('AIRouter - chatStream()', () => {
       select() { return 'm1'; }
       record() { recordCalled = true; }
     }
-    const metrics = new MetricsStore();
-    const circuitBreaker = new CircuitBreaker();
-    const selector = new MockSelector();
-    const clients = new Map();
-    clients.set('m1', new HttpProviderClient(model('m1'), 10000, 10000, false));
-    const aiProviderIds = new Map();
-    const auditStore = new AuditStore(setupTestDb());
-    
-    const router = new AIRouter(clients, metrics, circuitBreaker, selector, aiProviderIds, auditStore);
+    const router = createAIRouter([model('m1')], new MockSelector());
     await router.chatStream('system', [{ role: 'user', content: 'hi' }]);
     expect(recordCalled).toBe(true);
   });

@@ -23,11 +23,11 @@ import {MetricsStore} from '@/engine/observability/metrics';
 import {CircuitBreaker} from '@/engine/resilience/circuit-breaker';
 import {createLogger} from '@/utils/logger';
 import type {AuditStore} from '@/db/audit/audit.store';
+import type {RoutedSuccess} from '@/engine/routing/ai-router.types';
 
-const log = createLogger('ROUTING');
+const log = createLogger('AI-ROUTER');
 const MAX_ATTEMPTS_CAP = 10;
-
-type RoutedSuccess<T> = T & ProviderBaseResponse & {model: string};
+const UNKNOWN = 'unknown';
 
 export class AIRouter {
     constructor(
@@ -41,9 +41,9 @@ export class AIRouter {
     }
 
     async chat(systemPrompt: string, messages: ChatMessage[], ctx?: TenantContext, opts?: ProviderChatOptions): Promise<ProviderChatResponse | null> {
-        log.info({messages: messages.length, tenantId: ctx?.tenantId ?? 'unknown'}, 'new request');
+        log.info({messages: messages.length, tenantId: ctx?.tenantId ?? UNKNOWN}, 'new request');
 
-        return this.executeWithAudit(ctx?.tenantId ?? 'unknown', async () => {
+        return this.executeWithAudit(ctx?.tenantId ?? UNKNOWN, async () => {
             const result = await this.executeWithRetry<CallProviderSuccess>((client) => {
                 return client.call(systemPrompt, messages, opts);
             });
@@ -60,9 +60,9 @@ export class AIRouter {
     }
 
     async chatStream(systemPrompt: string, messages: ChatMessage[], ctx?: TenantContext, opts?: ProviderChatOptions): Promise<ProviderStreamResponse | null> {
-        log.info({messages: messages.length, tenantId: ctx?.tenantId ?? 'unknown'}, 'new stream request');
+        log.info({messages: messages.length, tenantId: ctx?.tenantId ?? UNKNOWN}, 'new stream request');
 
-        return this.executeWithAudit(ctx?.tenantId ?? 'unknown', async () => {
+        return this.executeWithAudit(ctx?.tenantId ?? UNKNOWN, async () => {
             const result = await this.executeWithRetry<CallProviderStreamSuccess>((client) => client.callStream(systemPrompt, messages, opts));
 
             if (result) {
@@ -110,7 +110,7 @@ export class AIRouter {
                     ...result.value,
                     model: selected,
                     aiProviderId: selected,
-                    aiProvider: modelMeta?.name ?? '',
+                    aiProvider: modelMeta?.name ?? UNKNOWN,
                     aiProviderUrl: modelMeta?.baseUrl ?? '',
                 };
             }
@@ -122,18 +122,18 @@ export class AIRouter {
         return null;
     }
 
-    private async executeWithAudit<T>(tenantId: string, operation: () => Promise<T>): Promise<T> {
+    private async executeWithAudit<T extends ProviderBaseResponse>(tenantId: string, operation: () => Promise<T | null>): Promise<T | null> {
         const startedAt = Date.now();
         try {
             const result = await operation();
             const latencyMs = Date.now() - startedAt;
-            const model = (result as any)?.model || 'unknown';
-            const aiProvider = {id: (result as any)?.aiProviderId || 'unknown', name: (result as any)?.aiProvider || 'unknown'};
-            const isFailure = result === null || model === 'unknown';
+            const model = result?.model ?? UNKNOWN;
+            const aiProvider = {id: result?.aiProviderId ?? UNKNOWN, name: result?.aiProvider ?? UNKNOWN};
+            const isFailure = result === null;
             this.auditStore.log({tenantId, latencyMs, success: !isFailure, statusCode: isFailure ? 503 : 200, model, aiProvider});
             return result;
         } catch (error) {
-            this.auditStore.log({tenantId, latencyMs: Date.now() - startedAt, success: false, statusCode: 500, model: 'unknown', aiProvider: {id: 'unknown', name: 'unknown'}});
+            this.auditStore.log({tenantId, latencyMs: Date.now() - startedAt, success: false, statusCode: 500, model: UNKNOWN, aiProvider: {id: UNKNOWN, name: UNKNOWN}});
             throw error;
         }
     }

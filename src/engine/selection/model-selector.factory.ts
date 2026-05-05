@@ -8,5 +8,6 @@ export function createModelSelector(type: ModelSelectorType): ModelSelector {
         case 'thompson': return new ThompsonSelector();
         case 'ucb1-tuned': return new UCB1TunedSelector();
         case 'sw-ucb1-tuned': return new SWUcb1TunedSelector();
+        default: throw new Error(`Unknown model selector type: "${type as string}"`);
     }
 }

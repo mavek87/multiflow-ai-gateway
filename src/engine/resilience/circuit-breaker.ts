@@ -56,7 +56,7 @@ export class CircuitBreaker {
 
   recordSuccess(model: string): void {
     const breaker = this.getBreaker(model);
-    breaker.probesInFlight = Math.max(0, breaker.probesInFlight - 1);
+    this.decrementProbe(breaker);
 
     if (breaker.state === 'HALF_OPEN') {
       breaker.halfOpenSuccesses += 1;
@@ -70,7 +70,7 @@ export class CircuitBreaker {
 
   recordHardFailure(model: string): void {
     const breaker = this.getBreaker(model);
-    breaker.probesInFlight = Math.max(0, breaker.probesInFlight - 1);
+    this.decrementProbe(breaker);
     breaker.consecutiveHardFailures += 1;
     breaker.consecutiveSoftFailures = 0;
     if (breaker.state !== 'OPEN' && breaker.consecutiveHardFailures >= HARD_FAILURE_THRESHOLD) {
@@ -80,7 +80,7 @@ export class CircuitBreaker {
 
   recordSoftFailure(model: string): void {
     const breaker = this.getBreaker(model);
-    breaker.probesInFlight = Math.max(0, breaker.probesInFlight - 1);
+    this.decrementProbe(breaker);
     breaker.consecutiveSoftFailures += 1;
     if (breaker.state !== 'OPEN' && breaker.consecutiveSoftFailures >= SOFT_FAILURE_THRESHOLD) {
       this.openCircuit(breaker);
@@ -143,6 +143,10 @@ export class CircuitBreaker {
     breaker.probesInFlight = 0;
     breaker.openedAt = null;
     this.resetFailureCounters(breaker);
+  }
+
+  private decrementProbe(breaker: BreakerState): void {
+    breaker.probesInFlight = Math.max(0, breaker.probesInFlight - 1);
   }
 
   private resetFailureCounters(breaker: BreakerState): void {
