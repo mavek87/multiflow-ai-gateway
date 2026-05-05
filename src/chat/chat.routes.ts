@@ -76,8 +76,6 @@ export function chatRoutePlugin(
                                 type: 'service_unavailable'
                             }
                         }, {status: 503});
-                    case 'stream_not_supported':
-                        return internalErrorResponse();
                 }
             }
 

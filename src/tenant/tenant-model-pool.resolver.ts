@@ -7,7 +7,6 @@ import {
     MULTIFLOW_AUTO_MODEL
 } from '@/tenant/tenant.types';
 import type {ModelConfig} from '@/engine/client/http-provider-client.types';
-import {buildProviderUrl} from '@/provider/provider.utils';
 import type {CryptoService} from '@/crypto/crypto';
 
 type RequestedModel = {providerName?: string; model: string};
@@ -68,7 +67,7 @@ export class TenantModelPoolResolver {
 
     private mapToModelConfigs(configs: TenantModelConfig[]): ModelConfig[] {
         return configs.map((modelConfig) => ({
-            url: buildProviderUrl(modelConfig.baseUrl, modelConfig.aiProviderType),
+            url: `${modelConfig.baseUrl.replace(/\/+$/, '')}/chat/completions`,
             model: modelConfig.modelName,
             apiKey: modelConfig.aiProviderApiKeyEncrypted
                 ? this.cryptoService.decrypt(modelConfig.aiProviderApiKeyEncrypted)

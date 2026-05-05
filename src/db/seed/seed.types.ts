@@ -21,8 +21,3 @@ export type SeedTenantEntry = {
   rateLimitDailyRequests?: number | null;
   providers: SeedTenantProviderEntry[];
 };
-
-export type SeedFile = {
-  providers?: SeedProviderEntry[];
-  tenants?: SeedTenantEntry[];
-};
