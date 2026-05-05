@@ -49,5 +49,5 @@ export type CallProviderSuccess = {
     body?: Record<string, unknown>;
 };
 export type CallProviderResult = Result<CallProviderSuccess, CallProviderError>;
-export type CallProviderStreamSuccess = { body: ReadableStream<Uint8Array>; ttftMs: number };
+export type CallProviderStreamSuccess = { body: ReadableStream<Uint8Array>; ttftMs: number; latencyMs?: number };
 export type CallProviderStreamResult = Result<CallProviderStreamSuccess, CallProviderError>;

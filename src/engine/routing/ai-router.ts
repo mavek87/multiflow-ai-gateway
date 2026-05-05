@@ -44,18 +44,12 @@ export class AIRouter {
         log.info({messages: messages.length, tenantId: ctx?.tenantId ?? UNKNOWN}, 'new request');
 
         return this.executeWithAudit(ctx?.tenantId ?? UNKNOWN, async () => {
-            const result = await this.executeWithRetry<CallProviderSuccess>((client) => {
-                return client.call(systemPrompt, messages, opts);
-            });
+            const result = await this.executeWithRetry<CallProviderSuccess>((client) => client.call(systemPrompt, messages, opts));
+            if (!result) return null;
 
-            if (result) {
-                const modelMeta = this.aiProviderIds.get(result.model);
-                const displayName = modelMeta?.modelName ?? result.model;
-                log.info({model: displayName, provider: modelMeta?.name, latencyMs: result.latencyMs, ttftMs: result.ttftMs}, 'model succeeded');
-                return {content: result.content, toolCalls: result.toolCalls, body: result.body, model: displayName, aiProviderId: result.aiProviderId, aiProvider: result.aiProvider, aiProviderUrl: result.aiProviderUrl};
-            }
-
-            return null;
+            const {displayName, providerName} = this.resolveDisplay(result.model);
+            log.info({model: displayName, provider: providerName, latencyMs: result.latencyMs, ttftMs: result.ttftMs}, 'model succeeded');
+            return {content: result.content, toolCalls: result.toolCalls, body: result.body, model: displayName, aiProviderId: result.aiProviderId, aiProvider: result.aiProvider, aiProviderUrl: result.aiProviderUrl};
         });
     }
 
@@ -64,19 +58,20 @@ export class AIRouter {
 
         return this.executeWithAudit(ctx?.tenantId ?? UNKNOWN, async () => {
             const result = await this.executeWithRetry<CallProviderStreamSuccess>((client) => client.callStream(systemPrompt, messages, opts));
+            if (!result) return null;
 
-            if (result) {
-                const modelMeta = this.aiProviderIds.get(result.model);
-                const displayName = modelMeta?.modelName ?? result.model;
-                log.info({model: displayName, provider: modelMeta?.name, ttftMs: result.ttftMs}, 'stream model succeeded');
-                return {body: result.body, model: displayName, aiProviderId: result.aiProviderId, aiProvider: result.aiProvider, aiProviderUrl: result.aiProviderUrl};
-            }
-
-            return null;
+            const {displayName, providerName} = this.resolveDisplay(result.model);
+            log.info({model: displayName, provider: providerName, ttftMs: result.ttftMs}, 'stream model succeeded');
+            return {body: result.body, model: displayName, aiProviderId: result.aiProviderId, aiProvider: result.aiProvider, aiProviderUrl: result.aiProviderUrl};
         });
     }
 
-    private async executeWithRetry<TSuccess extends { ttftMs: number }>(
+    private resolveDisplay(modelId: string): { displayName: string; providerName: string | undefined } {
+        const meta = this.aiProviderIds.get(modelId);
+        return {displayName: meta?.modelName ?? modelId, providerName: meta?.name};
+    }
+
+    private async executeWithRetry<TSuccess extends { ttftMs: number; latencyMs?: number }>(
         operation: (client: HttpProviderClient) => Promise<Result<TSuccess, CallProviderError>>,
     ): Promise<RoutedSuccess<TSuccess> | null> {
         const attemptedModels = new Set<string>();
@@ -104,7 +99,7 @@ export class AIRouter {
             const result = await operation(client);
 
             if (result.isOk()) {
-                const latencyMs = (result.value as { latencyMs?: number }).latencyMs ?? result.value.ttftMs;
+                const latencyMs = result.value.latencyMs ?? result.value.ttftMs;
                 this.onSuccess(selected, latencyMs, result.value.ttftMs);
                 return {
                     ...result.value,

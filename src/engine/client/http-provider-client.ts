@@ -36,69 +36,50 @@ export class HttpProviderClient {
         const hasTools = (opts?.tools?.length ?? 0) > 0;
         const startTime = Date.now();
 
-        const abortController = new AbortController();
-        const timeout = setTimeout(() => abortController.abort(), this.providerRequestTimeoutMs);
+        const response = await this.doRequest(history, false, opts, this.providerRequestTimeoutMs);
+        if (response.isErr()) return err(response.error);
 
-        try {
-            const response = await fetch(this.config.url, {
-                method: 'POST',
-                headers: this.buildHeaders(),
-                body: JSON.stringify(this.buildBody(history, false, opts)),
-                signal: abortController.signal,
-            });
+        const parsed = await this.parseJsonResponse(response.value, startTime);
+        if (parsed.isErr()) return err(parsed.error);
 
-            if (!response.ok) {
-                return err({kind: 'hard', error: new Error(`HTTP ${response.status}`)});
-            }
+        const {content, ttftMs, toolCalls, body} = parsed.value;
+        const result = ok({content, toolCalls, ttftMs, latencyMs: Date.now() - startTime, body});
 
-            const parsed = await this.parseJsonResponse(response, startTime);
-            if (parsed.isErr()) return err(parsed.error);
-
-            const {content, ttftMs, toolCalls, body} = parsed.value;
-            const result = ok({content, toolCalls, ttftMs, latencyMs: Date.now() - startTime, body});
-
-            if (hasTools) return result;
-            return result.map((r) => ({...r, content: stripThinkTags(r.content)}));
-        } catch (e) {
-            if (e instanceof Error && e.name === 'AbortError') {
-                return err({kind: 'soft', error: e});
-            }
-            return err({kind: 'hard', error: e});
-        } finally {
-            clearTimeout(timeout);
-        }
+        if (hasTools) return result;
+        return result.map((r) => ({...r, content: stripThinkTags(r.content)}));
     }
 
     async callStream(systemPrompt: string, messages: ChatMessage[], opts?: ProviderChatOptions): Promise<CallProviderStreamResult> {
         const history: ChatMessage[] = systemPrompt ? [{role: 'system', content: systemPrompt}, ...messages] : messages;
         const start = Date.now();
 
-        const abortController = new AbortController();
-        const timeout = setTimeout(() => abortController.abort(), this.providerFirstTokenTimeoutMs);
+        const response = await this.doRequest(history, true, opts, this.providerFirstTokenTimeoutMs);
+        if (response.isErr()) return err(response.error);
 
+        if (!response.value.headers.get('content-type')?.includes('text/event-stream')) {
+            return err({kind: 'hard', error: new Error('upstream did not return text/event-stream')});
+        }
+        if (!response.value.body) {
+            return err({kind: 'hard', error: new Error('upstream returned no body')});
+        }
+
+        return this.readFirstChunk(response.value.body, start);
+    }
+
+    private async doRequest(history: ChatMessage[], stream: boolean, opts: ProviderChatOptions | undefined, timeoutMs: number): Promise<Result<Response, CallProviderError>> {
+        const abortController = new AbortController();
+        const timeout = setTimeout(() => abortController.abort(), timeoutMs);
         try {
             const response = await fetch(this.config.url, {
                 method: 'POST',
                 headers: this.buildHeaders(),
-                body: JSON.stringify(this.buildBody(history, true, opts)),
+                body: JSON.stringify(this.buildBody(history, stream, opts)),
                 signal: abortController.signal,
             });
-
-            if (!response.ok) {
-                return err({kind: 'hard', error: new Error(`HTTP ${response.status}`)});
-            }
-            if (!response.headers.get('content-type')?.includes('text/event-stream')) {
-                return err({kind: 'hard', error: new Error('upstream did not return text/event-stream')});
-            }
-            if (!response.body) {
-                return err({kind: 'hard', error: new Error('upstream returned no body')});
-            }
-
-            return await this.readFirstChunk(response.body, start);
+            if (!response.ok) return err({kind: 'hard', error: new Error(`HTTP ${response.status}`)});
+            return ok(response);
         } catch (e) {
-            if (e instanceof Error && e.name === 'AbortError') {
-                return err({kind: 'soft', error: e});
-            }
+            if (e instanceof Error && e.name === 'AbortError') return err({kind: 'soft', error: e});
             return err({kind: 'hard', error: e});
         } finally {
             clearTimeout(timeout);
