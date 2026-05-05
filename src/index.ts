@@ -25,7 +25,8 @@ const providerStore = new ProviderStore(db);
 const metricsStore = new MetricsStore();
 const circuitBreaker = new CircuitBreaker();
 
-runSeed(providerStore, tenantStore, cryptoService, config.seedFile);
+runSeed(providerStore, tenantStore, cryptoService, config.providersFile, config.tenantsFile);
+logStartupSummary();
 startHousekeeping(auditStore, config.auditRetentionDays);
 
 new Elysia()
@@ -99,6 +100,25 @@ new Elysia()
     .listen(config.port);
 
 log.info(`multiflow-ai-gateway listening on port ${config.port}`);
+
+function logStartupSummary() {
+    const tenants = tenantStore.listTenants();
+    if (tenants.length === 0) {
+        log.info('no tenants configured');
+    } else {
+        log.info(`tenants: ${tenants.map(t => t.name).join(', ')}`);
+    }
+
+    const providers = providerStore.listProviders();
+    if (providers.length === 0) {
+        log.info('no providers configured');
+    } else {
+        for (const provider of providers) {
+            const models = providerStore.listProviderModels(provider.id);
+            log.info(`provider "${provider.name}" [${provider.type}] — models: ${models.map(m => m.modelName).join(', ') || 'none'}`);
+        }
+    }
+}
 
 function patchSwaggerExamples({request, responseValue}: { request: Request; responseValue: unknown }) {
     if (new URL(request.url).pathname !== '/docs/json') return;

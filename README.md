@@ -59,7 +59,8 @@ cp .env.example .env
 | `LOG_LEVEL` | no | `info` | Log level: `trace`, `debug`, `info`, `warn`, `error` |
 | `PROVIDER_STREAM_FIRST_TOKEN_TIMEOUT_MS` | no | `300000` | SSE: max wait for the first chunk from the provider (ms) |
 | `PROVIDER_REQUEST_TIMEOUT_MS` | no | `600000` | Non-streaming: max wait for the complete JSON response from the provider (ms) |
-| `SEED_FILE` | no | `./seed.yaml` | Path to the declarative seed file applied at startup. Both `.yaml` and `.yml` extensions are accepted. |
+| `PROVIDERS_FILE` | no | `./providers.yaml` | Path to the providers seed file applied at startup. Both `.yaml` and `.yml` extensions are accepted. |
+| `TENANTS_FILE` | no | `./tenants.yaml` | Path to the tenants seed file applied at startup. Both `.yaml` and `.yml` extensions are accepted. |
 | `METRICS_WARM_UP_WINDOW_MS` | no | `3600000` | How far back (in ms) to look in the audit log to warm up routing metrics on startup. Default is 1 hour. Set to `0` to always start cold. |
 
 Generate the required secret values:
@@ -76,14 +77,16 @@ openssl rand -hex 32
 
 Choose one of the two methods below. They are equivalent - use whichever fits your workflow.
 
-#### 3A. Seed file (recommended)
+#### 3A. Seed files (recommended)
 
-Place a `seed.yaml` or `seed.yml` file in the project root (or set `SEED_FILE` to a custom path). The gateway reads it at startup and idempotently upserts all declared entities. Both `.yaml` and `.yml` extensions are supported: if the configured path is not found, the gateway automatically tries the alternative extension.
+Place a `providers.yaml` (or `.yml`) and a `tenants.yaml` (or `.yml`) file in the project root. Custom paths can be set via `PROVIDERS_FILE` and `TENANTS_FILE`. The gateway reads both files at startup and idempotently upserts all declared entities. If the configured path is not found, the gateway automatically tries the alternative extension (`.yaml` ↔ `.yml`). Either file can be omitted — the gateway treats a missing file as an empty list.
+
+**`providers.yaml`** — global provider registry, shared across tenants:
 
 ```yaml
 providers:
   - name: Groq
-    type: groq
+    type: openai
     baseUrl: https://api.groq.com/openai/v1
     models:
       - llama3-70b-8192
@@ -93,7 +96,11 @@ providers:
     baseUrl: http://localhost:11434/v1
     models:
       - qwen3:6b
+```
 
+**`tenants.yaml`** — per-tenant configuration, references providers by name:
+
+```yaml
 tenants:
   - name: Acme
     providers:
@@ -110,13 +117,14 @@ tenants:
             priority: 2
 ```
 
-**Idempotency:** running the same seed file twice produces no duplicates. Provider credentials are always overwritten, enabling API key rotation on restart. If `apiKeyEnv` is set but the environment variable is not defined, that provider entry for the tenant is skipped entirely. Omitting `apiKeyEnv` stores a null credential (for no-auth providers like Ollama).
+**Idempotency:** running the same seed files twice produces no duplicates. Provider credentials are always overwritten, enabling API key rotation on restart. If `apiKeyEnv` is set but the environment variable is not defined, that provider entry for the tenant is skipped entirely. Omitting `apiKeyEnv` stores a null credential (for no-auth providers like Ollama).
 
 **Docker volume mount example:**
 
 ```yaml
 volumes:
-  - ./seed.yml:/app/seed.yml:ro
+  - ./providers.yml:/app/providers.yml:ro
+  - ./tenants.yml:/app/tenants.yml:ro
 ```
 
 A new tenant's gateway API key is printed to the logs on first creation. It is not stored in plaintext and cannot be retrieved afterwards.

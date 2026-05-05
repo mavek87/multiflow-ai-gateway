@@ -1,0 +1,38 @@
+providers:
+  - name: Groq
+    type: openai
+    baseUrl: https://api.groq.com/openai/v1
+    models:
+      - llama-3.3-70b-versatile
+      - llama-3.1-8b-instant
+      - mixtral-8x7b-32768
+
+  - name: Ollama Local
+    type: ollama
+    baseUrl: http://localhost:11434/v1
+    models:
+      - qwen3.5:397b-cloud
+      - deepseek-v3.2:cloud
+      - gemini-3-flash-preview
+      - gemma4:31b-cloud
+
+  - name: Pollinations
+    type: openai
+    baseUrl: https://gen.pollinations.ai/v1
+    models:
+      - openai
+
+  - name: Nvidia
+    type: openai
+    baseUrl: https://integrate.api.nvidia.com/v1
+    models:
+      - moonshotai/kimi-k2-instruct
+      - z-ai/glm4.7
+
+  - name: OpenRouter
+    type: openai
+    baseUrl: https://openrouter.ai/api/v1
+    models:
+      - openai/gpt-oss-120b:free
+      - nvidia/nemotron-3-super-120b-a12b:free
+      - minimax-m2.5:free/performance

@@ -22,21 +22,35 @@ providers:
     models:
       - openai
 
+  - name: Nvidia
+    type: openai
+    baseUrl: https://integrate.api.nvidia.com/v1
+    models:
+      - moonshotai/kimi-k2-instruct
+      - z-ai/glm4.7
+
 tenants:
   - name: ai-agents
     providers:
       - name: Pollinations
         apiKeyEnv: POLLINATIONS_API_KEY
         models:
-          - name: openai
-            priority: 1
+          - name: openai # (GPT-5.4 Nano)
+            priority: 5
       - name: Ollama Local
         models:
           - name: qwen3.5:397b-cloud
+            priority: 1
+          - name: deepseek-v3.2:cloud
             priority: 2
           - name: gemini-3-flash-preview
-            priority: 3
+            priority: 6
           - name: gemma4:31b-cloud
+            priority: 7
+      - name: Nvidia
+        apiKeyEnv: NVIDIA_API_KEY
+        models:
+          - name: moonshotai/kimi-k2-instruct
+            priority: 3
+          - name: z-ai/glm4.7
             priority: 4
-          - name: deepseek-v3.2:cloud
-            priority: 5

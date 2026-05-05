@@ -4,55 +4,80 @@ import { CryptoService } from '@/crypto/crypto';
 import { ProviderStore } from '@/provider/provider.store';
 import { TenantStore } from '@/tenant/tenant.store';
 import { createLogger } from '@/utils/logger';
-import type { SeedFile, SeedProviderEntry, SeedTenantEntry, SeedTenantProviderEntry } from '@/db/seed/seed.types';
+import type { SeedProviderEntry, SeedTenantEntry, SeedTenantProviderEntry } from '@/db/seed/seed.types';
 
 const log = createLogger('SEED');
 
-export function runSeed(providerStore: ProviderStore, tenantStore: TenantStore, cryptoService: CryptoService, seedFilePath: string): void {
-  const seedPath = resolveSeedPath(seedFilePath);
-  if (!seedPath) return;
+export function runSeed(
+  providerStore: ProviderStore,
+  tenantStore: TenantStore,
+  cryptoService: CryptoService,
+  providersFilePath: string,
+  tenantsFilePath: string,
+): void {
+  const providers = loadProviders(providersFilePath);
+  const tenants = loadTenants(tenantsFilePath);
 
-  const seedFileContent = parseSeedFile(seedPath);
+  const providerModelMap = applyProviders(providerStore, providers);
+  applyTenants(tenantStore, providerStore, cryptoService, tenants, providerModelMap);
 
-  const providerModelMap = applyProviders(providerStore, seedFileContent.providers ?? []);
-  applyTenants(tenantStore, providerStore, cryptoService, seedFileContent.tenants ?? [], providerModelMap);
-
-  log.info('seed file applied successfully');
+  log.info('seed applied successfully');
 }
 
-function resolveSeedPath(seedFilePath: string): string | null {
-  if (existsSync(seedFilePath)) return seedFilePath;
-  if (seedFilePath.endsWith('.yaml')) {
-    const yml = seedFilePath.slice(0, -5) + '.yml';
+function resolvePath(filePath: string): string | null {
+  if (existsSync(filePath)) return filePath;
+  if (filePath.endsWith('.yaml')) {
+    const yml = filePath.slice(0, -5) + '.yml';
     if (existsSync(yml)) return yml;
-  } else if (seedFilePath.endsWith('.yml')) {
-    const yaml = seedFilePath.slice(0, -4) + '.yaml';
+  } else if (filePath.endsWith('.yml')) {
+    const yaml = filePath.slice(0, -4) + '.yaml';
     if (existsSync(yaml)) return yaml;
   }
   return null;
 }
 
-function parseSeedFile(seedFilePath: string): SeedFile {
-  let seed: SeedFile;
+function loadProviders(filePath: string): SeedProviderEntry[] {
+  const resolved = resolvePath(filePath);
+  if (!resolved) return [];
+
+  let parsed: unknown;
   try {
-    const raw = readFileSync(seedFilePath, 'utf-8');
-    seed = parse(raw) as SeedFile;
+    parsed = parse(readFileSync(resolved, 'utf-8'));
   } catch (e) {
-    log.error({ err: e }, 'failed to parse seed file');
+    log.error({ err: e }, 'failed to parse providers file');
     throw e;
   }
 
-  if (!seed || typeof seed !== 'object') {
-    throw new Error('sseed file must be a YAML object');
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error('providers file must be a YAML object');
   }
-  if (seed.providers !== undefined && !Array.isArray(seed.providers)) {
+  const file = parsed as Record<string, unknown>;
+  if (file.providers !== undefined && !Array.isArray(file.providers)) {
     throw new Error('"providers" must be an array');
   }
-  if (seed.tenants !== undefined && !Array.isArray(seed.tenants)) {
-    throw new Error('"tenants" must be an array');
+  return (file.providers as SeedProviderEntry[] | undefined) ?? [];
+}
+
+function loadTenants(filePath: string): SeedTenantEntry[] {
+  const resolved = resolvePath(filePath);
+  if (!resolved) return [];
+
+  let parsed: unknown;
+  try {
+    parsed = parse(readFileSync(resolved, 'utf-8'));
+  } catch (e) {
+    log.error({ err: e }, 'failed to parse tenants file');
+    throw e;
   }
 
-  return seed;
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error('tenants file must be a YAML object');
+  }
+  const file = parsed as Record<string, unknown>;
+  if (file.tenants !== undefined && !Array.isArray(file.tenants)) {
+    throw new Error('"tenants" must be an array');
+  }
+  return (file.tenants as SeedTenantEntry[] | undefined) ?? [];
 }
 
 function applyProviders(providerStore: ProviderStore, entries: SeedProviderEntry[]): Map<string, string> {

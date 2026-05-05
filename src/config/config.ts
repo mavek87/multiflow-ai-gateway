@@ -28,6 +28,7 @@ export const config = {
   selectorType: selectorType(),
   providerStreamFirstTokenTimeoutMs: parseInt(optional('PROVIDER_STREAM_FIRST_TOKEN_TIMEOUT_MS', '300000'), 10), // 5 minutes
   providerRequestTimeoutMs: parseInt(optional('PROVIDER_REQUEST_TIMEOUT_MS', '600000'), 10), // 10 minutes
-  seedFile: optional('SEED_FILE', './seed.yaml'),
+  providersFile: optional('PROVIDERS_FILE', './providers.yaml'),
+  tenantsFile: optional('TENANTS_FILE', './tenants.yaml'),
   metricsWarmUpWindowMs: parseInt(optional('METRICS_WARM_UP_WINDOW_MS', '3600000'), 10),
 } as const;

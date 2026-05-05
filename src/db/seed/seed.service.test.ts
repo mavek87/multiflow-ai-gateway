@@ -22,17 +22,17 @@ describe('runSeed', () => {
     tempFiles.length = 0;
   });
 
-  test('no-op when file absent', () => {
+  test('no-op when both files absent', () => {
     const { tenantStore, providerStore } = createTestContext();
     const crypto = new CryptoService();
-    expect(() => runSeed(providerStore, tenantStore, crypto, '/nonexistent/path.yaml')).not.toThrow();
+    expect(() => runSeed(providerStore, tenantStore, crypto, '/nonexistent/providers.yaml', '/nonexistent/tenants.yaml')).not.toThrow();
     expect(tenantStore.listTenants()).toHaveLength(0);
   });
 
-  test('upserts providers and models', () => {
+  test('upserts providers and models from providers file', () => {
     const { tenantStore, providerStore } = createTestContext();
     const crypto = new CryptoService();
-    const path = writeTempYaml(`
+    const providersPath = writeTempYaml(`
 providers:
   - name: Groq
     type: groq
@@ -41,7 +41,7 @@ providers:
       - llama3-70b
       - llama3-8b
 `);
-    runSeed(providerStore, tenantStore, crypto, path);
+    runSeed(providerStore, tenantStore, crypto, providersPath, '/nonexistent/tenants.yaml');
     const providers = providerStore.listProviders();
     expect(providers).toHaveLength(1);
     expect(providers[0]!.name).toBe('Groq');
@@ -55,13 +55,15 @@ providers:
     const { tenantStore, providerStore } = createTestContext();
     const crypto = new CryptoService();
     process.env['TEST_GROQ_KEY'] = 'sk-groq-secret';
-    const path = writeTempYaml(`
+    const providersPath = writeTempYaml(`
 providers:
   - name: Groq
     type: groq
     baseUrl: https://api.groq.com/openai/v1
     models:
       - llama3-70b
+`);
+    const tenantsPath = writeTempYaml(`
 tenants:
   - name: Acme
     providers:
@@ -71,7 +73,7 @@ tenants:
           - name: llama3-70b
             priority: 0
 `);
-    runSeed(providerStore, tenantStore, crypto, path);
+    runSeed(providerStore, tenantStore, crypto, providersPath, tenantsPath);
     const tenant = tenantStore.getTenantByName('Acme')!;
     expect(tenant).not.toBeNull();
     const keys = tenantStore.listTenantAiProviderKeys(tenant.id);
@@ -86,13 +88,15 @@ tenants:
     const { tenantStore, providerStore } = createTestContext();
     const crypto = new CryptoService();
     process.env['TEST_GROQ_KEY'] = 'sk-groq-secret';
-    const path = writeTempYaml(`
+    const providersPath = writeTempYaml(`
 providers:
   - name: Groq
     type: groq
     baseUrl: https://api.groq.com/openai/v1
     models:
       - llama3-70b
+`);
+    const tenantsPath = writeTempYaml(`
 tenants:
   - name: Acme
     providers:
@@ -102,8 +106,8 @@ tenants:
           - name: llama3-70b
             priority: 0
 `);
-    runSeed(providerStore, tenantStore, crypto, path);
-    runSeed(providerStore, tenantStore, crypto, path);
+    runSeed(providerStore, tenantStore, crypto, providersPath, tenantsPath);
+    runSeed(providerStore, tenantStore, crypto, providersPath, tenantsPath);
     expect(providerStore.listProviders()).toHaveLength(1);
     expect(tenantStore.listTenants()).toHaveLength(1);
     delete process.env['TEST_GROQ_KEY'];
@@ -113,13 +117,15 @@ tenants:
     const { tenantStore, providerStore } = createTestContext();
     const crypto = new CryptoService();
     process.env['TEST_GROQ_KEY'] = 'sk-groq-secret';
-    const pathFirst = writeTempYaml(`
+    const providersPath = writeTempYaml(`
 providers:
   - name: Groq
     type: groq
     baseUrl: https://api.groq.com/openai/v1
     models:
       - llama3-70b
+`);
+    const tenantsPathFirst = writeTempYaml(`
 tenants:
   - name: Acme
     providers:
@@ -129,13 +135,7 @@ tenants:
           - name: llama3-70b
             priority: 5
 `);
-    const pathSecond = writeTempYaml(`
-providers:
-  - name: Groq
-    type: groq
-    baseUrl: https://api.groq.com/openai/v1
-    models:
-      - llama3-70b
+    const tenantsPathSecond = writeTempYaml(`
 tenants:
   - name: Acme
     providers:
@@ -145,8 +145,8 @@ tenants:
           - name: llama3-70b
             priority: 10
 `);
-    runSeed(providerStore, tenantStore, crypto, pathFirst);
-    runSeed(providerStore, tenantStore, crypto, pathSecond);
+    runSeed(providerStore, tenantStore, crypto, providersPath, tenantsPathFirst);
+    runSeed(providerStore, tenantStore, crypto, providersPath, tenantsPathSecond);
     const tenant = tenantStore.getTenantByName('Acme')!;
     const priorities = tenantStore.listTenantAiModelPriorities(tenant.id);
     expect(priorities[0]!.priority).toBe(10);
@@ -157,13 +157,15 @@ tenants:
     const { tenantStore, providerStore } = createTestContext();
     const crypto = new CryptoService();
     delete process.env['NONEXISTENT_VAR'];
-    const path = writeTempYaml(`
+    const providersPath = writeTempYaml(`
 providers:
   - name: Groq
     type: groq
     baseUrl: https://api.groq.com/openai/v1
     models:
       - llama3-70b
+`);
+    const tenantsPath = writeTempYaml(`
 tenants:
   - name: Acme
     providers:
@@ -173,7 +175,7 @@ tenants:
           - name: llama3-70b
             priority: 0
 `);
-    runSeed(providerStore, tenantStore, crypto, path);
+    runSeed(providerStore, tenantStore, crypto, providersPath, tenantsPath);
     const tenant = tenantStore.getTenantByName('Acme')!;
     expect(tenantStore.listTenantAiProviderKeys(tenant.id)).toHaveLength(0);
   });
@@ -181,13 +183,15 @@ tenants:
   test('no apiKeyEnv stores null (no-auth provider)', () => {
     const { tenantStore, providerStore } = createTestContext();
     const crypto = new CryptoService();
-    const path = writeTempYaml(`
+    const providersPath = writeTempYaml(`
 providers:
   - name: Ollama
     type: ollama
     baseUrl: http://localhost:11434/v1
     models:
       - qwen3-6b
+`);
+    const tenantsPath = writeTempYaml(`
 tenants:
   - name: Acme
     providers:
@@ -196,17 +200,19 @@ tenants:
           - name: qwen3-6b
             priority: 0
 `);
-    runSeed(providerStore, tenantStore, crypto, path);
+    runSeed(providerStore, tenantStore, crypto, providersPath, tenantsPath);
     const tenant = tenantStore.getTenantByName('Acme')!;
     const keys = tenantStore.listTenantAiProviderKeys(tenant.id);
     expect(keys).toHaveLength(1);
   });
 
-  test('provider referenced in tenant but not in providers section is skipped', () => {
+  test('provider referenced in tenants but not in providers file is skipped', () => {
     const { tenantStore, providerStore } = createTestContext();
     const crypto = new CryptoService();
-    const path = writeTempYaml(`
+    const providersPath = writeTempYaml(`
 providers: []
+`);
+    const tenantsPath = writeTempYaml(`
 tenants:
   - name: Acme
     providers:
@@ -215,12 +221,12 @@ tenants:
           - name: some-model
             priority: 0
 `);
-    expect(() => runSeed(providerStore, tenantStore, crypto, path)).not.toThrow();
+    expect(() => runSeed(providerStore, tenantStore, crypto, providersPath, tenantsPath)).not.toThrow();
     const tenant = tenantStore.getTenantByName('Acme')!;
     expect(tenantStore.listTenantAiProviderKeys(tenant.id)).toHaveLength(0);
   });
 
-  test('resolves .yml file when path uses .yaml extension', () => {
+  test('resolves .yml providers file when path uses .yaml extension', () => {
     const { tenantStore, providerStore } = createTestContext();
     const crypto = new CryptoService();
     const id = randomUUID();
@@ -235,13 +241,13 @@ providers:
       - llama3-70b
 `, 'utf-8');
     tempFiles.push(ymlPath);
-    runSeed(providerStore, tenantStore, crypto, yamlPath);
+    runSeed(providerStore, tenantStore, crypto, yamlPath, '/nonexistent/tenants.yaml');
     const providers = providerStore.listProviders();
     expect(providers).toHaveLength(1);
     expect(providers[0]!.name).toBe('Groq');
   });
 
-  test('resolves .yaml file when path uses .yml extension', () => {
+  test('resolves .yaml providers file when path uses .yml extension', () => {
     const { tenantStore, providerStore } = createTestContext();
     const crypto = new CryptoService();
     const id = randomUUID();
@@ -256,35 +262,42 @@ providers:
       - qwen3-6b
 `, 'utf-8');
     tempFiles.push(yamlPath);
-    runSeed(providerStore, tenantStore, crypto, ymlPath);
+    runSeed(providerStore, tenantStore, crypto, ymlPath, '/nonexistent/tenants.yaml');
     const providers = providerStore.listProviders();
     expect(providers).toHaveLength(1);
     expect(providers[0]!.name).toBe('Ollama');
   });
 
-  test('no-op when neither .yaml nor .yml exists', () => {
+  test('no-op when neither providers .yaml nor .yml exists', () => {
     const { tenantStore, providerStore } = createTestContext();
     const crypto = new CryptoService();
-    expect(() => runSeed(providerStore, tenantStore, crypto, '/nonexistent/path.yaml')).not.toThrow();
+    expect(() => runSeed(providerStore, tenantStore, crypto, '/nonexistent/providers.yaml', '/nonexistent/tenants.yaml')).not.toThrow();
     expect(tenantStore.listTenants()).toHaveLength(0);
   });
 
-  test('invalid YAML throws', () => {
+  test('invalid YAML in providers file throws', () => {
     const { tenantStore, providerStore } = createTestContext();
     const crypto = new CryptoService();
-    const path = writeTempYaml('key: [unclosed bracket');
-    expect(() => runSeed(providerStore, tenantStore, crypto, path)).toThrow();
+    const providersPath = writeTempYaml('providers: [unclosed bracket');
+    expect(() => runSeed(providerStore, tenantStore, crypto, providersPath, '/nonexistent/tenants.yaml')).toThrow();
+  });
+
+  test('invalid YAML in tenants file throws', () => {
+    const { tenantStore, providerStore } = createTestContext();
+    const crypto = new CryptoService();
+    const tenantsPath = writeTempYaml('tenants: [unclosed bracket');
+    expect(() => runSeed(providerStore, tenantStore, crypto, '/nonexistent/providers.yaml', tenantsPath)).toThrow();
   });
 
   test('new tenant has API key (isNew path)', () => {
     const { tenantStore, providerStore } = createTestContext();
     const crypto = new CryptoService();
-    const path = writeTempYaml(`
+    const tenantsPath = writeTempYaml(`
 tenants:
   - name: Acme
     providers: []
 `);
-    runSeed(providerStore, tenantStore, crypto, path);
+    runSeed(providerStore, tenantStore, crypto, '/nonexistent/providers.yaml', tenantsPath);
     const tenants = tenantStore.listTenants();
     expect(tenants).toHaveLength(1);
     expect(tenants[0]!.name).toBe('Acme');
