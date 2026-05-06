@@ -1,7 +1,7 @@
 import {Elysia} from 'elysia';
 import type {TenantStore} from '@/tenant/tenant.store';
 import {MULTIFLOW_AUTO_MODEL} from '@/tenant/tenant.types';
-import {badRequestResponse, internalErrorResponse, tooManyRequestsResponse, unprocessableResponse} from '@/utils/http';
+import {badRequestResponse, tooManyRequestsResponse, unprocessableResponse} from '@/utils/http';
 import {ChatService} from '@/chat/chat.service';
 import {AIRouterFactory} from '@/engine/routing/ai-router.factory';
 import {createModelSelector} from '@/engine/selection/model-selector.factory';
@@ -43,23 +43,23 @@ export function chatRoutePlugin(
                 return badRequestResponse("Cannot use both 'model' and 'models' fields simultaneously");
             }
 
-            const modelConfigsResult = tenantModelPoolResolver.resolve({
+            const modelsResult = tenantModelPoolResolver.resolve({
                 tenantId: tenant!.id,
                 models: chatRequest.model ? [chatRequest.model] : (chatRequest.models ?? []),
                 forceAiProviderId: tenant!.forceAiProviderId
             });
 
-            if (modelConfigsResult.isErr()) {
-                switch (modelConfigsResult.error.code) {
+            if (modelsResult.isErr()) {
+                switch (modelsResult.error.code) {
                     case 'no_usable_model':
                         return unprocessableResponse('No usable models configured for this tenant');
                     case 'model_not_found':
-                        return badRequestResponse(`Model '${modelConfigsResult.error.model}' is not available for this tenant`);
+                        return badRequestResponse(`Model '${modelsResult.error.model}' is not available for this tenant`);
                 }
             }
 
-            const arrayOfModelConfig = modelConfigsResult.value;
-            const chatResult = await chatService.handleChatRequest(tenant!, chatRequest, arrayOfModelConfig);
+            const models = modelsResult.value;
+            const chatResult = await chatService.handleChatRequest(tenant!, chatRequest, models);
             if (chatResult.isErr()) {
                 switch (chatResult.error.code) {
                     case 'ai_unavailable':

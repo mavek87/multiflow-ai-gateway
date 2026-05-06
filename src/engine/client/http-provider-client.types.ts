@@ -1,27 +1,5 @@
-import type {ChatRequest, ToolCall} from '@/chat/chat.types';
-import type {Result} from "neverthrow";
-
-export interface TenantContext {
-    tenantId: string;
-    tenantName: string;
-}
-
-export interface ProviderBaseResponse {
-    model: string;
-    aiProviderId: string;
-    aiProvider: string;
-    aiProviderUrl: string;
-}
-
-export interface ProviderChatResponse extends ProviderBaseResponse {
-    content: string;
-    toolCalls?: ToolCall[];
-    body?: Record<string, unknown>;
-}
-
-export interface ProviderStreamResponse extends ProviderBaseResponse {
-    body: ReadableStream<Uint8Array>;
-}
+import type {ToolCall} from '@/chat/chat.types';
+import type {Result} from 'neverthrow';
 
 export type ModelConfig = {
     url: string;
@@ -34,13 +12,15 @@ export type ModelConfig = {
     aiProviderModelId?: string;
 };
 
-export type ProviderChatOptions = Omit<ChatRequest, 'model' | 'models' | 'system' | 'stream' | 'messages'>;
-
 export type OpenAIChatCompletion = {
     choices?: Array<{ message?: { content?: string; tool_calls?: ToolCall[] } }>;
 };
 
-export type CallProviderError = { kind: 'soft' | 'hard'; error: unknown };
+export type CallProviderError =
+    | { kind: 'timeout' }
+    | { kind: 'http'; status: number }
+    | { kind: 'parse'; error: unknown }
+    | { kind: 'network'; error: unknown };
 export type CallProviderSuccess = {
     content: string;
     toolCalls?: ToolCall[];

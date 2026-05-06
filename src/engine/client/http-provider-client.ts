@@ -13,10 +13,10 @@ import type {
     CallProviderResult,
     CallProviderStreamResult,
     CallProviderError,
-    ProviderChatOptions,
     ModelConfig,
     OpenAIChatCompletion,
 } from '@/engine/client/http-provider-client.types';
+import type {ChatOptions} from '@/chat/chat.types';
 import {createLogger} from '@/utils/logger';
 import {stripThinkTags} from '@/utils/text';
 
@@ -31,7 +31,7 @@ export class HttpProviderClient {
     ) {
     }
 
-    async call(systemPrompt: string, messages: ChatMessage[], opts?: ProviderChatOptions): Promise<CallProviderResult> {
+    async call(systemPrompt: string, messages: ChatMessage[], opts?: ChatOptions): Promise<CallProviderResult> {
         const history: ChatMessage[] = systemPrompt ? [{role: 'system', content: systemPrompt}, ...messages] : messages;
         const hasTools = (opts?.tools?.length ?? 0) > 0;
         const startTime = Date.now();
@@ -49,7 +49,7 @@ export class HttpProviderClient {
         return result.map((r) => ({...r, content: stripThinkTags(r.content)}));
     }
 
-    async callStream(systemPrompt: string, messages: ChatMessage[], opts?: ProviderChatOptions): Promise<CallProviderStreamResult> {
+    async callStream(systemPrompt: string, messages: ChatMessage[], opts?: ChatOptions): Promise<CallProviderStreamResult> {
         const history: ChatMessage[] = systemPrompt ? [{role: 'system', content: systemPrompt}, ...messages] : messages;
         const start = Date.now();
 
@@ -57,16 +57,16 @@ export class HttpProviderClient {
         if (response.isErr()) return err(response.error);
 
         if (!response.value.headers.get('content-type')?.includes('text/event-stream')) {
-            return err({kind: 'hard', error: new Error('upstream did not return text/event-stream')});
+            return err({kind: 'network', error: new Error('upstream did not return text/event-stream')});
         }
         if (!response.value.body) {
-            return err({kind: 'hard', error: new Error('upstream returned no body')});
+            return err({kind: 'network', error: new Error('upstream returned no body')});
         }
 
         return this.readFirstChunk(response.value.body, start);
     }
 
-    private async doRequest(history: ChatMessage[], stream: boolean, opts: ProviderChatOptions | undefined, timeoutMs: number): Promise<Result<Response, CallProviderError>> {
+    private async doRequest(history: ChatMessage[], stream: boolean, opts: ChatOptions | undefined, timeoutMs: number): Promise<Result<Response, CallProviderError>> {
         const abortController = new AbortController();
         const timeout = setTimeout(() => abortController.abort(), timeoutMs);
         try {
@@ -76,11 +76,11 @@ export class HttpProviderClient {
                 body: JSON.stringify(this.buildBody(history, stream, opts)),
                 signal: abortController.signal,
             });
-            if (!response.ok) return err({kind: 'hard', error: new Error(`HTTP ${response.status}`)});
+            if (!response.ok) return err({kind: 'http', status: response.status});
             return ok(response);
         } catch (e) {
-            if (e instanceof Error && e.name === 'AbortError') return err({kind: 'soft', error: e});
-            return err({kind: 'hard', error: e});
+            if (e instanceof Error && e.name === 'AbortError') return err({kind: 'timeout'});
+            return err({kind: 'network', error: e});
         } finally {
             clearTimeout(timeout);
         }
@@ -99,9 +99,9 @@ export class HttpProviderClient {
         } catch (e) {
             reader.releaseLock();
             if (e instanceof Error && e.name === 'AbortError') {
-                return err({kind: 'soft', error: e});
+                return err({kind: 'timeout'});
             }
-            return err({kind: 'hard', error: e});
+            return err({kind: 'network', error: e});
         }
 
         const stream = new ReadableStream<Uint8Array>({
@@ -133,7 +133,7 @@ export class HttpProviderClient {
         return headers;
     }
 
-    private buildBody(messages: ChatMessage[], stream: boolean, opts?: ProviderChatOptions): Record<string, unknown> {
+    private buildBody(messages: ChatMessage[], stream: boolean, opts?: ChatOptions): Record<string, unknown> {
         const body: Record<string, unknown> = {model: this.config.model, messages, stream};
         if (this.enableThinking) body.think = true;
         if (opts) Object.assign(body, opts);
@@ -154,7 +154,7 @@ export class HttpProviderClient {
                 body: json as Record<string, unknown>,
             });
         } catch (e) {
-            return err({kind: 'hard', error: e});
+            return err({kind: 'parse', error: e});
         }
     }
 }

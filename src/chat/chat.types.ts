@@ -5,6 +5,7 @@ export type ToolCall = Static<typeof ToolCallSchema>;
 export type ChatMessage = Static<typeof MessageSchema>;
 export type ChatRequest = Static<typeof ChatRequestSchema>;
 export type ChatError = { code: 'ai_unavailable' };
+export type ChatOptions = Omit<ChatRequest, 'model' | 'models' | 'system' | 'stream' | 'messages'>;
 export type ChatHandlerResult =
     | { isStream: true; payload: ReadableStream<Uint8Array>; model: string; aiProvider: string; aiProviderUrl: string }
     | { isStream: false; payload: Record<string, unknown>; model: string; aiProvider: string; aiProviderUrl: string };

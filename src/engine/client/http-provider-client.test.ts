@@ -52,12 +52,15 @@ describe('HttpProviderClient - OpenAI-compat response parsing', () => {
     if (result.isOk()) expect(result.value.content).toBe('actual answer');
   });
 
-  test('call() returns hard failure on HTTP 500', async () => {
+  test('call() returns http failure on HTTP 500', async () => {
     const client = createTestClient({ url: 'http://fake/v1', model: 'test-model' });
     undoFetch = mockFetch(() => new Response('', { status: 500 }));
     const result = await client.call(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(result.isErr()).toBe(true);
-    if (result.isErr()) expect(result.error.kind).toBe('hard');
+    if (result.isErr()) {
+      expect(result.error.kind).toBe('http');
+      if (result.error.kind === 'http') expect(result.error.status).toBe(500);
+    }
   });
 
   test('includes Authorization header when apiKey is set', async () => {
@@ -104,7 +107,7 @@ describe('HttpProviderClient - OpenAI-compat response parsing', () => {
     const result = await client.call(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(Date.now() - start).toBeLessThan(500);
     expect(result.isErr()).toBe(true);
-    if (result.isErr()) expect(result.error.kind).toBe('soft');
+    if (result.isErr()) expect(result.error.kind).toBe('timeout');
   });
 
 });
@@ -149,12 +152,15 @@ describe('HttpProviderClient - callStream()', () => {
     if (result.isOk()) expect(result.value.body).toBeDefined();
   });
 
-  test('returns hard failure on HTTP 500', async () => {
+  test('returns http failure on HTTP 500', async () => {
     const client = createTestClient({ url: 'http://fake/v1', model: 'test-model' });
     undoFetch = mockFetch(() => new Response('', { status: 500 }));
     const result = await client.callStream(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(result.isErr()).toBe(true);
-    if (result.isErr()) expect(result.error.kind).toBe('hard');
+    if (result.isErr()) {
+      expect(result.error.kind).toBe('http');
+      if (result.error.kind === 'http') expect(result.error.status).toBe(500);
+    }
   });
 
   test('sends stream:true in the request body', async () => {
@@ -168,12 +174,12 @@ describe('HttpProviderClient - callStream()', () => {
     expect(capturedBody['stream']).toBe(true);
   });
 
-  test('returns hard failure if upstream does not return text/event-stream', async () => {
+  test('returns network failure if upstream does not return text/event-stream', async () => {
     const client = createTestClient({ url: 'http://fake/v1', model: 'test-model' });
     undoFetch = mockFetch(() => new Response('{"choices":[]}', { status: 200, headers: { 'Content-Type': 'application/json' } }));
     const result = await client.callStream(SYSTEM, [{ role: 'user', content: 'hi' }]);
     expect(result.isErr()).toBe(true);
-    if (result.isErr()) expect(result.error.kind).toBe('hard');
+    if (result.isErr()) expect(result.error.kind).toBe('network');
   });
 
   test('prepends system message to the request', async () => {

@@ -4,18 +4,18 @@
 
 import type {Result} from 'neverthrow';
 import type {ChatMessage} from '@/chat/chat.types';
-import type {
-    ProviderChatResponse,
-    ProviderStreamResponse,
-    ProviderBaseResponse,
-    ProviderChatOptions,
-    TenantContext,
-} from '@/engine/client/http-provider-client.types';
+import type {ChatOptions} from '@/chat/chat.types';
 import type {
     CallProviderError,
     CallProviderSuccess,
-    CallProviderStreamSuccess
+    CallProviderStreamSuccess,
 } from '@/engine/client/http-provider-client.types';
+import type {
+    TenantContext,
+    ProviderBaseResponse,
+    ProviderChatResponse,
+    ProviderStreamResponse,
+} from '@/engine/routing/ai-router.types';
 import {HttpProviderClient} from '@/engine/client/http-provider-client';
 
 import type {ModelSelector} from '@/engine/selection/model-selector.types';
@@ -29,6 +29,12 @@ const log = createLogger('AI-ROUTER');
 const MAX_ATTEMPTS_CAP = 10;
 const UNKNOWN = 'unknown';
 
+function toLogContext(e: CallProviderError): Record<string, unknown> {
+    if (e.kind === 'timeout') return {kind: 'timeout'};
+    if (e.kind === 'http') return {kind: 'http', status: e.status};
+    return {kind: e.kind, reason: e.error instanceof Error ? e.error.message : String(e.error)};
+}
+
 export class AIRouter {
     constructor(
         private readonly clients: Map<string, HttpProviderClient>,
@@ -40,7 +46,7 @@ export class AIRouter {
     ) {
     }
 
-    async chat(systemPrompt: string, messages: ChatMessage[], ctx?: TenantContext, opts?: ProviderChatOptions): Promise<ProviderChatResponse | null> {
+    async chat(systemPrompt: string, messages: ChatMessage[], ctx?: TenantContext, opts?: ChatOptions): Promise<ProviderChatResponse | null> {
         log.info({messages: messages.length, tenantId: ctx?.tenantId ?? UNKNOWN}, 'new request');
 
         return this.executeWithAudit(ctx?.tenantId ?? UNKNOWN, async () => {
@@ -53,7 +59,7 @@ export class AIRouter {
         });
     }
 
-    async chatStream(systemPrompt: string, messages: ChatMessage[], ctx?: TenantContext, opts?: ProviderChatOptions): Promise<ProviderStreamResponse | null> {
+    async chatStream(systemPrompt: string, messages: ChatMessage[], ctx?: TenantContext, opts?: ChatOptions): Promise<ProviderStreamResponse | null> {
         log.info({messages: messages.length, tenantId: ctx?.tenantId ?? UNKNOWN}, 'new stream request');
 
         return this.executeWithAudit(ctx?.tenantId ?? UNKNOWN, async () => {
@@ -110,8 +116,8 @@ export class AIRouter {
                 };
             }
 
-            log.warn({model: modelMeta?.modelName ?? selected, provider: modelMeta?.name, kind: result.error.kind, reason: result.error.error instanceof Error ? result.error.error.message : String(result.error.error)}, 'attempt failed');
-            this.onFailure(selected, result.error.kind);
+            log.warn({model: modelMeta?.modelName ?? selected, provider: modelMeta?.name, ...toLogContext(result.error)}, 'attempt failed');
+            this.onFailure(selected, result.error);
         }
 
         return null;
@@ -141,12 +147,12 @@ export class AIRouter {
         }
     }
 
-    private onFailure(model: string, kind: 'soft' | 'hard'): void {
+    private onFailure(model: string, error: CallProviderError): void {
         this.metrics.record(model, {latencyMs: 0, ttftMs: 0, success: false});
         if (this.modelSelector.record) {
             this.modelSelector.record(model, { success: false, latencyMs: 0 });
         }
-        if (kind === 'soft') {
+        if (error.kind === 'timeout') {
             this.circuitBreaker.recordSoftFailure(model);
         } else {
             this.circuitBreaker.recordHardFailure(model);

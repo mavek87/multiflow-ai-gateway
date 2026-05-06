@@ -1,7 +1,7 @@
 import {ok, err, type Result} from 'neverthrow';
 import type {Tenant} from '@/tenant/tenant.types';
-import type {ModelConfig, ProviderChatOptions} from '@/engine/client/http-provider-client.types';
-import type {ChatHandlerResult, ChatMessage, ChatError, ChatRequest} from '@/chat/chat.types';
+import type {ModelConfig} from '@/engine/client/http-provider-client.types';
+import type {ChatHandlerResult, ChatMessage, ChatError, ChatRequest, ChatOptions} from '@/chat/chat.types';
 import {AIRouterFactory} from '@/engine/routing/ai-router.factory';
 import {createLogger} from '@/utils/logger';
 
@@ -10,11 +10,11 @@ const log = createLogger('CHAT_SVC');
 export class ChatService {
     constructor(private readonly aiRouterFactory: AIRouterFactory) {}
 
-    public async handleChatRequest(tenant: Tenant, chatRequest: ChatRequest, arrayOfModelConfigs: ModelConfig[]): Promise<Result<ChatHandlerResult, ChatError>> {
-        const aiRouter = this.aiRouterFactory.create(arrayOfModelConfigs);
+    public async handleChatRequest(tenant: Tenant, chatRequest: ChatRequest, models: ModelConfig[]): Promise<Result<ChatHandlerResult, ChatError>> {
+        const aiRouter = this.aiRouterFactory.create(models);
         const isStream = chatRequest.stream === true;
         const systemPrompt = this.resolveSystemPrompt(chatRequest);
-        const chatOptions = this.extractProviderChatOptions(chatRequest);
+        const chatOptions = this.extractChatOptions(chatRequest);
 
         log.info({tenantId: tenant.id, stream: isStream}, 'chat request starting');
 
@@ -57,10 +57,10 @@ export class ChatService {
         return typeof content === 'string' ? content : '';
     }
 
-    private extractProviderChatOptions(chatRequest: ChatRequest): ProviderChatOptions | undefined {
+    private extractChatOptions(chatRequest: ChatRequest): ChatOptions | undefined {
         const {model: _model, models: _models, system: _system, stream: _stream, messages: _messages, ...providerOpts} = chatRequest;
         const opts = Object.fromEntries(Object.entries(providerOpts).filter(([_, v]) => v !== undefined && !(Array.isArray(v) && v.length === 0)));
-        return Object.keys(opts).length > 0 ? opts as ProviderChatOptions : undefined;
+        return Object.keys(opts).length > 0 ? opts as ChatOptions : undefined;
     }
 
 }
