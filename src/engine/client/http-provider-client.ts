@@ -8,15 +8,14 @@
  */
 
 import {err, ok, type Result} from 'neverthrow';
-import type {ChatMessage, ToolCall} from '@/chat/chat.types';
+import type {ChatMessage, ChatOptions, ToolCall} from '@/chat/chat.types';
 import type {
+    CallProviderError,
     CallProviderResult,
     CallProviderStreamResult,
-    CallProviderError,
     ModelConfig,
     OpenAIChatCompletion,
 } from '@/engine/client/http-provider-client.types';
-import type {ChatOptions} from '@/chat/chat.types';
 import {createLogger} from '@/utils/logger';
 import {stripThinkTags} from '@/utils/text';
 
@@ -118,7 +117,8 @@ export class HttpProviderClient {
                 }
             },
             cancel() {
-                reader.cancel().catch(() => {});
+                reader.cancel().catch(() => {
+                });
             },
         });
 
@@ -140,7 +140,12 @@ export class HttpProviderClient {
         return body;
     }
 
-    private async parseJsonResponse(res: Response, start: number): Promise<Result<{ content: string; ttftMs: number; toolCalls?: ToolCall[]; body: Record<string, unknown> }, CallProviderError>> {
+    private async parseJsonResponse(res: Response, start: number): Promise<Result<{
+        content: string;
+        ttftMs: number;
+        toolCalls?: ToolCall[];
+        body: Record<string, unknown>
+    }, CallProviderError>> {
         try {
             const json = await res.json() as OpenAIChatCompletion;
             log.debug({preview: JSON.stringify(json).slice(0, 200)}, 'non-stream response');
