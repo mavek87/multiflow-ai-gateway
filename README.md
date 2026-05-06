@@ -213,6 +213,17 @@ cp .env.example .env   # then fill in MASTER_KEY and ENCRYPTION_KEY
 docker compose up --build -d
 ```
 
+**Injecting seed files into the container:**
+
+If you are using seed files to configure providers and tenants (see [section 3A](#3a-seed-files-recommended)), place them inside the `data/` directory on the host (which is already persisted via the `gateway_data` volume) and point to them via environment variables in `.env`:
+
+```env
+PROVIDERS_FILE=./data/providers.yaml
+TENANTS_FILE=./data/tenants.yaml
+```
+
+No changes to `docker-compose.yml` are needed. The gateway reads both files at every startup.
+
 **How the image is built:**
 
 The Dockerfile uses a 2-stage build:
