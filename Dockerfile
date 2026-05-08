@@ -33,7 +33,7 @@ COPY --from=builder --chown=nonroot:nonroot /app/data ./data
 # Set the non-privileged user (UID 65532 included in distroless)
 USER nonroot
 
-EXPOSE 3000
+EXPOSE 13000
 
 # Start the binary
 CMD ["./multiflow-ai-gateway"]

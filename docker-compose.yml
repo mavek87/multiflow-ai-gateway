@@ -1,7 +1,6 @@
 services:
   gateway:
-    build: .
-    image: multiflow-ai-gateway:latest
+    image: ghcr.io/mavek87/multiflow-ai-gateway:latest
     container_name: multiflow-ai-gateway
     ports:
       - "${PORT:-13000}:13000"
