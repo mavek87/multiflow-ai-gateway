@@ -4,12 +4,20 @@ services:
     image: multiflow-ai-gateway:latest
     container_name: multiflow-ai-gateway
     ports:
-      - "${PORT:-3000}:3000"
+      - "${PORT:-13000}:13000"
     env_file:
       - .env
     volumes:
       - gateway_data:/app/data
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "0.5"
+        reservations:
+          memory: 256m
+          cpus: "0.25"
 
 volumes:
   gateway_data:
