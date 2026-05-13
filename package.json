@@ -1,5 +1,6 @@
 {
   "name": "multiflow-ai-gateway",
+  "version": "1.0.0",
   "module": "src/index.ts",
   "type": "module",
   "private": true,
@@ -10,7 +11,8 @@
     "typecheck": "bunx tsc --noEmit",
     "check": "bun run typecheck && bun run test",
     "db:generate": "bunx drizzle-kit generate",
-    "db:migrate": "bunx drizzle-kit migrate"
+    "db:migrate": "bunx drizzle-kit migrate",
+    "release": "bun scripts/release.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
