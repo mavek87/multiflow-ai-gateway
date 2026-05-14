@@ -1,56 +1,37 @@
-providers:
-  - name: Groq
-    type: openai
-    baseUrl: https://api.groq.com/openai/v1
-    models:
-      - llama-3.3-70b-versatile
-      - llama-3.1-8b-instant
-      - mixtral-8x7b-32768
-
-  - name: Ollama Local
-    type: ollama
-    baseUrl: http://localhost:11434/v1
-    models:
-      - qwen3.5:397b-cloud
-      - gemma4:31b-cloud
-      - deepseek-v3.2:cloud
-      - gemini-3-flash-preview
-
-  - name: Pollinations
-    type: openai
-    baseUrl: https://gen.pollinations.ai/v1
-    models:
-      - openai
-
-  - name: Nvidia
-    type: openai
-    baseUrl: https://integrate.api.nvidia.com/v1
-    models:
-      - moonshotai/kimi-k2-instruct
-      - z-ai/glm4.7
-
 tenants:
   - name: ai-agents
     providers:
+      - name: OpenRouter
+        apiKeyEnv: OPENROUTER_API_KEY
+        models:
+          - name: openai/gpt-oss-120b:free
+            priority: 2
+          - name: nvidia/nemotron-3-super-120b-a12b:free
+            priority: 8
+          - name: minimax-m2.5:free/performance
+            priority: 10
       - name: Pollinations
         apiKeyEnv: POLLINATIONS_API_KEY
         models:
           - name: openai # (GPT-5.4 Nano)
-            priority: 5
+            priority: 6
       - name: Ollama Local
         models:
           - name: qwen3.5:397b-cloud
             priority: 1
           - name: deepseek-v3.2:cloud
-            priority: 2
+            priority: 3
           - name: gemini-3-flash-preview
-            priority: 6
-          - name: gemma4:31b-cloud
             priority: 7
       - name: Nvidia
         apiKeyEnv: NVIDIA_API_KEY
         models:
           - name: moonshotai/kimi-k2-instruct
-            priority: 3
-          - name: z-ai/glm4.7
             priority: 4
+          - name: z-ai/glm4.7
+            priority: 5
+      - name: Groq
+        apiKeyEnv: GROQ_API_KEY
+        models:
+          - name: llama-3.3-70b-versatile
+            priority: 9
