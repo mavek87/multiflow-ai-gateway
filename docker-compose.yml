@@ -8,6 +8,8 @@ services:
       - .env
     volumes:
       - gateway_data:/app/data
+      - ./providers.yml:/app/providers.yml:ro
+      - ./tenants.yml:/app/tenants.yml:ro
     restart: unless-stopped
     deploy:
       resources:
