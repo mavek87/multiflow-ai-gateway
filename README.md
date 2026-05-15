@@ -215,7 +215,7 @@ sudo openssl req -x509 -newkey rsa:4096 \
   -out /etc/ssl/multiflow/cert.pem \
   -days 3650 -nodes -subj "/CN=your-server-ip-or-domain"
 sudo chmod 644 /etc/ssl/multiflow/cert.pem
-sudo chmod 640 /etc/ssl/multiflow/key.pem
+sudo chmod 644 /etc/ssl/multiflow/key.pem
 ```
 
 Then add the following to your `.env`:
