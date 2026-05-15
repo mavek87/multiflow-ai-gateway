@@ -38,7 +38,7 @@ writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
 
 run(`git add package.json`);
 run(`git commit -m "chore(release): ${tag}"`);
-run(`git tag ${tag}`);
+run(`git tag -a ${tag} -m "chore(release): ${tag}"`);
 run(`git push origin main --follow-tags`);
 
 console.log(`Released ${tag}`);
