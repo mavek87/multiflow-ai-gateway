@@ -1,6 +1,6 @@
 {
   "name": "multiflow-ai-gateway",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "module": "src/index.ts",
   "type": "module",
   "private": true,
