@@ -2,14 +2,15 @@ services:
   gateway:
     image: ghcr.io/mavek87/multiflow-ai-gateway:latest
     container_name: multiflow-ai-gateway
-    ports:
-      - "${PORT:-13000}:13000"
     env_file:
       - .env
+    ports:
+      - "${PORT:-13000}:${PORT:-13000}"
     volumes:
       - gateway_data:/app/data
       - ./providers.yml:/app/providers.yml:ro
       - ./tenants.yml:/app/tenants.yml:ro
+      - /etc/ssl/multiflow:/etc/ssl/multiflow:ro
     restart: unless-stopped
     deploy:
       resources:
@@ -19,6 +20,12 @@ services:
         reservations:
           memory: 256m
           cpus: "0.25"
+    networks:
+      - gateway-net
 
 volumes:
   gateway_data:
+
+networks:
+  gateway-net:
+    driver: bridge

@@ -29,7 +29,11 @@ runSeed(providerStore, tenantStore, cryptoService, config.providersFile, config.
 logStartupSummary();
 startHousekeeping(auditStore, config.auditRetentionDays);
 
-new Elysia()
+const tlsOptions = config.tlsCert && config.tlsKey
+    ? {serve: {tls: {cert: Bun.file(config.tlsCert), key: Bun.file(config.tlsKey)}}}
+    : {};
+
+new Elysia(tlsOptions)
     .onError(({code, error, request}) => {
         const {method, url} = request;
         const path = new URL(url).pathname;

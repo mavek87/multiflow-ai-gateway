@@ -52,7 +52,7 @@ cp .env.example .env
 |---|---|---|---|
 | `MASTER_KEY` | yes | - | Protects `/admin/*` endpoints |
 | `ENCRYPTION_KEY` | yes | - | AES-256 key for provider API keys (64 hex chars) |
-| `PORT` | no | `13000` | HTTP server port |
+| `PORT` | no | `13000` | Server port (HTTP or HTTPS depending on TLS config) |
 | `DB_PATH` | no | `./data/gateway.db` | SQLite database path |
 | `AUDIT_RETENTION_DAYS` | no | `90` | How many days to retain audit records in the database |
 | `SELECTOR_TYPE` | no | `ucb1-tuned` | Model selector algorithm: `ucb1-tuned`, `thompson`, `sw-ucb1-tuned` |
@@ -62,6 +62,8 @@ cp .env.example .env
 | `PROVIDERS_FILE` | no | `./providers.yaml` | Path to the providers seed file applied at startup. Both `.yaml` and `.yml` extensions are accepted. |
 | `TENANTS_FILE` | no | `./tenants.yaml` | Path to the tenants seed file applied at startup. Both `.yaml` and `.yml` extensions are accepted. |
 | `METRICS_WARM_UP_WINDOW_MS` | no | `3600000` | How far back (in ms) to look in the audit log to warm up routing metrics on startup. Default is 1 hour. Set to `0` to always start cold. |
+| `TLS_CERT` | no | - | Path to the TLS certificate file (PEM). When set together with `TLS_KEY`, the server switches to HTTPS. |
+| `TLS_KEY` | no | - | Path to the TLS private key file (PEM). When set together with `TLS_CERT`, the server switches to HTTPS. |
 
 Generate the required secret values:
 
@@ -183,7 +185,7 @@ bun run check  # typecheck + tests
 bun run start
 ```
 
-The database is created automatically on first start. The server listens on `http://localhost:13000` (or the configured `PORT`).
+The database is created automatically on first start. The server listens on `http://localhost:13000` by default, or HTTPS if `TLS_CERT` and `TLS_KEY` are set.
 
 ### 4b. Run with Docker (alternative)
 
@@ -202,16 +204,37 @@ docker compose up --build -d
 docker compose down
 ```
 
-**On a remote server:**
+**On a remote server (with HTTPS):**
 
-Clone the repo on the server, create the `.env` file with production secrets, then run the same commands above. The `docker-compose.yml` uses `build: .` so the source must be present to build the image.
+The gateway serves HTTPS natively via Bun's built-in TLS — no reverse proxy required. Generate a self-signed certificate once on the host:
+
+```bash
+sudo mkdir -p /etc/ssl/multiflow
+sudo openssl req -x509 -newkey rsa:4096 \
+  -keyout /etc/ssl/multiflow/key.pem \
+  -out /etc/ssl/multiflow/cert.pem \
+  -days 3650 -nodes -subj "/CN=your-server-ip-or-domain"
+sudo chmod 644 /etc/ssl/multiflow/cert.pem
+sudo chmod 640 /etc/ssl/multiflow/key.pem
+```
+
+Then add the following to your `.env`:
+
+```env
+TLS_CERT=/etc/ssl/multiflow/cert.pem
+TLS_KEY=/etc/ssl/multiflow/key.pem
+```
+
+The `docker-compose.yml` mounts `/etc/ssl/multiflow` into the container as read-only, so the gateway can read the certificates. Start the stack as usual:
 
 ```bash
 git clone https://github.com/your-org/multiflow-ai-gateway.git
 cd multiflow-ai-gateway
-cp .env.example .env   # then fill in MASTER_KEY and ENCRYPTION_KEY
-docker compose up --build -d
+cp .env.example .env   # fill in MASTER_KEY, ENCRYPTION_KEY, TLS_CERT, TLS_KEY
+docker compose up -d
 ```
+
+The gateway will be reachable at `https://your-server-ip:13000` (or the configured `PORT`). Since the certificate is self-signed, clients must either disable certificate verification or trust the certificate explicitly.
 
 **Injecting seed files into the container:**
 

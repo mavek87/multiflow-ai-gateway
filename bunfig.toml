@@ -1,2 +1,6 @@
 [test]
 preload = ["./test/preload.ts"]
+
+[install]
+# 60 sec * 60 min * 24 hours * 14 days = 1209600 seconds
+minimumReleaseAge=1209600

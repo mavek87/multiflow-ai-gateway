@@ -31,4 +31,6 @@ export const config = {
   providersFile: optional('PROVIDERS_FILE', './providers.yaml'),
   tenantsFile: optional('TENANTS_FILE', './tenants.yaml'),
   metricsWarmUpWindowMs: parseInt(optional('METRICS_WARM_UP_WINDOW_MS', '3600000'), 10),
+  tlsCert: optional('TLS_CERT', ''),
+  tlsKey: optional('TLS_KEY', ''),
 } as const;
